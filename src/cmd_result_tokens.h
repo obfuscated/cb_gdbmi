@@ -3,7 +3,7 @@
 
 #include <wx/string.h>
 
-namespace gdb_mi
+namespace dbg_mi
 {
 
 struct Token
@@ -45,6 +45,6 @@ struct Token
 
 bool GetNextToken(wxString const &str, int pos, Token &token);
 
-} // namespace gdb_mi
+} // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_CMD_RESULT_TOKENIZE_H_

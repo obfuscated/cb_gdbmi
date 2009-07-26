@@ -11,16 +11,23 @@ namespace dbg_mi
 
 class ResultValue
 {
-    typedef std::map<wxString, ResultValue*> TupleType;
+//    typedef std::map<wxString, ResultValue*> TupleType;
 public:
-    typedef std::deque<ResultValue*> Container;
+    typedef std::vector<ResultValue*> Container;
     enum Type
     {
         Simple = 0,
-//        Array,
+        Array,
         Tuple
     };
 public:
+    ResultValue() {}
+    ResultValue(wxChar const *name, Type type) :
+        m_name(name),
+        m_type(type)
+    {
+    }
+
     void SetName(wxString const &name) { m_name = name; }
     void SetSimpleValue(wxString const &value) { m_value.simple = value; }
 
@@ -34,41 +41,75 @@ public:
     int GetTupleSize() const { assert(m_type == Tuple); return m_value.tuple.size(); }
     void SetTupleValue(ResultValue *value)
     {
-        TupleType::iterator it = m_value.tuple.find(value->GetName());
-        if(it != m_value.tuple.end())
+//        TupleType::iterator it = m_value.tuple.find(value->GetName());
+//        if(it != m_value.tuple.end())
+//        {
+//            delete it->second;
+//            it->second = value;
+//        }
+//        else
+//            m_value.tuple[value->GetName()] = value;
+        assert(value);
+        if(value->GetName().empty())
         {
-            delete it->second;
-            it->second = value;
+            m_value.tuple.push_back(value);
         }
         else
-            m_value.tuple[value->GetName()] = value;
+        {
+            Container::iterator it = FindTupleValue(value->GetName());
+            if(it != m_value.tuple.end())
+            {
+                delete *it;
+                m_value.tuple.erase(it);
+            }
+            m_value.tuple.push_back(value);
+        }
     }
     ResultValue const * GetTupleValue(wxString const &key) const
     {
         assert(m_type == Tuple);
-        TupleType::const_iterator it = m_value.tuple.find(key);
+//        TupleType::const_iterator it = m_value.tuple.find(key);
+        Container::const_iterator it = FindTupleValue(key);
         if(it != m_value.tuple.end())
         {
-            return it->second;
+            return *it;
         }
         else
             return NULL;
     }
     ResultValue const* GetTupleValueByIndex(int index) const
     {
-        TupleType::const_iterator it = m_value.tuple.begin();
+        Container::const_iterator it = m_value.tuple.begin();
 
         std::advance(it, index);
         if(it != m_value.tuple.end())
-            return it->second;
+            return *it;
         else
             return NULL;
     }
 
     wxString MakeDebugString() const;
-
 public:
     wxString raw_value;
+private:
+    Container::iterator FindTupleValue(wxChar const *name)
+    {
+        for(Container::iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
+        {
+            if((*it)->GetName() == name)
+                return it;
+        }
+        return m_value.tuple.end();
+    }
+    Container::const_iterator FindTupleValue(wxChar const *name) const
+    {
+        for(Container::const_iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
+        {
+            if((*it)->GetName() == name)
+                return it;
+        }
+        return m_value.tuple.end();
+    }
 private:
     wxString m_name;
     Type     m_type;
@@ -77,7 +118,8 @@ private:
     {
         wxString simple;
 //        std::vector<wxString> array;
-        TupleType tuple;
+//        TupleType tuple;
+          Container tuple;
     } m_value;
 };
 

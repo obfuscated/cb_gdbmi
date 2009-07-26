@@ -1,5 +1,7 @@
 #include "cmd_result_parser.h"
 
+#include "cmd_result_tokens.h"
+
 namespace dbg_mi
 {
 
@@ -120,13 +122,84 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
     return true;
 }
 
+bool ParseTuple2(wxString const &str, int &start, ResultValue &tuple)
+{
+    Token token;
+    int pos = start;
+    ResultValue *curr_value = NULL;
+
+    while(pos < static_cast<int>(str.length()))
+    {
+        if(!GetNextToken(str, pos, token))
+            return false;
+
+        switch(token.type)
+        {
+        case Token::String:
+            if(curr_value)
+            {
+                curr_value->SetType(ResultValue::Simple);
+                curr_value->SetSimpleValue(token.ExtractString(str));
+            }
+            else
+            {
+                curr_value = new ResultValue;
+                curr_value->SetName(token.ExtractString(str));
+            }
+            break;
+        case Token::Equal:
+            if(!curr_value)
+                return false;
+            break;
+        case Token::Comma:
+            if(!curr_value)
+                return false;
+            tuple.SetTupleValue(curr_value);
+            curr_value = NULL;
+            break;
+        case Token::TupleStart:
+            if(!curr_value)
+                return false;
+            curr_value->SetType(ResultValue::Tuple);
+            pos = token.end;
+            if(!ParseTuple2(str, pos, *curr_value))
+            {
+                delete curr_value;
+                return false;
+            }
+            else
+            {
+//                tuple.SetTupleValue(curr_value);
+//                curr_value = NULL;
+                token.end = pos;
+            }
+            break;
+        case Token::TupleEnd:
+            if(!curr_value)
+                return false;
+            else
+            {
+                start = pos + 1;
+                tuple.SetTupleValue(curr_value);
+                return true;
+            }
+        }
+
+        pos = token.end;
+    }
+
+    if(curr_value)
+        tuple.SetTupleValue(curr_value);
+    start = pos;
+    return true;
+}
 
 
 bool ParseValue(wxString const &str, ResultValue &results)
 {
     results.SetType(ResultValue::Tuple);
     int start = 0;
-    return ParseTuple(str, start, results);
+    return ParseTuple2(str, start, results);
 }
 
 wxString ResultValue::MakeDebugString() const
@@ -134,7 +207,10 @@ wxString ResultValue::MakeDebugString() const
     switch(m_type)
     {
     case Simple:
-        return m_name + _T("=") + m_value.simple;
+        if(m_name.empty())
+            return m_value.simple;
+        else
+            return m_name + _T("=") + m_value.simple;
         break;
     case Tuple:
         {
@@ -145,17 +221,38 @@ wxString ResultValue::MakeDebugString() const
                 s = m_name + _T("={");
 
             bool first = true;
-            for(TupleType::const_iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
+            for(Container::const_iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
             {
                 if(first)
                     first = false;
                 else
                     s += _T(",");
 
-                s += it->second->MakeDebugString();
+                s += (*it)->MakeDebugString();
             }
 
             s += _T("}");
+            return s;
+        }
+    case Array:
+        {
+            wxString s;
+            if(m_name.empty())
+                s = _T("[");
+            else
+                s = m_name + _T("=[");
+            bool first = true;
+            for(Container::const_iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
+            {
+                if(first)
+                    first = false;
+                else
+                    s += _T(",");
+
+                s += (*it)->MakeDebugString();
+            }
+
+            s += _T("]");
             return s;
         }
     default:

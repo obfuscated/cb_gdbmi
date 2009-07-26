@@ -16,12 +16,12 @@ TEST(TrimmedSubString)
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<int N>
-bool TestGetNextToken(wxString const &s, gdb_mi::Token &t)
+bool TestGetNextToken(wxString const &s, dbg_mi::Token &t)
 {
     int pos = 0;
     for(int ii = 0; ii < N; ++ii)
     {
-        if(!gdb_mi::GetNextToken(s, pos, t))
+        if(!dbg_mi::GetNextToken(s, pos, t))
             return false;
 
         pos = t.end;
@@ -31,104 +31,151 @@ bool TestGetNextToken(wxString const &s, gdb_mi::Token &t)
 
 TEST(TestGetNextToken1)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<1>(_T("a = 5, b = 6"), t);
 
-    CHECK(r && t.start == 0 && t.end == 1 && t.type == gdb_mi::Token::String);
+    CHECK(r && t.start == 0 && t.end == 1 && t.type == dbg_mi::Token::String);
 }
 TEST(TestGetNextToken2)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<2>(_T("a = 5, b = 6"), t);
 
-    CHECK(r && t.start == 2 && t.end == 3 && t.type == gdb_mi::Token::Equal);
+    CHECK(r && t.start == 2 && t.end == 3 && t.type == dbg_mi::Token::Equal);
 }
 TEST(TestGetNextToken3)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<3>(_T("ab = 5, b = 6"), t);
 
-    CHECK(r && t.start == 5 && t.end == 6 && t.type == gdb_mi::Token::String);
+    CHECK(r && t.start == 5 && t.end == 6 && t.type == dbg_mi::Token::String);
 }
 TEST(TestGetNextToken4)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<4>(_T("a = 5, b = 6"), t);
 
-    CHECK(r && t.start == 5 && t.end == 6 && t.type == gdb_mi::Token::Comma);
+    CHECK(r && t.start == 5 && t.end == 6 && t.type == dbg_mi::Token::Comma);
 }
 TEST(TestGetNextToken5)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<5>(_T("a = 5, bdb=\"str\""), t);
 
-    CHECK(r && t.start == 7 && t.end == 10 && t.type == gdb_mi::Token::String);
+    CHECK(r && t.start == 7 && t.end == 10 && t.type == dbg_mi::Token::String);
 }
 TEST(TestGetNextToken6)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     wxString s = _T("a = 5, bdb=\"str\"");
     bool r = TestGetNextToken<7>(s, t);
 
-    CHECK(r && t.start == 11 && t.end == 16 && t.type == gdb_mi::Token::String);
+    CHECK(r && t.start == 11 && t.end == 16 && t.type == dbg_mi::Token::String);
 }
 TEST(TestGetNextToken7)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<3>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t.start == 4 && t.end == 5 && t.type == gdb_mi::Token::ListStart);
+    CHECK(r && t.start == 4 && t.end == 5 && t.type == dbg_mi::Token::ListStart);
 }
 TEST(TestGetNextToken8)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<4>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(5, 6, gdb_mi::Token::String));
+    CHECK(r && t == dbg_mi::Token(5, 6, dbg_mi::Token::String));
 }
 TEST(TestGetNextToken9)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<5>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(6, 7, gdb_mi::Token::Comma));
+    CHECK(r && t == dbg_mi::Token(6, 7, dbg_mi::Token::Comma));
 }
 TEST(TestGetNextToken10)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<6>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(7, 13, gdb_mi::Token::String));
+    CHECK(r && t == dbg_mi::Token(7, 13, dbg_mi::Token::String));
 }
 TEST(TestGetNextToken11)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<9>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(16, 17, gdb_mi::Token::ListEnd));
+    CHECK(r && t == dbg_mi::Token(16, 17, dbg_mi::Token::ListEnd));
 }
 TEST(TestGetNextToken12)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<10>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(17, 18, gdb_mi::Token::Comma));
+    CHECK(r && t == dbg_mi::Token(17, 18, dbg_mi::Token::Comma));
 }
 TEST(TestGetNextToken13)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<13>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(22, 23, gdb_mi::Token::TupleStart));
+    CHECK(r && t == dbg_mi::Token(22, 23, dbg_mi::Token::TupleStart));
 }
 TEST(TestGetNextToken14)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     bool r = TestGetNextToken<21>(_T("a = [5,\"sert\", 6],bdb={a = \"str\", b = 5}"), t);
-    CHECK(r && t == gdb_mi::Token(39, 40, gdb_mi::Token::TupleEnd));
+    CHECK(r && t == dbg_mi::Token(39, 40, dbg_mi::Token::TupleEnd));
 }
 
 TEST(TestGetNextToken15)
 {
-    gdb_mi::Token t;
+    dbg_mi::Token t;
     wxString s = _T("a = \"-\\\"ast\\\"-\"");
     bool r = TestGetNextToken<3>(s, t);
-    CHECK(r && t == gdb_mi::Token(4, 15, gdb_mi::Token::String));
+    CHECK(r && t == dbg_mi::Token(4, 15, dbg_mi::Token::String));
     CHECK(r && t.ExtractString(s) == _T("\"-\\\"ast\\\"-\""));
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST(ResultValueMakeDebugString_Simple)
+{
+    dbg_mi::ResultValue r(_T("name"), dbg_mi::ResultValue::Simple);
+    r.SetSimpleValue(_T("value"));
+
+    CHECK(r.MakeDebugString() == _T("name=value"));
+}
+TEST(ResultValueMakeDebugString_Tuple)
+{
+    dbg_mi::ResultValue r(_T("name"), dbg_mi::ResultValue::Tuple);
+
+    dbg_mi::ResultValue *a = new dbg_mi::ResultValue(_T("name1"), dbg_mi::ResultValue::Simple);
+    a->SetSimpleValue(_T("value1"));
+
+    dbg_mi::ResultValue *b = new dbg_mi::ResultValue(_T("name2"), dbg_mi::ResultValue::Simple);
+    b->SetSimpleValue(_T("value2"));
+
+    r.SetTupleValue(a);
+    r.SetTupleValue(b);
+
+    wxString s = r.MakeDebugString();
+    CHECK(s == _T("name={name1=value1,name2=value2}"));
+}
+TEST(ResultValueMakeDebugString3)
+{
+    dbg_mi::ResultValue r(_T("name"), dbg_mi::ResultValue::Array);
+
+    dbg_mi::ResultValue *a = new dbg_mi::ResultValue(_T(""), dbg_mi::ResultValue::Simple);
+    a->SetSimpleValue(_T("1"));
+
+    dbg_mi::ResultValue *b = new dbg_mi::ResultValue(_T(""), dbg_mi::ResultValue::Simple);
+    b->SetSimpleValue(_T("2"));
+
+    dbg_mi::ResultValue *c = new dbg_mi::ResultValue(_T(""), dbg_mi::ResultValue::Simple);
+    c->SetSimpleValue(_T("3"));
+
+    r.SetTupleValue(a);
+    r.SetTupleValue(b);
+    r.SetTupleValue(c);
+
+    wxString s = r.MakeDebugString();
+    CHECK(s == _T("name=[1,2,3]"));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct TestSimpleValue
 {
@@ -227,12 +274,11 @@ TEST_FIXTURE(TestSimpleValue2, TestSimple_DebugString2)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-struct TestTupleValue
+struct TestTuple1
 {
-    TestTupleValue()
+    TestTuple1()
     {
-        status = dbg_mi::ParseValue(_T("a = {b = 5, c = 6, d = {e = 7, f = 8}}, b1 = 51"), result);
-//        wprintf(L">%s<\n", result.MakeDebugString().utf8_str().data());
+        status = dbg_mi::ParseValue(_T("a = {b = 5, c = 6}"), result);
         v_a = result.GetTupleValue(_T("a"));
     }
 
@@ -241,64 +287,84 @@ struct TestTupleValue
     bool status;
 };
 
-TEST_FIXTURE(TestTupleValue, TupleStatus)
+TEST_FIXTURE(TestTuple1, Tuple_Status)
 {
     CHECK(status);
-    CHECK(v_a);
 }
 
-TEST_FIXTURE(TestTupleValue, TupleValue1)
+TEST_FIXTURE(TestTuple1, Tuple_DebugString)
 {
-    dbg_mi::ResultValue const *b = NULL;
+    wxString s = result.MakeDebugString();
+    CHECK(s == _T("{a={b=5,c=6}}"));
+}
 
-    if(v_a)
-        b = v_a->GetTupleValue(_T("b"));
+TEST_FIXTURE(TestTuple1, Tuple_ValueA_Type)
+{
+    CHECK(v_a && v_a->GetType() == dbg_mi::ResultValue::Tuple);
+}
+
+TEST_FIXTURE(TestTuple1, Tuple_ValueA_Value)
+{
+    dbg_mi::ResultValue const *b = v_a ? v_a->GetTupleValue(_T("b")) : NULL;
+    dbg_mi::ResultValue const *c = v_a ? v_a->GetTupleValue(_T("c")) : NULL;
+
     CHECK(b && b->GetType() == dbg_mi::ResultValue::Simple && b->GetSimpleValue() == _T("5"));
-}
-
-TEST_FIXTURE(TestTupleValue, TupleValue2)
-{
-    dbg_mi::ResultValue const *c = NULL;
-
-    if(v_a)
-        c = v_a->GetTupleValue(_T("c"));
     CHECK(c && c->GetType() == dbg_mi::ResultValue::Simple && c->GetSimpleValue() == _T("6"));
 }
-
-TEST_FIXTURE(TestTupleValue, TupleValue3)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct TestTuple2
 {
-    dbg_mi::ResultValue const *d = NULL;
-
-    if(v_a)
-        d = v_a->GetTupleValue(_T("d"));
-    CHECK(d && d->GetType() == dbg_mi::ResultValue::Tuple);
-}
-
-TEST_FIXTURE(TestTupleValue, TupleValue4)
-{
-    dbg_mi::ResultValue const *d = NULL;
-    dbg_mi::ResultValue const *e = NULL;
-    dbg_mi::ResultValue const *f = NULL;
-
-    if(v_a)
+    TestTuple2()
     {
-        d = v_a->GetTupleValue(_T("d"));
-        if(d)
-        {
-            e = d->GetTupleValue(_T("e"));
-            f = d->GetTupleValue(_T("f"));
-        }
+        status = dbg_mi::ParseValue(_T("a = {b = 5, c = {c1= 1,c2 =2}}, d=6"), result);
+        v_a = result.GetTupleValue(_T("a"));
     }
 
-    CHECK(d && d->GetType() == dbg_mi::ResultValue::Tuple);
-    CHECK(e && e->GetType() == dbg_mi::ResultValue::Simple && e->GetSimpleValue() == _T("7"));
-    CHECK(f && f->GetType() == dbg_mi::ResultValue::Simple && f->GetSimpleValue() == _T("8"));
+    dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *v_a;
+    dbg_mi::ResultValue const *v_d;
+    bool status;
+};
+
+
+TEST_FIXTURE(TestTuple2, Tuple_Status)
+{
+    CHECK(status);
 }
 
-TEST_FIXTURE(TestSimpleValue2, Tuple_DebugString)
+TEST_FIXTURE(TestTuple2, Tuple_DebugString)
 {
-    bool status = result.MakeDebugString() == _T("{a={b=5,c=6,d={e=7,f=8}},b1=51}");
-    CHECK_EQUAL(status, false);
+    wxString s = result.MakeDebugString();
+    CHECK(s == _T("{a={b=5,c={c1=1,c2=2}},d=6}"));
+}
+
+TEST_FIXTURE(TestTuple2, Tuple_ValueB)
+{
+    dbg_mi::ResultValue const *b = v_a ? v_a->GetTupleValue(_T("b")) : NULL;
+
+    CHECK(b && b->GetType() == dbg_mi::ResultValue::Simple && b->GetSimpleValue() == _T("5"));
+}
+TEST_FIXTURE(TestTuple2, Tuple_ValueC1)
+{
+    dbg_mi::ResultValue const *c = v_a ? v_a->GetTupleValue(_T("c")) : NULL;
+
+    CHECK(c && c->GetType() == dbg_mi::ResultValue::Tuple);
+}
+TEST_FIXTURE(TestTuple2, Tuple_ValueC2)
+{
+    dbg_mi::ResultValue const *c = v_a ? v_a->GetTupleValue(_T("c")) : NULL;
+    dbg_mi::ResultValue const *c1 = c ? c->GetTupleValue(_T("c1")) : NULL;
+    dbg_mi::ResultValue const *c2 = c ? c->GetTupleValue(_T("c2")) : NULL;
+
+    CHECK(c1 && c1->GetType() == dbg_mi::ResultValue::Simple && c1->GetSimpleValue() == _T("1"));
+    CHECK(c2 && c2->GetType() == dbg_mi::ResultValue::Simple && c2->GetSimpleValue() == _T("2"));
+}
+
+TEST_FIXTURE(TestTuple2, Tuple_ValueD)
+{
+    dbg_mi::ResultValue const *d = result.GetTupleValue(_T("d"));
+
+    CHECK(d && d->GetType() == dbg_mi::ResultValue::Simple && d->GetSimpleValue() == _T("6"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

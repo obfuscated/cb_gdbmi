@@ -1,6 +1,6 @@
 #include "cmd_result_tokens.h"
 
-namespace gdb_mi
+namespace dbg_mi
 {
 
 
@@ -73,10 +73,18 @@ bool GetNextToken(wxString const &str, int pos, Token &token)
         ++pos;
     }
 
-    token.end = -1;
-    return false;
+    if(in_quote)
+    {
+        token.end = -1;
+        return false;
+    }
+    else
+    {
+        token.end = pos;
+        return true;
+    }
 }
 
 
-} // namespace gdb_mi
+} // namespace dbg_mi
 
