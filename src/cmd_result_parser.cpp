@@ -29,104 +29,20 @@ wxString TrimmedSubString(wxString const &str, int start, int length)
     return str.substr(real_start, real_end - real_start + 1);
 }
 
-
-
 bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
-{
-    bool value_started = false;
-    int value_start = 0;
-
-    ResultValue *curr_value = NULL;
-
-    for(int ii = start; ii < static_cast<int>(str.length()); ++ii)
-    {
-        wxChar ch = str[ii];
-        if(ch == _T('='))
-        {
-            value_started = true;
-
-            curr_value = new ResultValue;
-            curr_value->SetName(TrimmedSubString(str, start, ii - start));
-            tuple.SetTupleValue(curr_value);
-        }
-        else if(value_started)
-        {
-            if(ch != _T(' ') && ch != _T('\t'))
-            {
-                switch(ch)
-                {
-                case _T('['):
-                case _T('{'):
-                    if(!curr_value)
-                        return false;
-                    curr_value->SetType(ResultValue::Tuple);
-                    ++ii;
-                    if(!ParseTuple(str, ii, *curr_value))
-                    {
-                        delete curr_value;
-                        return false;
-                    }
-                    //tuple.SetTupleValue(curr_value);
-                    curr_value = NULL;
-                    value_started = false;
-                    start = ii;
-                    break;
-                case _T('}'):
-                    if(curr_value)
-                    {
-                        if(curr_value->GetType() == dbg_mi::ResultValue::Simple)
-                            curr_value->SetSimpleValue(TrimmedSubString(str, value_start, ii - value_start));
-
-                        curr_value = NULL;
-                        value_started = false;
-                        start = ii + 1;
-                    }
-                    return true;
-
-                case _T(','):
-                    if(curr_value)
-                    {
-                        if(curr_value->GetType() == dbg_mi::ResultValue::Simple)
-                            curr_value->SetSimpleValue(TrimmedSubString(str, value_start, ii - value_start));
-
-                        curr_value = NULL;
-                        value_started = false;
-                        start = ii + 1;
-                    }
-                    else
-                        return false;
-                    break;
-
-                default:
-                    value_start = ii;
-                    if(curr_value)
-                        curr_value->SetType(dbg_mi::ResultValue::Simple);
-                    else
-                        return false;
-                }
-            }
-        }
-
-    }
-
-    if(value_started)
-    {
-        if(curr_value)
-        {
-            if(curr_value->GetType() == dbg_mi::ResultValue::Simple)
-                curr_value->SetSimpleValue(TrimmedSubString(str, value_start, str.length() - value_start));
-            else
-                return false;
-        }
-    }
-    return true;
-}
-
-bool ParseTuple2(wxString const &str, int &start, ResultValue &tuple)
 {
     Token token;
     int pos = start;
     ResultValue *curr_value = NULL;
+
+    enum Step
+    {
+        Nothing,
+        Name,
+        Equal,
+        Value
+    };
+    Step step = Nothing;
 
     while(pos < static_cast<int>(str.length()))
     {
@@ -136,53 +52,141 @@ bool ParseTuple2(wxString const &str, int &start, ResultValue &tuple)
         switch(token.type)
         {
         case Token::String:
+            // set the value
             if(curr_value)
             {
+                if(step != Equal)
+                    return false;
+                step = Value;
+
                 curr_value->SetType(ResultValue::Simple);
                 curr_value->SetSimpleValue(token.ExtractString(str));
             }
             else
             {
+                if(step != Nothing)
+                    return false;
+                step = Name;
+
                 curr_value = new ResultValue;
                 curr_value->SetName(token.ExtractString(str));
             }
             break;
+
         case Token::Equal:
             if(!curr_value)
                 return false;
+            if(step != Name)
+            {
+                delete curr_value;
+                return false;
+            }
+            step = Equal;
             break;
+
         case Token::Comma:
             if(!curr_value)
                 return false;
+            if(tuple.GetType() == ResultValue::Array)
+            {
+                if(step == Name)
+                {
+                    curr_value->SetSimpleValue(curr_value->GetName());
+                    curr_value->SetName(_T(""));
+                }
+                else if(step != Value)
+                {
+                    delete curr_value;
+                    return false;
+                }
+            }
+            else
+            {
+                if(step != Value)
+                {
+                    delete curr_value;
+                    return false;
+                }
+            }
             tuple.SetTupleValue(curr_value);
             curr_value = NULL;
+            step = Nothing;
             break;
+
         case Token::TupleStart:
             if(!curr_value)
                 return false;
+            if(step != Equal)
+            {
+                delete curr_value;
+                return false;
+            }
+
             curr_value->SetType(ResultValue::Tuple);
             pos = token.end;
-            if(!ParseTuple2(str, pos, *curr_value))
+            if(!ParseTuple(str, pos, *curr_value))
             {
                 delete curr_value;
                 return false;
             }
             else
             {
-//                tuple.SetTupleValue(curr_value);
-//                curr_value = NULL;
                 token.end = pos;
+                step = Value;
             }
             break;
+
+        case Token::ListStart:
+            if(!curr_value)
+                return false;
+            if(step != Equal)
+            {
+                delete curr_value;
+                return false;
+            }
+            curr_value->SetType(ResultValue::Array);
+            pos = token.end;
+            if(!ParseTuple(str, pos, *curr_value))
+            {
+                delete curr_value;
+                return false;
+            }
+            else
+            {
+                token.end = pos;
+                step = Value;
+            }
+            break;
+
         case Token::TupleEnd:
+        case Token::ListEnd:
             if(!curr_value)
                 return false;
             else
             {
+                if(tuple.GetType() == ResultValue::Array)
+                {
+                    if(step == Name)
+                    {
+                        curr_value->SetSimpleValue(curr_value->GetName());
+                        curr_value->SetName(_T(""));
+                    }
+                    else if(step != Value)
+                    {
+                        delete curr_value;
+                        return false;
+                    }
+                }
+                else if(step != Value)
+                {
+                    delete curr_value;
+                    return false;
+                }
                 start = pos + 1;
                 tuple.SetTupleValue(curr_value);
                 return true;
             }
+            break;
         }
 
         pos = token.end;
@@ -199,7 +203,7 @@ bool ParseValue(wxString const &str, ResultValue &results)
 {
     results.SetType(ResultValue::Tuple);
     int start = 0;
-    return ParseTuple2(str, start, results);
+    return ParseTuple(str, start, results);
 }
 
 wxString ResultValue::MakeDebugString() const

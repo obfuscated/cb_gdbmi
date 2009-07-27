@@ -220,7 +220,6 @@ struct TestSimpleValue2
     TestSimpleValue2()
     {
         status = dbg_mi::ParseValue(_T("a = 5, b = 6"), result);
-//        wprintf(L">%s<\n", result.MakeDebugString().utf8_str().data());
 
         v_a = result.GetTupleValue(_T("a"));
         v_b = result.GetTupleValue(_T("b"));
@@ -368,25 +367,32 @@ TEST_FIXTURE(TestTuple2, Tuple_ValueD)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-struct TestListValue
+struct TestList
 {
-    TestListValue()
+    TestList()
     {
         status = dbg_mi::ParseValue(_T("a = [5,6,7]"), result);
 
-//        printf(">%s<\n", result.MakeDebugString().utf8_str().data());
+        a = result.GetTupleValue(_T("a"));
     }
 
     dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *a;
     bool status;
 };
-//
-//TEST_FIXTURE(TestListValue, ListStatus)
-//{
-//    CHECK(status);
-//    CHECK(result.GetTupleSize() == 3);
-//}
-//
+
+TEST_FIXTURE(TestList, Status)
+{
+    CHECK(status);
+    CHECK(a && a->GetTupleSize() == 3);
+}
+
+TEST_FIXTURE(TestList, DebugString)
+{
+    wxString s = result.MakeDebugString();
+    CHECK(s == _T("{a=[5,6,7]}"));
+}
+
 //TEST_FIXTURE(TestListValue, ListValue1)
 //{
 //    dbg_mi::ResultValue const *v = result.GetTupleValueByIndex(0);

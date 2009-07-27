@@ -38,7 +38,7 @@ public:
 
     wxString const & GetSimpleValue() const { assert(m_type == Simple); return m_value.simple; }
 
-    int GetTupleSize() const { assert(m_type == Tuple); return m_value.tuple.size(); }
+    int GetTupleSize() const { assert(m_type != Simple); return m_value.tuple.size(); }
     void SetTupleValue(ResultValue *value)
     {
 //        TupleType::iterator it = m_value.tuple.find(value->GetName());
