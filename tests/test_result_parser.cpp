@@ -393,23 +393,120 @@ TEST_FIXTURE(TestList, DebugString)
     CHECK(s == _T("{a=[5,6,7]}"));
 }
 
-//TEST_FIXTURE(TestListValue, ListValue1)
-//{
-//    dbg_mi::ResultValue const *v = result.GetTupleValueByIndex(0);
-//    CHECK(v && v->GetSimpleValue() == _T("5"));
-//}
-//
-//TEST_FIXTURE(TestListValue, ListValue2)
-//{
-//    dbg_mi::ResultValue const *v = result.GetTupleValueByIndex(1);
-//    CHECK(v && v->GetSimpleValue() == _T("6"));
-//}
-//
-//TEST_FIXTURE(TestListValue, ListValue3)
-//{
-//    dbg_mi::ResultValue const *v = result.GetTupleValueByIndex(2);
-//    CHECK(v && v->GetSimpleValue() == _T("7"));
-//}
+TEST_FIXTURE(TestList, ListValue1)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(0) : NULL;
+    CHECK(v && v->GetSimpleValue() == _T("5"));
+}
+
+TEST_FIXTURE(TestList, ListValue2)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(1) : NULL;
+    CHECK(v && v->GetSimpleValue() == _T("6"));
+}
+
+TEST_FIXTURE(TestList, ListValue3)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(2) : NULL;
+    CHECK(v && v->GetSimpleValue() == _T("7"));
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST(ParserFail1)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a"), r);
+    CHECK(!status);
+}
+TEST(ParserFail2)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a,"), r);
+    CHECK(!status);
+}
+TEST(ParserFail3_1)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = 5,"), r);
+    CHECK(!status);
+}
+TEST(ParserFail3_2)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = 5,b="), r);
+    CHECK(!status);
+}
+TEST(ParserFail3_3)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {"), r);
+    CHECK(!status);
+}
+TEST(ParserFail3_4)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = ["), r);
+    CHECK(!status);
+}
+TEST(ParserFail4)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a == 5,"), r);
+    CHECK(!status);
+}
+TEST(ParserFail5)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = 5,b"), r);
+    CHECK(!status);
+}
+TEST(ParserFail6)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {}5"), r);
+    CHECK(!status);
+}
+TEST(ParserFail7)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {5}"), r);
+    CHECK(!status);
+}
+TEST(ParserFail8)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {b = 5, c =5"), r);
+    CHECK(!status);
+}
+TEST(ParserFail9)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = [b = 5, c =5"), r);
+    CHECK(!status);
+}
+TEST(ParserFail10)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {b = 5, c =5}}"), r);
+    CHECK(!status);
+}
+TEST(ParserFail11)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = [b = 5, c =5]]"), r);
+    CHECK(!status);
+}
+TEST(ParserFail12)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = [b = 5, c =5}"), r);
+    CHECK(!status);
+}
+TEST(ParserFail13)
+{
+    dbg_mi::ResultValue r;
+    bool status = dbg_mi::ParseValue(_T("a = {b = 5, c =5]"), r);
+    CHECK(!status);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TEST(ResultParse_TestType)

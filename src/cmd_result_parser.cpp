@@ -29,7 +29,7 @@ wxString TrimmedSubString(wxString const &str, int start, int length)
     return str.substr(real_start, real_end - real_start + 1);
 }
 
-bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
+bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_closing_brace)
 {
     Token token;
     int pos = start;
@@ -124,7 +124,7 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
 
             curr_value->SetType(ResultValue::Tuple);
             pos = token.end;
-            if(!ParseTuple(str, pos, *curr_value))
+            if(!ParseTuple(str, pos, *curr_value, true))
             {
                 delete curr_value;
                 return false;
@@ -132,6 +132,7 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
             else
             {
                 token.end = pos;
+                token.type = Token::TupleEnd;
                 step = Value;
             }
             break;
@@ -146,7 +147,7 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
             }
             curr_value->SetType(ResultValue::Array);
             pos = token.end;
-            if(!ParseTuple(str, pos, *curr_value))
+            if(!ParseTuple(str, pos, *curr_value, true))
             {
                 delete curr_value;
                 return false;
@@ -154,46 +155,62 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple)
             else
             {
                 token.end = pos;
+                token.type = Token::ListEnd;
                 step = Value;
             }
             break;
 
         case Token::TupleEnd:
-        case Token::ListEnd:
-            if(!curr_value)
+            if(!curr_value || tuple.GetType() != ResultValue::Tuple || !want_closing_brace)
                 return false;
-            else
+            if(step != Value)
             {
-                if(tuple.GetType() == ResultValue::Array)
-                {
-                    if(step == Name)
-                    {
-                        curr_value->SetSimpleValue(curr_value->GetName());
-                        curr_value->SetName(_T(""));
-                    }
-                    else if(step != Value)
-                    {
-                        delete curr_value;
-                        return false;
-                    }
-                }
-                else if(step != Value)
-                {
-                    delete curr_value;
-                    return false;
-                }
-                start = pos + 1;
-                tuple.SetTupleValue(curr_value);
-                return true;
+                delete curr_value;
+                return false;
             }
-            break;
+            start = pos + 1;
+            tuple.SetTupleValue(curr_value);
+            return true;
+
+        case Token::ListEnd:
+            if(!curr_value || tuple.GetType() != ResultValue::Array || !want_closing_brace)
+                return false;
+            if(step == Name)
+            {
+                curr_value->SetSimpleValue(curr_value->GetName());
+                curr_value->SetName(_T(""));
+            }
+            else if(step != Value)
+            {
+                delete curr_value;
+                return false;
+            }
+
+            start = pos + 1;
+            tuple.SetTupleValue(curr_value);
+            return true;
         }
 
         pos = token.end;
     }
 
     if(curr_value)
-        tuple.SetTupleValue(curr_value);
+    {
+        if(step != Value)
+        {
+            delete curr_value;
+            return false;
+        }
+        else
+            tuple.SetTupleValue(curr_value);
+    }
+    if(token.type == Token::Comma || token.type == Token::ListStart || token.type == Token::TupleStart)
+        return false;
+
+    // if we are here the closing brace was not found, so we exit with error
+    if(want_closing_brace)
+        return false;
+
     start = pos;
     return true;
 }
@@ -203,7 +220,7 @@ bool ParseValue(wxString const &str, ResultValue &results)
 {
     results.SetType(ResultValue::Tuple);
     int start = 0;
-    return ParseTuple(str, start, results);
+    return ParseTuple(str, start, results, false);
 }
 
 wxString ResultValue::MakeDebugString() const
