@@ -23,14 +23,14 @@
 // We are using an anonymous namespace so we don't litter the global one.
 namespace
 {
-    PluginRegistrant<Debugger_GDB_MI> reg(_T("Debugger_GDB_MI"));
+    PluginRegistrant<Debugger_GDB_MI> reg(_T("debugger_gdbmi"));
 }
 
 int id_gdb_process = wxNewId();
 int id_gdb_poll_timer = wxNewId();
 
 // events handling
-BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbPlugin)
+BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
     EVT_MENU(XRCID("idDebuggerGDBMI_MenuStart"), Debugger_GDB_MI::OnMenuStart)
     EVT_MENU(XRCID("idDebuggerGDBMI_MenuStop"), Debugger_GDB_MI::OnMenuStop)
 
@@ -69,6 +69,8 @@ void Debugger_GDB_MI::OnAttach()
 {
     m_timer_poll_debugger.SetOwner(this, id_gdb_poll_timer);
 
+    Manager::Get()->GetDebuggerManager()->RegisterDebugger(this, _T("gdbmi"));
+
     LogManager &message_manager = *Manager::Get()->GetLogManager();
     if(!m_log)
         m_log = new TextCtrlLogger(true);
@@ -103,6 +105,8 @@ void Debugger_GDB_MI::OnRelease(bool appShutDown)
         Manager::Get()->ProcessEvent(evt);
         m_log = NULL;
     }
+
+    Manager::Get()->GetDebuggerManager()->UnregisterDebugger(this);
     // do de-initialization for your plugin
     // if appShutDown is true, the plugin is unloaded because Code::Blocks is being shut down,
     // which means you must not use any of the SDK Managers
@@ -392,6 +396,7 @@ void Debugger_GDB_MI::OnMenuStart(wxCommandEvent &event)
     Manager::Get()->GetLogManager()->Log(_T("Working dir : ") + working_dir, m_page_index);
 
     emit_watch = true;
+
     int ret = LaunchProcess(cmd, working_dir);
 
     AddStringCommand(_T("-enable-timings"));
@@ -532,4 +537,76 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
         return;
     Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_page_index);
     m_command_queue.AccumulateOutput(str);
+}
+
+
+bool Debugger_GDB_MI::AddBreakpoint(const wxString& file, int line)
+{
+    return false;
+}
+bool Debugger_GDB_MI::AddBreakpoint(const wxString& functionSignature)
+{
+    return false;
+}
+bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& file, int line)
+{
+    return false;
+}
+bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& functionSignature)
+{
+    return false;
+}
+bool Debugger_GDB_MI::RemoveAllBreakpoints(const wxString& file)
+{
+    return false;
+}
+void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)
+{
+}
+int Debugger_GDB_MI::GetBreakpointsCount() const
+{
+    return 0;
+}
+void Debugger_GDB_MI::GetBreakpoint(int index, cbBreakpoint& breakpoint) const
+{
+}
+void Debugger_GDB_MI::UpdateBreakpoint(int index, cbBreakpoint const &breakpoint)
+{
+}
+int Debugger_GDB_MI::Debug()
+{
+    return -1;
+}
+void Debugger_GDB_MI::Continue()
+{
+}
+void Debugger_GDB_MI::Next()
+{
+}
+void Debugger_GDB_MI::NextInstruction()
+{
+}
+void Debugger_GDB_MI::Step()
+{
+}
+void Debugger_GDB_MI::StepOut()
+{
+}
+void Debugger_GDB_MI::Break()
+{
+}
+void Debugger_GDB_MI::Stop()
+{
+}
+bool Debugger_GDB_MI::IsRunning() const
+{
+    return false;
+}
+bool Debugger_GDB_MI::IsStopped() const
+{
+    return true;
+}
+int Debugger_GDB_MI::GetExitCode() const
+{
+    return 0;
 }

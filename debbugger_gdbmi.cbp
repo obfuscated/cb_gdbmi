@@ -7,33 +7,35 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="Debugger_GDB_MI" prefix_auto="1" extension_auto="1" />
+				<Option output="libdebugger_gdbmi" prefix_auto="1" extension_auto="1" />
 				<Option type="3" />
 				<Option compiler="gcc" />
 				<Option host_application="codeblocks" />
 				<Compiler>
 					<Add option="-Wall" />
 					<Add option="-g" />
-					<Add option="`pkg-config --cflags codeblocks`" />
 					<Add option="`wx-config --cflags`" />
 				</Compiler>
 				<Linker>
-					<Add option="`pkg-config --libs codeblocks`" />
 					<Add option="`wx-config --libs`" />
 					<Add option="-z defs" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="rm -f Debugger_GDB_MI.zip" />
-					<Add after="rm -f Debugger_GDB_MI.cbplugin" />
-					<Add after="zip -j9 Debugger_GDB_MI.zip resource/manifest.xml resource/*.xrc" />
-					<Add after="zip -j9 Debugger_GDB_MI.cbplugin Debugger_GDB_MI.so Debugger_GDB_MI.zip" />
+					<Add after="rm -f $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip" />
+					<Add after="cp libdebugger_gdbmi.so $(#cb_sdk)/devel/share/codeblocks/plugins/" />
+					<Add after="zip -j9 $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip resource/manifest.xml resource/*.xrc" />
 				</ExtraCommands>
 			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-fPIC" />
+			<Add directory="$(#cb_sdk.include)" />
 			<Add directory="src" />
 		</Compiler>
+		<Linker>
+			<Add library="codeblocks" />
+			<Add directory="$(#cb_sdk.lib)" />
+		</Linker>
 		<Unit filename="Debugger_GDB_MI.cpp" />
 		<Unit filename="Debugger_GDB_MI.h" />
 		<Unit filename="resource/debugger_gdbmi_menu.xrc" />

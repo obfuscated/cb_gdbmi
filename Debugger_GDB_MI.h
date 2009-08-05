@@ -27,7 +27,7 @@ class TextCtrlLogger;
 class Compiler;
 
 
-class Debugger_GDB_MI : public cbPlugin
+class Debugger_GDB_MI : public cbDebuggerPlugin
 {
     public:
         /** Constructor. */
@@ -101,6 +101,29 @@ class Debugger_GDB_MI : public cbPlugin
           * @return The plugin should return true if it needed the toolbar, false if not
           */
         virtual bool BuildToolBar(wxToolBar* toolBar);
+
+        virtual bool AddBreakpoint(const wxString& file, int line);
+        virtual bool AddBreakpoint(const wxString& functionSignature);
+        virtual bool RemoveBreakpoint(const wxString& file, int line);
+        virtual bool RemoveBreakpoint(const wxString& functionSignature);
+        virtual bool RemoveAllBreakpoints(const wxString& file = wxEmptyString);
+        virtual void EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines);
+
+        virtual int GetBreakpointsCount() const;
+        virtual void GetBreakpoint(int index, cbBreakpoint& breakpoint) const;
+        virtual void UpdateBreakpoint(int index, cbBreakpoint const &breakpoint);
+
+        virtual int Debug();
+        virtual void Continue();
+        virtual void Next();
+        virtual void NextInstruction();
+        virtual void Step();
+        virtual void StepOut();
+        virtual void Break();
+        virtual void Stop();
+        virtual bool IsRunning() const;
+        virtual bool IsStopped() const;
+        virtual int GetExitCode() const;
     protected:
         /** Any descendent plugin should override this virtual method and
           * perform any necessary initialization. This method is called by
