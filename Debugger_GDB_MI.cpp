@@ -32,8 +32,6 @@ int id_gdb_poll_timer = wxNewId();
 
 // events handling
 BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
-    EVT_MENU(XRCID("idDebuggerGDBMI_MenuStart"), Debugger_GDB_MI::OnMenuStart)
-    EVT_MENU(XRCID("idDebuggerGDBMI_MenuStop"), Debugger_GDB_MI::OnMenuStop)
 
     EVT_PIPEDPROCESS_STDOUT(id_gdb_process, Debugger_GDB_MI::OnGDBOutput)
     EVT_PIPEDPROCESS_STDERR(id_gdb_process, Debugger_GDB_MI::OnGDBError)
@@ -333,87 +331,6 @@ wxString Debugger_GDB_MI::GetDebuggee(ProjectBuildTarget* target)
     return out;
 }
 
-void Debugger_GDB_MI::OnMenuStart(wxCommandEvent &event)
-{
-    ShowLog();
-    Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
-
-    ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
-    cbProject *project = project_manager.GetActiveProject();
-    if(!project)
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
-        return;
-    }
-    Compiler *compiler;
-    ProjectBuildTarget *target;
-    SelectCompiler(*project, compiler, target, 0);
-
-    if(!compiler)
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no compiler found!"), m_page_index);
-        return;
-    }
-    if(!target)
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no target found!"), m_page_index);
-        return;
-    }
-
-    // is gdb accessible, i.e. can we find it?
-    wxString debugger;
-    debugger = compiler->GetPrograms().DBG;
-    debugger.Trim();
-    debugger.Trim(true);
-    if(debugger.IsEmpty())
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found!"), m_page_index);
-        return;
-    }
-    // access the gdb executable name
-    debugger = FindDebuggerExecutable(compiler);
-    if(debugger.IsEmpty())
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found (full path)!"), m_page_index);
-        return;
-    }
-
-    wxString debuggee = GetDebuggee(target);
-
-    Manager::Get()->GetLogManager()->Log(_T("GDB path: ") + debugger, m_page_index);
-    Manager::Get()->GetLogManager()->Log(_T("DEBUGGEE path: ") + debuggee, m_page_index);
-
-    wxString cmd;
-    cmd << debugger;
-    cmd << _T(" -nx");          // don't run .gdbinit
-    cmd << _T(" -fullname ");   // report full-path filenames when breaking
-    cmd << _T(" -quiet");       // don't display version on startup
-    cmd << _T(" --interpreter=mi");
-    cmd << _T(" -args ") << debuggee;
-
-    // start the gdb process
-    wxString working_dir = project->GetBasePath();
-    Manager::Get()->GetLogManager()->Log(_T("Command-line: ") + cmd, m_page_index);
-    Manager::Get()->GetLogManager()->Log(_T("Working dir : ") + working_dir, m_page_index);
-
-    emit_watch = true;
-
-    int ret = LaunchProcess(cmd, working_dir);
-
-    AddStringCommand(_T("-enable-timings"));
-    AddStringCommand(_T("-break-insert main.cpp:55"));
-    AddStringCommand(_T("-exec-run"));
-
-    m_timer_poll_debugger.Start(20);
-}
-void Debugger_GDB_MI::OnMenuStop(wxCommandEvent &event)
-{
-    Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
-    if(m_process)
-        AddStringCommand(_T("-gdb-exit"));
-}
-
-
 int Debugger_GDB_MI::LaunchProcess(const wxString& cmd, const wxString& cwd)
 {
     if(m_process)
@@ -619,32 +536,113 @@ void Debugger_GDB_MI::UpdateBreakpoint(int index, cbBreakpoint const &breakpoint
 }
 int Debugger_GDB_MI::Debug()
 {
-    return -1;
+    ShowLog();
+    Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
+
+    ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
+    cbProject *project = project_manager.GetActiveProject();
+    if(!project)
+    {
+        Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
+        return 1;
+    }
+    Compiler *compiler;
+    ProjectBuildTarget *target;
+    SelectCompiler(*project, compiler, target, 0);
+
+    if(!compiler)
+    {
+        Manager::Get()->GetLogManager()->LogError(_T("no compiler found!"), m_page_index);
+        return 2;
+    }
+    if(!target)
+    {
+        Manager::Get()->GetLogManager()->LogError(_T("no target found!"), m_page_index);
+        return 3;
+    }
+
+    // is gdb accessible, i.e. can we find it?
+    wxString debugger;
+    debugger = compiler->GetPrograms().DBG;
+    debugger.Trim();
+    debugger.Trim(true);
+    if(debugger.IsEmpty())
+    {
+        Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found!"), m_page_index);
+        return 4;
+    }
+    // access the gdb executable name
+    debugger = FindDebuggerExecutable(compiler);
+    if(debugger.IsEmpty())
+    {
+        Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found (full path)!"), m_page_index);
+        return 5;
+    }
+
+    wxString debuggee = GetDebuggee(target);
+
+    Manager::Get()->GetLogManager()->Log(_T("GDB path: ") + debugger, m_page_index);
+    Manager::Get()->GetLogManager()->Log(_T("DEBUGGEE path: ") + debuggee, m_page_index);
+
+    wxString cmd;
+    cmd << debugger;
+    cmd << _T(" -nx");          // don't run .gdbinit
+    cmd << _T(" -fullname ");   // report full-path filenames when breaking
+    cmd << _T(" -quiet");       // don't display version on startup
+    cmd << _T(" --interpreter=mi");
+    cmd << _T(" -args ") << debuggee;
+
+    // start the gdb process
+    wxString working_dir = project->GetBasePath();
+    Manager::Get()->GetLogManager()->Log(_T("Command-line: ") + cmd, m_page_index);
+    Manager::Get()->GetLogManager()->Log(_T("Working dir : ") + working_dir, m_page_index);
+
+    emit_watch = true;
+
+    int ret = LaunchProcess(cmd, working_dir);
+
+    AddStringCommand(_T("-enable-timings"));
+//    AddStringCommand(_T("-break-insert main.cpp:55"));
+    for(Breakpoints::const_iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+    {
+        AddStringCommand(wxString::Format(_T("-break-insert %s:%d"), it->GetFilename().c_str(), it->GetLine()));
+    }
+    AddStringCommand(_T("-exec-run"));
+
+    m_timer_poll_debugger.Start(20);
+    return 0;
 }
 void Debugger_GDB_MI::Continue()
 {
 }
 void Debugger_GDB_MI::Next()
 {
+    AddStringCommand(_T("-exec-next"));
 }
 void Debugger_GDB_MI::NextInstruction()
 {
+    AddStringCommand(_T("-exec-next-instruction"));
 }
 void Debugger_GDB_MI::Step()
 {
+    AddStringCommand(_T("-exec-step"));
 }
 void Debugger_GDB_MI::StepOut()
 {
+    AddStringCommand(_T("-exec-return"));
 }
 void Debugger_GDB_MI::Break()
 {
 }
 void Debugger_GDB_MI::Stop()
 {
+    Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
+    if(m_process)
+        AddStringCommand(_T("-gdb-exit"));
 }
 bool Debugger_GDB_MI::IsRunning() const
 {
-    return false;
+    return m_process;
 }
 bool Debugger_GDB_MI::IsStopped() const
 {

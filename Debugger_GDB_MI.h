@@ -151,9 +151,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
     private:
         DECLARE_EVENT_TABLE();
 
-        void OnMenuStart(wxCommandEvent &event);
-        void OnMenuStop(wxCommandEvent &event);
-
         void OnGDBOutput(wxCommandEvent& event);
         void OnGDBError(wxCommandEvent& event);
         void OnGDBTerminated(wxCommandEvent& event);
