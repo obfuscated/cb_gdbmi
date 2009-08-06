@@ -183,6 +183,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         wxTimer m_timer_poll_debugger;
         dbg_mi::CommandQueue    m_command_queue;
 
+        typedef std::vector<cbBreakpoint> Breakpoints;
+        Breakpoints m_breakpoints;
+
         bool emit_watch;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

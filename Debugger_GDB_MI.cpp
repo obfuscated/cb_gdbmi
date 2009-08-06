@@ -2,6 +2,7 @@
 
 #include "Debugger_GDB_MI.h"
 
+#include <algorithm>
 #include <wx/xrc/xmlres.h>
 
 #include <cbproject.h>
@@ -542,36 +543,79 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
 
 bool Debugger_GDB_MI::AddBreakpoint(const wxString& file, int line)
 {
-    return false;
+    m_breakpoints.push_back(cbBreakpoint(file, line));
+    return true;
 }
 bool Debugger_GDB_MI::AddBreakpoint(const wxString& functionSignature)
 {
     return false;
 }
+
+
+struct MatchFileLine
+{
+    MatchFileLine(const wxString &file, int line) : m_file(file), m_line(line) {}
+
+    bool operator()(const cbBreakpoint &b) const
+    {
+        return b.GetFilename() == m_file && b.GetLine() == m_line;
+    }
+
+    const wxString& m_file;
+    int m_line;
+};
+
 bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& file, int line)
 {
-    return false;
+    Breakpoints::iterator last = std::remove_if(m_breakpoints.begin(), m_breakpoints.end(), MatchFileLine(file, line));
+    m_breakpoints.erase(last, m_breakpoints.end());
+    return true;
 }
 bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& functionSignature)
 {
     return false;
 }
+
+struct MatchFile
+{
+    MatchFile(const wxString &file) : m_file(file) {}
+
+    bool operator()(const cbBreakpoint &b) const
+    {
+        return b.GetFilename() == m_file;
+    }
+
+    const wxString& m_file;
+};
+
 bool Debugger_GDB_MI::RemoveAllBreakpoints(const wxString& file)
 {
-    return false;
+    if(file == wxEmptyString)
+    {
+        m_breakpoints.clear();
+        return true;
+    }
+    else
+    {
+        Breakpoints::iterator last = std::remove_if(m_breakpoints.begin(), m_breakpoints.end(), MatchFile(file));
+        m_breakpoints.erase(last, m_breakpoints.end());
+        return true;
+    }
 }
 void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)
 {
 }
 int Debugger_GDB_MI::GetBreakpointsCount() const
 {
-    return 0;
+    return m_breakpoints.size();
 }
 void Debugger_GDB_MI::GetBreakpoint(int index, cbBreakpoint& breakpoint) const
 {
+    breakpoint = m_breakpoints[index];
 }
 void Debugger_GDB_MI::UpdateBreakpoint(int index, cbBreakpoint const &breakpoint)
 {
+    m_breakpoints[index] = breakpoint;
 }
 int Debugger_GDB_MI::Debug()
 {
