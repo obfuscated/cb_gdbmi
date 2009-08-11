@@ -5,28 +5,33 @@
 namespace dbg_mi
 {
 
-wxString TrimmedSubString(wxString const &str, int start, int length)
+void find_and_replace(wxString &source, const wxString &find, wxString const &replace)
 {
-    int real_start = start;
-    int real_end = start + length - 1;
-
-    for(int ii = real_start; ii < real_end; ++ii)
+    for (size_t j; (j = source.find(find)) != wxString::npos; )
     {
-        if(str[ii] == _T(' ') || str[ii] == _T('\t'))
-            ++real_start;
-        else
-            break;
+        source.replace(j, find.length(), replace);
+    }
+}
+bool StripEnclosingQuotes(wxString &str)
+{
+    if(str.length() == 0)
+        return true;
+    if(str[0] == _T('"') && str[str.length() - 1] == _T('"'))
+    {
+        if(str.length() >= 2 && str[str.length() - 2] == _T('\\'))
+            return false;
+        str = str.substr(1, str.length() - 2);
+    }
+    else if(str[0] == _T('"'))
+        return false;
+    else if(str[str.length() - 1] == _T('"'))
+    {
+        if(str.length() >= 2 && str[str.length() - 2] != _T('\\'))
+            return false;
     }
 
-    for(int ii = real_end; ii >= real_start; --ii)
-    {
-        if(str[ii] == _T(' ') || str[ii] == _T('\t'))
-            --real_end;
-        else
-            break;
-    }
-
-    return str.substr(real_start, real_end - real_start + 1);
+    find_and_replace(str, _T("\\\""), _T("\""));
+    return true;
 }
 
 bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_closing_brace)
@@ -60,7 +65,11 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
                 step = Value;
 
                 curr_value->SetType(ResultValue::Simple);
-                curr_value->SetSimpleValue(token.ExtractString(str));
+                wxString value = token.ExtractString(str);
+
+                if(!StripEnclosingQuotes(value))
+                    return false;
+                curr_value->SetSimpleValue(value);
             }
             else
             {
@@ -115,7 +124,15 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
 
         case Token::TupleStart:
             if(!curr_value)
-                return false;
+            {
+                if(tuple.GetType() != ResultValue::Array)
+                    return false;
+                else
+                {
+                    curr_value = new ResultValue;
+                    step = Equal;
+                }
+            }
             if(step != Equal)
             {
                 delete curr_value;
@@ -216,10 +233,9 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
 }
 
 
-bool ParseValue(wxString const &str, ResultValue &results)
+bool ParseValue(wxString const &str, ResultValue &results, int start)
 {
     results.SetType(ResultValue::Tuple);
-    int start = 0;
     return ParseTuple(str, start, results, false);
 }
 
@@ -281,12 +297,6 @@ wxString ResultValue::MakeDebugString() const
     }
 }
 
-ResultParser::~ResultParser()
-{
-    for(ResultValue::Container::iterator it = m_values.begin(); it != m_values.end(); ++it)
-        delete *it;
-}
-
 bool ResultParser::Parse(wxString const &str, Type result_type)
 {
     m_type = result_type;
@@ -329,52 +339,7 @@ bool ResultParser::Parse(wxString const &str, Type result_type)
     if(str[after_class_index] != _T(','))
         return false;
 
-    int brace_count = 0;
-    size_t start = after_class_index + 1;
-    bool quoted_started = false;
-    for(size_t ii = start; ii < str.length(); ++ii)
-    {
-        wxChar ch = str[ii];
-
-        if(ch == _T('"'))
-        {
-            quoted_started = !quoted_started;
-            continue;
-        }
-
-        if(quoted_started)
-            continue;
-
-        switch(ch)
-        {
-        case _T(','):
-            if(brace_count == 0)
-            {
-                ResultValue *v = new ResultValue;
-                v->raw_value = str.substr(start, ii - start);
-                m_values.push_back(v);
-                start = ii + 1;
-            }
-            break;
-        case _T('['):
-        case _T('{'):
-            ++brace_count;
-            break;
-        case _T(']'):
-        case _T('}'):
-            --brace_count;
-            break;
-        }
-    }
-
-    if(start < str.length())
-    {
-        ResultValue *v = new ResultValue;
-        v->raw_value = str.substr(start, str.length() - start);
-        m_values.push_back(v);
-    }
-
-    return true;
+    return ParseValue(str, m_value, after_class_index + 1);
 }
 
 wxString ResultParser::MakeDebugString() const
@@ -422,17 +387,9 @@ wxString ResultParser::MakeDebugString() const
         s += _T("unknown");
     }
 
-    if(!m_values.empty())
-    {
-        s += _T("\nresults:\n");
-        int ii = 0;
-        for(ResultValue::Container::const_iterator it = m_values.begin(); it != m_values.end(); ++it, ++ii)
-        {
-            s += wxString::Format(_T("[%d] = "), ii);
-            s += (*it)->raw_value;
-            s += _T("\n");
-        }
-    }
+    s += _T("\nresults:\n");
+    s += m_value.MakeDebugString();
+
 
     return s;
 }

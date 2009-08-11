@@ -6,14 +6,37 @@
 
 namespace dbg_mi
 {
-    extern wxString TrimmedSubString(wxString const &str, int start, int length);
+extern bool StripEnclosingQuotes(wxString &str);
 }
-TEST(TrimmedSubString)
+TEST(StripEnclosingQuotes1)
 {
-     wxString str = dbg_mi::TrimmedSubString(_T("asd as    df"), 4, 3);
+     wxString str(_T("\"test \\\"mega\\\"\""));
+     bool status = dbg_mi::StripEnclosingQuotes(str);
 
-     CHECK(str == _T("as"));
+     CHECK(status && str == _T("test \"mega\""));
 }
+TEST(StripEnclosingQuotes2)
+{
+     wxString str(_T("\"test"));
+     bool status = dbg_mi::StripEnclosingQuotes(str);
+
+     CHECK(!status);
+}
+TEST(StripEnclosingQuotes3)
+{
+     wxString str(_T("test\""));
+     bool status = dbg_mi::StripEnclosingQuotes(str);
+
+     CHECK(!status);
+}
+TEST(StripEnclosingQuotes4)
+{
+     wxString str(_T("test\\\"mega\\\""));
+     bool status = dbg_mi::StripEnclosingQuotes(str);
+
+     CHECK(status && str == _T("test\"mega\""));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<int N>
 bool TestGetNextToken(wxString const &s, dbg_mi::Token &t)
@@ -410,6 +433,56 @@ TEST_FIXTURE(TestList, ListValue3)
     dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(2) : NULL;
     CHECK(v && v->GetSimpleValue() == _T("7"));
 }
+
+struct TestListWithTuples
+{
+    TestListWithTuples()
+    {
+        status = dbg_mi::ParseValue(_T("a = [{b=5},{c=6},{d=7}]"), result);
+
+        a = result.GetTupleValue(_T("a"));
+    }
+
+    dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *a;
+    bool status;
+};
+
+TEST_FIXTURE(TestListWithTuples, Status)
+{
+    CHECK(status);
+    CHECK(a && a->GetTupleSize() == 3);
+}
+
+TEST_FIXTURE(TestListWithTuples, DebugString)
+{
+    wxString s = result.MakeDebugString();
+    CHECK(s == _T("{a=[{b=5},{c=6},{d=7}]}"));
+}
+
+TEST_FIXTURE(TestListWithTuples, ListValue1)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(0) : NULL;
+    dbg_mi::ResultValue const *b = v ? v->GetTupleValue(_T("b")) : NULL;
+
+    CHECK(b && b->GetSimpleValue() == _T("5"));
+}
+
+TEST_FIXTURE(TestListWithTuples, ListValue2)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(1) : NULL;
+    dbg_mi::ResultValue const *c = v ? v->GetTupleValue(_T("c")) : NULL;
+
+    CHECK(c && c->GetSimpleValue() == _T("6"));
+}
+TEST_FIXTURE(TestListWithTuples, ListValue3)
+{
+    dbg_mi::ResultValue const *v = a ? a->GetTupleValueByIndex(2) : NULL;
+    dbg_mi::ResultValue const *d = v ? v->GetTupleValue(_T("d")) : NULL;
+
+    CHECK(d && d->GetSimpleValue() == _T("7"));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TEST(ParserFail1)
 {
@@ -537,9 +610,7 @@ TEST(ResultParse_TestValues)
     dbg_mi::ResultParser parser;
     parser.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
 
-    dbg_mi::ResultValue::Container const &v = parser.GetResultValues();
+    dbg_mi::ResultValue const &v = parser.GetResultValue();
 
-    CHECK_EQUAL(v.size(), 2u);
-    CHECK(v[0]->raw_value == _T("a = 5"));
-    CHECK(v[1]->raw_value == _T(" b = 6"));
+    CHECK(v.GetType() == dbg_mi::ResultValue::Tuple && v.GetTupleSize() == 2);
 }

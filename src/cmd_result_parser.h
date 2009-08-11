@@ -11,7 +11,6 @@ namespace dbg_mi
 
 class ResultValue
 {
-//    typedef std::map<wxString, ResultValue*> TupleType;
 public:
     typedef std::vector<ResultValue*> Container;
     enum Type
@@ -41,14 +40,6 @@ public:
     int GetTupleSize() const { assert(m_type != Simple); return m_value.tuple.size(); }
     void SetTupleValue(ResultValue *value)
     {
-//        TupleType::iterator it = m_value.tuple.find(value->GetName());
-//        if(it != m_value.tuple.end())
-//        {
-//            delete it->second;
-//            it->second = value;
-//        }
-//        else
-//            m_value.tuple[value->GetName()] = value;
         assert(value);
         if(value->GetName().empty())
         {
@@ -68,7 +59,6 @@ public:
     ResultValue const * GetTupleValue(wxString const &key) const
     {
         assert(m_type == Tuple);
-//        TupleType::const_iterator it = m_value.tuple.find(key);
         Container::const_iterator it = FindTupleValue(key);
         if(it != m_value.tuple.end())
         {
@@ -89,8 +79,6 @@ public:
     }
 
     wxString MakeDebugString() const;
-public:
-    wxString raw_value;
 private:
     Container::iterator FindTupleValue(wxChar const *name)
     {
@@ -117,14 +105,11 @@ private:
     struct Value
     {
         wxString simple;
-//        std::vector<wxString> array;
-//        TupleType tuple;
-          Container tuple;
+        Container tuple;
     } m_value;
 };
 
-bool ParseValues(wxString const &str, ResultValue::Container &results);
-bool ParseValue(wxString const &str, ResultValue &results);
+bool ParseValue(wxString const &str, ResultValue &results, int start = 0);
 
 class ResultParser
 {
@@ -148,18 +133,17 @@ public:
     };
 
 public:
-    ~ResultParser();
     bool Parse(wxString const &str, Type result_type);
 
     wxString MakeDebugString() const;
     Type GetResultType() const { return m_type; }
     Class GetResultClass() const { return m_class; }
 
-    ResultValue::Container const & GetResultValues() const { return m_values; }
+    ResultValue const & GetResultValue() const { return m_value; }
 private:
     Type m_type;
     Class m_class;
-    ResultValue::Container    m_values;
+    ResultValue m_value;
 };
 
 } // namespace dbg_mi
