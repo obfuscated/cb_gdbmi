@@ -15,10 +15,6 @@ Command::~Command()
     delete m_result;
 }
 
-void Command::ParseOutput()
-{
-}
-
 void Action::MarkStarted()
 {
     m_started = true;
@@ -253,7 +249,7 @@ void CommandQueue::ParseOutput()
         }
     }
     m_full_output.Remove(0, last_end);
-    log.Log(_(""), m_debuglog_page_index);
+//    log.Log(_(""), m_debuglog_page_index);
 }
 
 void CommandQueue::AddAction(Action *action)
@@ -262,8 +258,8 @@ void CommandQueue::AddAction(Action *action)
     action->SetID(m_last_action_id++);
     m_active_actions[action->GetID()] = action;
 
-    LogManager &log = *Manager::Get()->GetLogManager();
-    log.Log(wxString::Format(_T("Adding action: %d"), action->GetID()), m_debuglog_page_index);
+//    LogManager &log = *Manager::Get()->GetLogManager();
+//    log.Log(wxString::Format(_T("Adding action: %d"), action->GetID()), m_debuglog_page_index);
 
     action->Start();
 }

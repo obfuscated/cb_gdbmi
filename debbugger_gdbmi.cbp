@@ -50,6 +50,8 @@
 		<Unit filename="src/cmd_result_tokens.h" />
 		<Unit filename="src/events.cpp" />
 		<Unit filename="src/events.h" />
+		<Unit filename="src/frame.cpp" />
+		<Unit filename="src/frame.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

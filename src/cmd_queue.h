@@ -24,9 +24,9 @@ public:
         m_result(NULL)
     {
     }
-    virtual ~Command();
+    ~Command();
 
-    virtual void ParseOutput();
+//    virtual void ParseOutput();
 
 public:
     void SetID(int32_t id) { m_id = id; }

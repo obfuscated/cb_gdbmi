@@ -17,8 +17,7 @@
 
 #include "actions.h"
 #include "cmd_result_parser.h"
-
-
+#include "frame.h"
 
 // Register the plugin with Code::Blocks.
 // We are using an anonymous namespace so we don't litter the global one.
@@ -129,36 +128,9 @@ int Debugger_GDB_MI::Configure()
 
 void Debugger_GDB_MI::BuildMenu(wxMenuBar* menuBar)
 {
-    Manager::Get()->GetLogManager()->LogError(_T("test"));
-    m_menu = wxXmlResource::Get()->LoadMenu(_T("debugger_gdbmi_menu"));
-
-    if(!m_menu)
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("menu creation failed :("));
+    if (!IsAttached())
         return;
-    }
-
-    // ok, now, where do we insert?
-    // three possibilities here:
-    // a) locate "Compile" menu and insert after it
-    // b) locate "Project" menu and insert after it
-    // c) if not found (?), insert at pos 5
-    int finalPos = 5;
-    int projcompMenuPos = menuBar->FindMenu(_("&Debug"));
-    if (projcompMenuPos == wxNOT_FOUND)
-        projcompMenuPos = menuBar->FindMenu(_("&Build"));
-    if (projcompMenuPos == wxNOT_FOUND)
-        projcompMenuPos = menuBar->FindMenu(_("&Compile"));
-
-    if (projcompMenuPos != wxNOT_FOUND)
-        finalPos = projcompMenuPos + 1;
-    else
-    {
-        projcompMenuPos = menuBar->FindMenu(_("&Project"));
-        if (projcompMenuPos != wxNOT_FOUND)
-            finalPos = projcompMenuPos + 1;
-    }
-    menuBar->Insert(finalPos, m_menu, _("&DebugMI"));
+    m_menu = Manager::Get()->GetDebuggerManager()->GetMenu();
 }
 
 void Debugger_GDB_MI::BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data)
@@ -426,14 +398,41 @@ void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
     wxString const &log_str = event.GetResultParser()->MakeDebugString();
     Manager::Get()->GetLogManager()->Log(log_str, m_page_index);
 
-    if(emit_watch)
-    {
-        Manager::Get()->GetLogManager()->Log(_T("notification event recieved!"), m_page_index);
-        emit_watch = false;
+    Manager::Get()->GetLogManager()->Log(_T("notification event recieved!"), m_page_index);
 
-        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("v"), m_page_index));
-        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("fill_vector"), m_page_index));
+    dbg_mi::ResultParser const *parser = event.GetResultParser();
+
+    if(!parser)
+        return;
+
+    if(parser->GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+    {
+        dbg_mi::ResultValue const *frame_value = parser->GetResultValue().GetTupleValue(_T("frame"));
+        if(!frame_value)
+        {
+            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find frame value:("),
+                                                 m_page_index);
+            return;
+        }
+
+        dbg_mi::Frame current_frame;
+        if(!current_frame.Parse(*frame_value))
+        {
+            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
+                                                 m_page_index);
+            return;
+        }
+
+        Manager::Get()->GetDebuggerManager()->SyncEditor(current_frame.GetFilename(), current_frame.GetLine(), true);
     }
+
+//    if(emit_watch)
+//    {
+//        emit_watch = false;
+//
+//        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("v"), m_page_index));
+//        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("fill_vector"), m_page_index));
+//    }
 }
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)
@@ -614,6 +613,7 @@ int Debugger_GDB_MI::Debug()
 }
 void Debugger_GDB_MI::Continue()
 {
+    AddStringCommand(_T("-exec-continue"));
 }
 void Debugger_GDB_MI::Next()
 {
