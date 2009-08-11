@@ -1,0 +1,13 @@
+- Show tty for console projects
+- Stepping
+-- Run to cursor
+-- Interupting the debugger while running the program
+- Watches
+- Advanced breakpoints
+-- adding breakpoint after the start of the debugger
+-- condition
+-- ignore count
+-- data breakpoints
+- Threads
+- Registers
+
