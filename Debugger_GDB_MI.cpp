@@ -19,6 +19,8 @@
 #include "cmd_result_parser.h"
 #include "frame.h"
 
+
+
 // Register the plugin with Code::Blocks.
 // We are using an anonymous namespace so we don't litter the global one.
 namespace
@@ -47,7 +49,9 @@ END_EVENT_TABLE()
 Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_process(NULL),
-    m_log(NULL)
+    m_log(NULL),
+    m_debug_log(NULL),
+    m_is_stopped(true)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -67,25 +71,12 @@ void Debugger_GDB_MI::OnAttach()
 {
     m_timer_poll_debugger.SetOwner(this, id_gdb_poll_timer);
 
-    Manager::Get()->GetDebuggerManager()->RegisterDebugger(this, _T("gdbmi"));
+    DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
+    dbg_manager.RegisterDebugger(this, _T("gdbmi"));
 
-    LogManager &message_manager = *Manager::Get()->GetLogManager();
-    if(!m_log)
-        m_log = new TextCtrlLogger(true);
-    m_page_index = message_manager.SetLog(m_log);
-    LogSlot &slot = message_manager.Slot(m_page_index);
-
-    m_command_queue.SetDebugLogPageIndex(m_page_index);
-
-    // set log image
-    wxString prefix = ConfigManager::GetDataFolder() + _T("/images/");
-    wxBitmap* bmp = new wxBitmap(cbLoadBitmap(prefix + _T("misc_16x16.png"), wxBITMAP_TYPE_PNG));
-
-    slot.title = _("Debugger MI");
-    slot.icon = bmp;
-
-    CodeBlocksLogEvent evtAdd(cbEVT_ADD_LOG_WINDOW, m_log, slot.title, slot.icon);
-    Manager::Get()->ProcessEvent(evtAdd);
+    m_log = dbg_manager.GetLogger(false, m_page_index);
+    m_debug_log = dbg_manager.GetLogger(true, m_dbg_page_index);
+    m_command_queue.SetDebugLogPageIndex(m_dbg_page_index);
 
     // do whatever initialization you need for your plugin
     // NOTE: after this function, the inherited member variable
@@ -97,19 +88,22 @@ void Debugger_GDB_MI::OnAttach()
 
 void Debugger_GDB_MI::OnRelease(bool appShutDown)
 {
-    if(Manager::Get()->GetLogManager())
-    {
-        CodeBlocksLogEvent evt(cbEVT_REMOVE_LOG_WINDOW, m_log);
-        Manager::Get()->ProcessEvent(evt);
-        m_log = NULL;
-    }
+    DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
+    dbg_manager.UnregisterDebugger(this);
 
-    Manager::Get()->GetDebuggerManager()->UnregisterDebugger(this);
+    dbg_manager.HideLogger(false);
+    dbg_manager.HideLogger(true);
+
     // do de-initialization for your plugin
     // if appShutDown is true, the plugin is unloaded because Code::Blocks is being shut down,
     // which means you must not use any of the SDK Managers
     // NOTE: after this function, the inherited member variable
     // m_IsAttached will be FALSE...
+}
+
+void Debugger_GDB_MI::ShowToolMenu()
+{
+    #warning "not implemented"
 }
 
 int Debugger_GDB_MI::Configure()
@@ -124,33 +118,6 @@ int Debugger_GDB_MI::Configure()
         return dlg.ShowModal() == wxID_OK ? 0 : -1;
     }
     return -1;
-}
-
-void Debugger_GDB_MI::BuildMenu(wxMenuBar* menuBar)
-{
-    if (!IsAttached())
-        return;
-    m_menu = Manager::Get()->GetDebuggerManager()->GetMenu();
-}
-
-void Debugger_GDB_MI::BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data)
-{
-    //Some library module is ready to display a pop-up menu.
-    //Check the parameter \"type\" and see which module it is
-    //and append any items you need in the menu...
-    //TIP: for consistency, add a separator as the first item...
-    NotImplemented(_T("Debugger_GDB_MI::BuildModuleMenu()"));
-}
-
-bool Debugger_GDB_MI::BuildToolBar(wxToolBar* toolBar)
-{
-    //The application is offering its toolbar for your plugin,
-    //to add any toolbar items you want...
-    //Append any items you need on the toolbar...
-    NotImplemented(_T("Debugger_GDB_MI::BuildToolBar()"));
-
-    // return true if you add toolbar items
-    return false;
 }
 
 void Debugger_GDB_MI::ShowLog()
@@ -375,6 +342,7 @@ void Debugger_GDB_MI::OnGDBError(wxCommandEvent& event)
 
 void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
 {
+    ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("debugger terminated!"), m_page_index);
     m_timer_poll_debugger.Stop();
 }
@@ -456,84 +424,12 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
     m_command_queue.AccumulateOutput(str);
 }
 
-
-bool Debugger_GDB_MI::AddBreakpoint(const wxString& file, int line)
-{
-    m_breakpoints.push_back(cbBreakpoint(file, line));
-    return true;
-}
-bool Debugger_GDB_MI::AddBreakpoint(const wxString& functionSignature)
-{
-    return false;
-}
-
-
-struct MatchFileLine
-{
-    MatchFileLine(const wxString &file, int line) : m_file(file), m_line(line) {}
-
-    bool operator()(const cbBreakpoint &b) const
-    {
-        return b.GetFilename() == m_file && b.GetLine() == m_line;
-    }
-
-    const wxString& m_file;
-    int m_line;
-};
-
-bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& file, int line)
-{
-    Breakpoints::iterator last = std::remove_if(m_breakpoints.begin(), m_breakpoints.end(), MatchFileLine(file, line));
-    m_breakpoints.erase(last, m_breakpoints.end());
-    return true;
-}
-bool Debugger_GDB_MI::RemoveBreakpoint(const wxString& functionSignature)
-{
-    return false;
-}
-
-struct MatchFile
-{
-    MatchFile(const wxString &file) : m_file(file) {}
-
-    bool operator()(const cbBreakpoint &b) const
-    {
-        return b.GetFilename() == m_file;
-    }
-
-    const wxString& m_file;
-};
-
-bool Debugger_GDB_MI::RemoveAllBreakpoints(const wxString& file)
-{
-    if(file == wxEmptyString)
-    {
-        m_breakpoints.clear();
-        return true;
-    }
-    else
-    {
-        Breakpoints::iterator last = std::remove_if(m_breakpoints.begin(), m_breakpoints.end(), MatchFile(file));
-        m_breakpoints.erase(last, m_breakpoints.end());
-        return true;
-    }
-}
 void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)
 {
+    #warning "not implemented"
 }
-int Debugger_GDB_MI::GetBreakpointsCount() const
-{
-    return m_breakpoints.size();
-}
-void Debugger_GDB_MI::GetBreakpoint(int index, cbBreakpoint& breakpoint) const
-{
-    breakpoint = m_breakpoints[index];
-}
-void Debugger_GDB_MI::UpdateBreakpoint(int index, cbBreakpoint const &breakpoint)
-{
-    m_breakpoints[index] = breakpoint;
-}
-int Debugger_GDB_MI::Debug()
+
+int Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
     ShowLog();
     Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
@@ -601,41 +497,76 @@ int Debugger_GDB_MI::Debug()
     int ret = LaunchProcess(cmd, working_dir);
 
     AddStringCommand(_T("-enable-timings"));
-//    AddStringCommand(_T("-break-insert main.cpp:55"));
+
     for(Breakpoints::const_iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
-    {
         AddStringCommand(wxString::Format(_T("-break-insert %s:%d"), it->GetFilename().c_str(), it->GetLine()));
-    }
+    for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
+        AddStringCommand(wxString::Format(_T("-break-insert %s:%d"), it->GetFilename().c_str(), it->GetLine()));
+    m_temporary_breakpoints.clear();
+
     AddStringCommand(_T("-exec-run"));
+
+    m_is_stopped = false;
 
     m_timer_poll_debugger.Start(20);
     return 0;
 }
+
+void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
+{
+#warning "not implemented"
+    if(IsRunning())
+    {
+        if(IsStopped())
+        {
+            AddStringCommand(wxString::Format(wxT("-exec-until %s:%d"), filename.c_str(), line));
+        }
+    }
+    else
+    {
+        m_temporary_breakpoints.push_back(cbBreakpoint(filename, line));
+        Debug(false);
+    }
+}
+
 void Debugger_GDB_MI::Continue()
 {
+    ClearActiveMarkFromAllEditors();
     AddStringCommand(_T("-exec-continue"));
 }
+
 void Debugger_GDB_MI::Next()
 {
+    ClearActiveMarkFromAllEditors();
     AddStringCommand(_T("-exec-next"));
 }
+
 void Debugger_GDB_MI::NextInstruction()
 {
+    ClearActiveMarkFromAllEditors();
     AddStringCommand(_T("-exec-next-instruction"));
 }
+
 void Debugger_GDB_MI::Step()
 {
+    ClearActiveMarkFromAllEditors();
     AddStringCommand(_T("-exec-step"));
 }
+
 void Debugger_GDB_MI::StepOut()
 {
-    AddStringCommand(_T("-exec-return"));
+    ClearActiveMarkFromAllEditors();
+    AddStringCommand(_T("-exec-finish"));
 }
 void Debugger_GDB_MI::Break()
 {
+    #warning "not implemented"
+
 }
+
 void Debugger_GDB_MI::Stop()
 {
+    ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
     if(m_process)
         AddStringCommand(_T("-gdb-exit"));
@@ -646,9 +577,135 @@ bool Debugger_GDB_MI::IsRunning() const
 }
 bool Debugger_GDB_MI::IsStopped() const
 {
-    return true;
+    return m_is_stopped;
 }
 int Debugger_GDB_MI::GetExitCode() const
 {
+    #warning "not implemented"
     return 0;
+}
+
+int Debugger_GDB_MI::GetStackFrameCount() const
+{
+    #warning "not implemented"
+    return 0;
+}
+
+const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
+{
+    #warning "not implemented"
+    return cbStackFrame();
+}
+
+void Debugger_GDB_MI::SwitchToFrame(int number)
+{
+    #warning "not implemented"
+}
+
+cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
+{
+    m_breakpoints.push_back(cbBreakpoint(filename, line));
+    return &m_breakpoints.back();
+}
+
+cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& dataExpression)
+{
+    #warning "not implemented"
+    return NULL;
+}
+
+int Debugger_GDB_MI::GetBreakpointsCount() const
+{
+    return m_breakpoints.size();
+}
+
+cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index)
+{
+    return &m_breakpoints[index];
+}
+
+const cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index) const
+{
+    return &m_breakpoints[index];
+}
+
+void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
+{
+    #warning "not implemented"
+}
+
+void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint* breakpoint)
+{
+    #warning "not implemented"
+}
+
+void Debugger_GDB_MI::DeleteAllBreakpoints()
+{
+    #warning "not implemented"
+}
+
+int Debugger_GDB_MI::GetThreadsCount() const
+{
+    #warning "not implemented"
+    return 0;
+}
+
+const cbThread& Debugger_GDB_MI::GetThread(int index) const
+{
+    #warning "not implemented"
+    return cbThread();
+}
+
+bool Debugger_GDB_MI::SwitchToThread(int thread_number)
+{
+    #warning "not implemented"
+    return false;
+}
+
+cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
+{
+    #warning "not implemented"
+    return NULL;
+}
+
+void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
+{
+    #warning "not implemented"
+}
+
+bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
+{
+    #warning "not implemented"
+    return false;
+}
+
+void Debugger_GDB_MI::ShowWatchProperties(cbWatch *watch)
+{
+    #warning "not implemented"
+}
+
+bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
+{
+    #warning "not implemented"
+    return false;
+}
+
+void Debugger_GDB_MI::SendCommand(const wxString& cmd)
+{
+    #warning "not implemented"
+}
+
+void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
+{
+    #warning "not implemented"
+}
+
+void Debugger_GDB_MI::DetachFromProcess()
+{
+    #warning "not implemented"
+}
+
+void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
+{
+    #warning "not implemented"
 }

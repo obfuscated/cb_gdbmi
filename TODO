@@ -1,7 +1,9 @@
 - Show tty for console projects
+- Switching to debug layout
 - Stepping
 -- Run to cursor
 -- Interupting the debugger while running the program
+-- Notification that the debugging has ended
 - Watches
 - Advanced breakpoints
 -- adding breakpoint after the start of the debugger

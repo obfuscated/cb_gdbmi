@@ -35,6 +35,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         /** Destructor. */
         virtual ~Debugger_GDB_MI();
 
+    public:
+        virtual void ShowToolMenu();
+
         /** Invoke configuration dialog. */
         virtual int Configure();
 
@@ -66,55 +69,20 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           */
         virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
 
-        /** This method is called by Code::Blocks and is used by the plugin
-          * to add any menu items it needs on Code::Blocks's menu bar.\n
-          * It is a pure virtual method that needs to be implemented by all
-          * plugins. If the plugin does not need to add items on the menu,
-          * just do nothing ;)
-          * @param menuBar the wxMenuBar to create items in
-          */
-        virtual void BuildMenu(wxMenuBar* menuBar);
-
-        /** This method is called by Code::Blocks core modules (EditorManager,
-          * ProjectManager etc) and is used by the plugin to add any menu
-          * items it needs in the module's popup menu. For example, when
-          * the user right-clicks on a project file in the project tree,
-          * ProjectManager prepares a popup menu to display with context
-          * sensitive options for that file. Before it displays this popup
-          * menu, it asks all attached plugins (by asking PluginManager to call
-          * this method), if they need to add any entries
-          * in that menu. This method is called.\n
-          * If the plugin does not need to add items in the menu,
-          * just do nothing ;)
-          * @param type the module that's preparing a popup menu
-          * @param menu pointer to the popup menu
-          * @param data pointer to FileTreeData object (to access/modify the file tree)
-          */
-        virtual void BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0);
-
-        /** This method is called by Code::Blocks and is used by the plugin
-          * to add any toolbar items it needs on Code::Blocks's toolbar.\n
-          * It is a pure virtual method that needs to be implemented by all
-          * plugins. If the plugin does not need to add items on the toolbar,
-          * just do nothing ;)
-          * @param toolBar the wxToolBar to create items on
-          * @return The plugin should return true if it needed the toolbar, false if not
-          */
-        virtual bool BuildToolBar(wxToolBar* toolBar);
-
-        virtual bool AddBreakpoint(const wxString& file, int line);
-        virtual bool AddBreakpoint(const wxString& functionSignature);
-        virtual bool RemoveBreakpoint(const wxString& file, int line);
-        virtual bool RemoveBreakpoint(const wxString& functionSignature);
-        virtual bool RemoveAllBreakpoints(const wxString& file = wxEmptyString);
+//        virtual bool AddBreakpoint(const wxString& file, int line);
+//        virtual bool AddBreakpoint(const wxString& functionSignature);
+//        virtual bool RemoveBreakpoint(const wxString& file, int line);
+//        virtual bool RemoveBreakpoint(const wxString& functionSignature);
+//        virtual bool RemoveAllBreakpoints(const wxString& file = wxEmptyString);
         virtual void EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines);
 
-        virtual int GetBreakpointsCount() const;
-        virtual void GetBreakpoint(int index, cbBreakpoint& breakpoint) const;
-        virtual void UpdateBreakpoint(int index, cbBreakpoint const &breakpoint);
+//        virtual int GetBreakpointsCount() const;
+//        virtual void GetBreakpoint(int index, cbBreakpoint& breakpoint) const;
+//        virtual void UpdateBreakpoint(int index, cbBreakpoint const &breakpoint);
 
-        virtual int Debug();
+        virtual int Debug(bool breakOnEntry);
         virtual void Continue();
+        virtual void RunToCursor(const wxString& filename, int line, const wxString& line_text);
         virtual void Next();
         virtual void NextInstruction();
         virtual void Step();
@@ -124,6 +92,41 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual bool IsRunning() const;
         virtual bool IsStopped() const;
         virtual int GetExitCode() const;
+
+
+		// stack frame calls;
+		virtual int GetStackFrameCount() const;
+		virtual const cbStackFrame& GetStackFrame(int index) const;
+		virtual void SwitchToFrame(int number);
+
+        // breakpoints calls
+        virtual cbBreakpoint* AddBreakpoint(const wxString& filename, int line);
+        virtual cbBreakpoint* AddDataBreakpoint(const wxString& dataExpression);
+        virtual int GetBreakpointsCount() const;
+        virtual cbBreakpoint* GetBreakpoint(int index);
+        virtual const cbBreakpoint* GetBreakpoint(int index) const;
+        virtual void UpdateBreakpoint(cbBreakpoint *breakpoint);
+        virtual void DeleteBreakpoint(cbBreakpoint* breakpoint);
+        virtual void DeleteAllBreakpoints();
+
+        // threads
+        virtual int GetThreadsCount() const;
+        virtual const cbThread& GetThread(int index) const;
+        virtual bool SwitchToThread(int thread_number);
+
+        // watches
+        virtual cbWatch* AddWatch(const wxString& symbol);
+        virtual void DeleteWatch(cbWatch *watch);
+        virtual bool HasWatch(cbWatch *watch);
+        virtual void ShowWatchProperties(cbWatch *watch);
+        virtual bool SetWatchValue(cbWatch *watch, const wxString &value);
+
+        virtual void SendCommand(const wxString& cmd);
+
+        virtual void AttachToProcess(const wxString& pid);
+        virtual void DetachFromProcess();
+
+        virtual void RequestUpdate(DebugWindows window);
     protected:
         /** Any descendent plugin should override this virtual method and
           * perform any necessary initialization. This method is called by
@@ -175,14 +178,16 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         wxMenu *m_menu;
         PipedProcess *m_process;
         long    m_pid;
-        int m_page_index;
-        TextCtrlLogger  *m_log;
+        int m_page_index, m_dbg_page_index;
+        TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
         dbg_mi::CommandQueue    m_command_queue;
 
         typedef std::vector<cbBreakpoint> Breakpoints;
         Breakpoints m_breakpoints;
+        Breakpoints m_temporary_breakpoints;
 
         bool emit_watch;
+        bool m_is_stopped;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED
