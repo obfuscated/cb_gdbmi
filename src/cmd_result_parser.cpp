@@ -239,6 +239,54 @@ bool ParseValue(wxString const &str, ResultValue &results, int start)
     return ParseTuple(str, start, results, false);
 }
 
+void ResultValue::SetTupleValue(ResultValue *value)
+{
+    assert(value);
+    if(value->GetName().empty())
+    {
+        m_value.tuple.push_back(value);
+    }
+    else
+    {
+        Container::iterator it = FindTupleValue(value->GetName());
+        if(it != m_value.tuple.end())
+        {
+            delete *it;
+            m_value.tuple.erase(it);
+        }
+        m_value.tuple.push_back(value);
+    }
+}
+ResultValue const * ResultValue::GetTupleValue(wxString const &key) const
+{
+    assert(m_type == Tuple);
+    wxString::size_type pos = key.find(wxT('.'));
+    if(pos != wxString::npos)
+    {
+        wxString const &subkey = key.substr(0, pos);
+        Container::const_iterator it = FindTupleValue(subkey);
+        if(it != m_value.tuple.end() && (*it)->GetType() == Tuple)
+            return (*it)->GetTupleValue(key.substr(pos + 1, key.length() - pos - 1));
+    }
+    else
+    {
+        Container::const_iterator it = FindTupleValue(key);
+        if(it != m_value.tuple.end())
+            return *it;
+    }
+    return NULL;
+}
+ResultValue const* ResultValue::GetTupleValueByIndex(int index) const
+{
+    Container::const_iterator it = m_value.tuple.begin();
+
+    std::advance(it, index);
+    if(it != m_value.tuple.end())
+        return *it;
+    else
+        return NULL;
+}
+
 wxString ResultValue::MakeDebugString() const
 {
     switch(m_type)

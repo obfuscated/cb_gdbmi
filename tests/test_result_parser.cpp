@@ -614,3 +614,46 @@ TEST(ResultParse_TestValues)
 
     CHECK(v.GetType() == dbg_mi::ResultValue::Tuple && v.GetTupleSize() == 2);
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct TestTupleValueLookup
+{
+    TestTupleValueLookup()
+    {
+        status = dbg_mi::ParseValue(_T("a = {b=5,c=6,d=7}"), result);
+    }
+    dbg_mi::ResultValue result;
+    bool status;
+};
+
+TEST_FIXTURE(TestTupleValueLookup, Status)
+{
+    CHECK(status);
+}
+TEST_FIXTURE(TestTupleValueLookup, TestAB)
+{
+    const dbg_mi::ResultValue *ab = result.GetTupleValue(wxT("a.b"));
+    CHECK(ab && ab->GetType() == dbg_mi::ResultValue::Simple && ab->GetSimpleValue() == wxT("5"));
+}
+TEST_FIXTURE(TestTupleValueLookup, TestAC)
+{
+    const dbg_mi::ResultValue *ac = result.GetTupleValue(wxT("a.c"));
+    CHECK(ac && ac->GetType() == dbg_mi::ResultValue::Simple && ac->GetSimpleValue() == wxT("6"));
+}
+TEST_FIXTURE(TestTupleValueLookup, TestAD)
+{
+    const dbg_mi::ResultValue *ad = result.GetTupleValue(wxT("a.d"));
+    CHECK(ad && ad->GetType() == dbg_mi::ResultValue::Simple && ad->GetSimpleValue() == wxT("7"));
+}
+TEST_FIXTURE(TestTupleValueLookup, TestMissing)
+{
+    const dbg_mi::ResultValue *a = result.GetTupleValue(wxT("a.missing"));
+    CHECK(!a);
+}
+
+TEST(TestTupleValueLookup2)
+{
+    dbg_mi::ResultValue result;
+    bool status = dbg_mi::ParseValue(_T("a = {b=5,c=6,d=7}"), result);
+    const dbg_mi::ResultValue *r = result.GetTupleValue(wxT("a.b.c"));
+    CHECK(status && !r);
+}

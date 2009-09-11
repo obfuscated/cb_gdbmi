@@ -38,46 +38,10 @@ public:
     wxString const & GetSimpleValue() const { assert(m_type == Simple); return m_value.simple; }
 
     int GetTupleSize() const { assert(m_type != Simple); return m_value.tuple.size(); }
-    void SetTupleValue(ResultValue *value)
-    {
-        assert(value);
-        if(value->GetName().empty())
-        {
-            m_value.tuple.push_back(value);
-        }
-        else
-        {
-            Container::iterator it = FindTupleValue(value->GetName());
-            if(it != m_value.tuple.end())
-            {
-                delete *it;
-                m_value.tuple.erase(it);
-            }
-            m_value.tuple.push_back(value);
-        }
-    }
-    ResultValue const * GetTupleValue(wxString const &key) const
-    {
-        assert(m_type == Tuple);
-        Container::const_iterator it = FindTupleValue(key);
-        if(it != m_value.tuple.end())
-        {
-            return *it;
-        }
-        else
-            return NULL;
-    }
-    ResultValue const* GetTupleValueByIndex(int index) const
-    {
-        Container::const_iterator it = m_value.tuple.begin();
 
-        std::advance(it, index);
-        if(it != m_value.tuple.end())
-            return *it;
-        else
-            return NULL;
-    }
-
+    void SetTupleValue(ResultValue *value);
+    ResultValue const * GetTupleValue(wxString const &key) const;
+    ResultValue const* GetTupleValueByIndex(int index) const;
     wxString MakeDebugString() const;
 private:
     Container::iterator FindTupleValue(wxChar const *name)
