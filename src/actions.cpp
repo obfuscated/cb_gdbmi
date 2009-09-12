@@ -55,8 +55,11 @@ void RunAction::OnCommandResult(int32_t cmd_id)
 {
     ResultParser *result = GetCommandResult(cmd_id);
     assert(result);
-    if(result->GetResultClass() == ResultParser::ClassDone)
+    if(result->GetResultClass() == ResultParser::ClassRunning)
+    {
+        DebugLog(wxT("RunAction success, the debugger is !stopped!"));
         m_is_stopped = false;
+    }
 }
 
 WatchAction::WatchAction(wxString const &variable_name) :
