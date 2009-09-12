@@ -101,7 +101,10 @@ void CommandQueue::RunQueue(PipedProcess *process)
     {
         wxMutexLocker locker(m_lock);
         for(Queue::iterator it = executed_cmds.begin(); it != executed_cmds.end(); ++it)
-            m_active_commands[(*it)->GetID()] = *it;
+        {
+            log.Log(wxString::Format(wxT("Adding active command %010ld"), (*it)->GetFullID()), m_debuglog_page_index);
+            m_active_commands[(*it)->GetFullID()] = *it;
+        }
     }
 }
 void CommandQueue::AccumulateOutput(wxString const &output)
@@ -179,8 +182,6 @@ void CommandQueue::ParseOutput()
 
         if(start >= 0 && end >= 0)
         {
-            log.Log(wxString::Format(_("status -> start: %d; end: %d; token_start: %d"), start, end, token_start),
-                    m_debuglog_page_index);
             wxString token_str = m_full_output.substr(token_start, start - token_start);
             wxString line = m_full_output.substr(start + 1, end - start - 1);
             log.Log(_("token:") + token_str + _(";parsed line >>: ") + line + _(":<<"), m_debuglog_page_index);
@@ -204,8 +205,9 @@ void CommandQueue::ParseOutput()
             }
             else
             {
-                log.Log(wxString::Format(_T("token(%d:%010d) (%s:%s)"), action_token, cmd_token,
-                                         action_token_str.c_str(), cmd_token_str.c_str()), m_debuglog_page_index);
+                log.Log(wxString::Format(_T("parsed token(%d:%010d) (%s:%s)"), action_token, cmd_token,
+                                         action_token_str.c_str(), cmd_token_str.c_str()),
+                        m_debuglog_page_index);
 
                 ResultParser *parser = new ResultParser;
                 parser->Parse(line, result_type);
@@ -222,7 +224,7 @@ void CommandQueue::ParseOutput()
                 else
                 {
                     int64_t full_token = (static_cast<int64_t>(action_token) << 32) + cmd_token;
-                    CommandMap::iterator it = m_active_commands.find(action_token);
+                    CommandMap::iterator it = m_active_commands.find(full_token);
 
                     if(it != m_active_commands.end())
                     {
@@ -241,8 +243,12 @@ void CommandQueue::ParseOutput()
                     }
                     else
                     {
+                        wxString full_token_str;
+                        full_token_str.Printf(_T("full token: %ld (%d%10d)\n"),
+                                              full_token, full_token >> 32, full_token & 0xffffffff);
+
                         log.Log(_("token not found:") + action_token_str + _T(":") + cmd_token_str + _T(";")
-                                + wxString::Format(_T("full token: %ld\n"), full_token), m_debuglog_page_index);
+                                + full_token_str, m_debuglog_page_index);
                     }
                 }
             }
