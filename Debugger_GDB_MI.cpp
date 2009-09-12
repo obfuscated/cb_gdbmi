@@ -19,6 +19,10 @@
 #include "cmd_result_parser.h"
 #include "frame.h"
 
+#ifndef __WX_MSW__
+#include <dirent.h>
+#include <stdlib.h>
+#endif
 
 
 // Register the plugin with Code::Blocks.
@@ -26,6 +30,54 @@
 namespace
 {
     PluginRegistrant<Debugger_GDB_MI> reg(_T("debugger_gdbmi"));
+
+// FIXME (obfuscated#): move somewhere else
+void GetChildPIDs(int parent, std::vector<int> &childs)
+{
+#ifndef __WX_MSW__
+    const char *c_proc_base = "/proc";
+
+    DIR *dir = opendir(c_proc_base);
+    if(!dir)
+        return;
+
+    struct dirent *entry;
+    do
+    {
+        entry = readdir(dir);
+        if(entry)
+        {
+            int pid = atoi(entry->d_name);
+            if(pid != 0)
+            {
+                char filestr[PATH_MAX + 1];
+                snprintf(filestr, PATH_MAX, "%s/%d/stat", c_proc_base, pid);
+
+                FILE *file = fopen(filestr, "r");
+                if(file)
+                {
+                    char line[101];
+                    fgets(line, 100, file);
+                    fclose(file);
+                    int dummy;
+                    char comm[100];
+                    int ppid;
+                    int count = sscanf(line, "%d %s %c %d", &dummy, comm, (char *) &dummy, &ppid);
+                    if(count == 4)
+                    {
+                        if(ppid == parent)
+                        {
+                            childs.push_back(pid);
+                        }
+                    }
+                }
+            }
+        }
+    } while(entry);
+
+    closedir(dir);
+#endif
+}
 }
 
 int id_gdb_process = wxNewId();
@@ -49,9 +101,12 @@ END_EVENT_TABLE()
 Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_process(NULL),
+    m_pid(-1),
+    m_child_pid(-1),
     m_log(NULL),
     m_debug_log(NULL),
-    m_is_stopped(true)
+    m_is_stopped(true),
+    m_forced_break(false)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -278,7 +333,8 @@ int Debugger_GDB_MI::LaunchProcess(const wxString& cmd, const wxString& cwd)
     // start the gdb process
     m_process = new PipedProcess((void**)&m_process, this, id_gdb_process, true, cwd);
     Manager::Get()->GetLogManager()->Log(_("Starting debugger: "), m_page_index);
-    m_pid = wxExecute(cmd, wxEXEC_ASYNC, m_process);
+    m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
+    m_child_pid = -1;
 
 #ifdef __WXMAC__
     if (m_pid == -1)
@@ -392,6 +448,8 @@ void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
         }
 
         Manager::Get()->GetDebuggerManager()->SyncEditor(current_frame.GetFilename(), current_frame.GetLine(), true);
+        m_is_stopped = true;
+        m_forced_break = false;
     }
 
 //    if(emit_watch)
@@ -405,6 +463,7 @@ void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 {
+    Manager::Get()->GetLogManager()->Log(wxT("Queue command: ") + command, m_dbg_page_index);
     dbg_mi::Command *cmd = new dbg_mi::Command();
     cmd->SetString(command);
     m_command_queue.AddCommand(cmd, true);
@@ -412,7 +471,7 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 
 void Debugger_GDB_MI::RunQueue()
 {
-    if(m_process)
+    if(m_process && IsStopped())
         m_command_queue.RunQueue(m_process);
 }
 
@@ -420,7 +479,7 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
 {
     if(str.IsEmpty())
         return;
-    Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_page_index);
+    Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_dbg_page_index);
     m_command_queue.AccumulateOutput(str);
 }
 
@@ -497,19 +556,54 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     int ret = LaunchProcess(cmd, working_dir);
 
     AddStringCommand(_T("-enable-timings"));
-
-    for(Breakpoints::const_iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
-        AddStringCommand(wxString::Format(_T("-break-insert %s:%d"), it->GetFilename().c_str(), it->GetLine()));
-    for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
-        AddStringCommand(wxString::Format(_T("-break-insert %s:%d"), it->GetFilename().c_str(), it->GetLine()));
-    m_temporary_breakpoints.clear();
+    CommitBreakpoints();
 
     AddStringCommand(_T("-exec-run"));
+    m_is_stopped = true;
 
+    RunQueue();
     m_is_stopped = false;
+    m_forced_break = false;
 
     m_timer_poll_debugger.Start(20);
     return 0;
+}
+
+void Debugger_GDB_MI::CommitBreakpoints()
+{
+    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+    {
+        // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
+        if(it->GetIndex() == -1)
+            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it, m_dbg_page_index));
+    }
+
+    for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
+    {
+        AddStringCommand(wxString::Format(_T("-break-insert -t %s:%d"), it->Get().GetFilename().c_str(),
+                                          it->Get().GetLine()));
+    }
+    m_temporary_breakpoints.clear();
+}
+
+long Debugger_GDB_MI::GetChildPID()
+{
+    if(m_pid <= 0)
+        m_child_pid = -1;
+    else if(m_child_pid <= 0)
+    {
+        std::vector<int> children;
+        GetChildPIDs(m_pid, children);
+
+        if(children.size() != 0)
+        {
+            if(children.size() > 1)
+                Manager::Get()->GetLogManager()->Log(wxT("the debugger has more that one child"));
+            m_child_pid = children.front();
+        }
+    }
+
+    return m_child_pid;
 }
 
 void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
@@ -531,8 +625,14 @@ void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
 
 void Debugger_GDB_MI::Continue()
 {
-    ClearActiveMarkFromAllEditors();
-    AddStringCommand(_T("-exec-continue"));
+    if(IsStopped() || m_forced_break)
+    {
+        ClearActiveMarkFromAllEditors();
+        m_command_queue.AddAction(new dbg_mi::RunAction(wxT("-exec-continue"), m_is_stopped));
+//        AddStringCommand(_T("-exec-continue"));
+//        RunQueue();
+//        m_is_stopped = false;
+    }
 }
 
 void Debugger_GDB_MI::Next()
@@ -558,18 +658,56 @@ void Debugger_GDB_MI::StepOut()
     ClearActiveMarkFromAllEditors();
     AddStringCommand(_T("-exec-finish"));
 }
+
+bool Debugger_GDB_MI::DoBreak(bool child)
+{
+    if(!IsRunning() || IsStopped())
+        return true;
+
+    // non-windows gdb can interrupt the running process. yay!
+    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
+    {
+        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
+        return false;
+    }
+    else
+    {
+        wxKillError error;
+        if(child)
+        {
+            GetChildPID();
+            wxKill(m_child_pid, wxSIGINT, &error);
+        }
+        else
+            wxKill(m_pid, wxSIGINT, &error);
+//        m_is_stopped = true;
+        m_forced_break = true;
+        return error == wxKILL_OK;
+    }
+}
+
 void Debugger_GDB_MI::Break()
 {
-    #warning "not implemented"
+    DoBreak(true);
 
+    // Notify debugger plugins for end of debug session
+    PluginManager *plm = Manager::Get()->GetPluginManager();
+    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
+    plm->NotifyPlugins(evt);
 }
 
 void Debugger_GDB_MI::Stop()
 {
+    if(!IsRunning())
+        return;
     ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
     if(m_process)
+    {
+        DoBreak(false);
         AddStringCommand(_T("-gdb-exit"));
+        RunQueue();
+    }
 }
 bool Debugger_GDB_MI::IsRunning() const
 {
@@ -604,8 +742,21 @@ void Debugger_GDB_MI::SwitchToFrame(int number)
 
 cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
 {
-    m_breakpoints.push_back(cbBreakpoint(filename, line));
-    return &m_breakpoints.back();
+    if(!IsStopped())
+    {
+        DoBreak();
+        m_breakpoints.push_back(cbBreakpoint(filename, line));
+        CommitBreakpoints();
+        Continue();
+    }
+    else
+    {
+        m_breakpoints.push_back(cbBreakpoint(filename, line));
+        if(IsRunning())
+            CommitBreakpoints();
+    }
+
+    return &m_breakpoints.back().Get();
 }
 
 cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& dataExpression)
@@ -621,12 +772,12 @@ int Debugger_GDB_MI::GetBreakpointsCount() const
 
 cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index)
 {
-    return &m_breakpoints[index];
+    return &m_breakpoints[index].Get();
 }
 
 const cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index) const
 {
-    return &m_breakpoints[index];
+    return &m_breakpoints[index].Get();
 }
 
 void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
@@ -634,14 +785,44 @@ void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
     #warning "not implemented"
 }
 
-void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint* breakpoint)
+void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint *breakpoint)
 {
-    #warning "not implemented"
+    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+    {
+        if(&(it->Get()) == breakpoint)
+        {
+            if(it->GetIndex() != -1)
+                AddStringCommand(wxString::Format(wxT("-break-delete %d"), it->GetIndex()));
+            m_breakpoints.erase(it);
+            return;
+        }
+    }
 }
 
 void Debugger_GDB_MI::DeleteAllBreakpoints()
 {
-    #warning "not implemented"
+    if(IsRunning())
+    {
+        wxString breaklist;
+        for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+        {
+            if(it->GetIndex() != -1)
+                breaklist += wxString::Format(wxT(" %d"), it->GetIndex());
+        }
+
+        if(!breaklist.empty())
+        {
+            if(!IsStopped())
+            {
+                DoBreak();
+                AddStringCommand(wxT("-break-delete") + breaklist);
+                Continue();
+            }
+            else
+                AddStringCommand(wxT("-break-delete") + breaklist);
+        }
+    }
+    m_breakpoints.clear();
 }
 
 int Debugger_GDB_MI::GetThreadsCount() const

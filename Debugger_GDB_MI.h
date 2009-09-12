@@ -20,6 +20,7 @@
 #include <cbplugin.h> // for "class cbPlugin"
 
 #include "cmd_queue.h"
+#include "definitions.h"
 #include "events.h"
 
 class PipedProcess;
@@ -174,20 +175,25 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         wxString FindDebuggerExecutable(Compiler* compiler);
         wxString GetDebuggee(ProjectBuildTarget* target);
 
+        bool DoBreak(bool child = true);
+        void CommitBreakpoints();
+
+        long GetChildPID();
     private:
         wxMenu *m_menu;
         PipedProcess *m_process;
-        long    m_pid;
+        long    m_pid, m_child_pid;
         int m_page_index, m_dbg_page_index;
         TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
         dbg_mi::CommandQueue    m_command_queue;
 
-        typedef std::vector<cbBreakpoint> Breakpoints;
+        typedef std::vector<dbg_mi::Breakpoint> Breakpoints;
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
 
         bool emit_watch;
         bool m_is_stopped;
+        bool m_forced_break;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED
