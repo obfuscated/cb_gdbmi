@@ -16,9 +16,7 @@ void BreakpointAddAction::Start()
 
 void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
 {
-    LogManager &log = *Manager::Get()->GetLogManager();
-
-    log.Log(wxString::Format(wxT("BreakpointAddAction::OnCommandResult: %d"), cmd_id), m_debug_page);
+    DebugLog(wxString::Format(wxT("BreakpointAddAction::OnCommandResult: %d"), cmd_id));
 
     ResultParser *result = GetCommandResult(cmd_id);
     assert(result);
@@ -30,16 +28,16 @@ void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
         long n;
         if(number_value.ToLong(&n, 10))
         {
-            log.Log(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n), m_debug_page);
+            DebugLog(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
             m_breakpoint->SetIndex(n);
         }
         else
-            log.Log(wxT("BreakpointAddAction::error getting the index :( "), m_debug_page);
+            DebugLog(wxT("BreakpointAddAction::error getting the index :( "));
     }
     else
     {
-        log.Log(wxT("BreakpointAddAction::error getting number value:( "), m_debug_page);
-        log.Log(value.MakeDebugString(), m_debug_page);
+        DebugLog(wxT("BreakpointAddAction::error getting number value:( "));
+        DebugLog(value.MakeDebugString());
     }
 }
 
@@ -61,9 +59,8 @@ void RunAction::OnCommandResult(int32_t cmd_id)
         m_is_stopped = false;
 }
 
-WatchAction::WatchAction(wxString const &variable_name, int debug_page) :
-    m_variable_name(variable_name),
-    m_debug_page(debug_page)
+WatchAction::WatchAction(wxString const &variable_name) :
+    m_variable_name(variable_name)
 {
 }
 
@@ -74,15 +71,12 @@ void WatchAction::Start()
 
 void WatchAction::OnCommandResult(int32_t cmd_id)
 {
-    LogManager &log = *Manager::Get()->GetLogManager();
-
-    log.Log(wxString::Format(wxT("WatchAction::OnCommandResult: %d"), cmd_id), m_debug_page);
+    DebugLog(wxString::Format(wxT("WatchAction::OnCommandResult: %d"), cmd_id));
 
     ResultParser *result = GetCommandResult(cmd_id);
-
     assert(result);
 
-    log.Log(result->MakeDebugString(), m_debug_page);
+    DebugLog(result->MakeDebugString());
 
     if(cmd_id == 0)
         QueueCommand(wxT("-var-info-type ") + m_variable_name + wxT("_gdb_var"));

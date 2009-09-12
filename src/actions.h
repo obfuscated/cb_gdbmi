@@ -11,9 +11,8 @@ class Breakpoint;
 class BreakpointAddAction : public Action
 {
 public:
-    BreakpointAddAction(Breakpoint *breakpoint, int debug_page) :
-        m_breakpoint(breakpoint),
-        m_debug_page(debug_page)
+    BreakpointAddAction(Breakpoint *breakpoint) :
+        m_breakpoint(breakpoint)
     {
     }
     virtual void Start();
@@ -21,7 +20,6 @@ public:
 
 private:
     Breakpoint *m_breakpoint;
-    int m_debug_page;
 };
 
 class RunAction : public Action
@@ -39,14 +37,12 @@ private:
 class WatchAction : public Action
 {
 public:
-    WatchAction(wxString const &variable_name, int debug_page);
+    WatchAction(wxString const &variable_name);
 
     virtual void Start();
     virtual void OnCommandResult(int32_t cmd_id);
 private:
     wxString m_variable_name;
-
-    int m_debug_page;
 };
 
 } // namespace dbg_mi

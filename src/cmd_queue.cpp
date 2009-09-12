@@ -52,9 +52,21 @@ void Action::Finish()
     m_queue->RemoveAction(this);
 }
 
+void Action::Log(wxString const &s)
+{
+    m_queue->Log(s);
+}
+void Action::DebugLog(wxString const &s)
+{
+    m_queue->DebugLog(s);
+}
+
+
 CommandQueue::CommandQueue() :
     m_last_cmd_id(0),
-    m_last_action_id(1) // action_id == 0 is reserved for actionless commands
+    m_last_action_id(1), // action_id == 0 is reserved for actionless commands
+    m_normal_log(-1),
+    m_debug_log(-1)
 {
 }
 
@@ -74,15 +86,13 @@ int64_t CommandQueue::AddCommand(Command *command, bool generate_id)
         command->SetID(m_last_cmd_id++);
 
     wxString full_cmd = wxString::Format(_T("%d (last: %d)"), command->GetID(), m_last_cmd_id) + command->GetString();
-    Manager::Get()->GetLogManager()->LogWarning(_("adding commnad: ") + full_cmd, m_debuglog_page_index);
+    DebugLog(_("adding commnad: ") + full_cmd);
 
     m_commands_to_execute.push_back(command);
     return command->GetFullID();
 }
 void CommandQueue::RunQueue(PipedProcess *process)
 {
-    LogManager &log = *Manager::Get()->GetLogManager();
-
     Queue executed_cmds;
     while(!m_commands_to_execute.empty())
     {
@@ -92,7 +102,7 @@ void CommandQueue::RunQueue(PipedProcess *process)
         wxString full_cmd = wxString::Format(_T("%d%010d"), command->GetActionID(), command->GetID())
                             + command->GetString();
 
-        log.Log(_("sending commnd: ") + full_cmd, m_debuglog_page_index);
+        DebugLog(_("sending commnd: ") + full_cmd);
         process->SendString(full_cmd);
 
         executed_cmds.push_back(command);
@@ -102,7 +112,7 @@ void CommandQueue::RunQueue(PipedProcess *process)
         wxMutexLocker locker(m_lock);
         for(Queue::iterator it = executed_cmds.begin(); it != executed_cmds.end(); ++it)
         {
-            log.Log(wxString::Format(wxT("Adding active command %010ld"), (*it)->GetFullID()), m_debuglog_page_index);
+            DebugLog(wxString::Format(wxT("Adding active command %010ld"), (*it)->GetFullID()));
             m_active_commands[(*it)->GetFullID()] = *it;
         }
     }
@@ -116,11 +126,6 @@ void CommandQueue::AccumulateOutput(wxString const &output)
 
 void CommandQueue::ParseOutput()
 {
-    LogManager &log = *Manager::Get()->GetLogManager();
-//    log.Log(_(""), m_debuglog_page_index);
-//    log.Log(_("full output --->> ") + m_full_output + _("<<---"), m_debuglog_page_index);
-//    log.Log(_(""), m_debuglog_page_index);
-
     int start = -1, end = -1;
     int last_end = -1, token_start = -1;
     ResultParser::Type result_type = ResultParser::Result;
@@ -184,7 +189,7 @@ void CommandQueue::ParseOutput()
         {
             wxString token_str = m_full_output.substr(token_start, start - token_start);
             wxString line = m_full_output.substr(start + 1, end - start - 1);
-            log.Log(_("token:") + token_str + _(";parsed line >>: ") + line + _(":<<"), m_debuglog_page_index);
+            DebugLog(_("token:") + token_str + _(";parsed line >>: ") + line + _(":<<"));
 
             last_end = end;
             start = end = -1;
@@ -197,24 +202,23 @@ void CommandQueue::ParseOutput()
 
             if(!cmd_token_str.ToLong(&cmd_token, 10))
             {
-                log.Log(_("cmd_token is not int:") + cmd_token_str + _T(";"), m_debuglog_page_index);
+                DebugLog(_("cmd_token is not int:") + cmd_token_str + _T(";"));
             }
             else if(!action_token_str.ToLong(&action_token, 10))
             {
-                log.Log(_("action_token is not int:") + action_token_str + _T(";"), m_debuglog_page_index);
+                DebugLog(_("action_token is not int:") + action_token_str + _T(";"));
             }
             else
             {
-                log.Log(wxString::Format(_T("parsed token(%d:%010d) (%s:%s)"), action_token, cmd_token,
-                                         action_token_str.c_str(), cmd_token_str.c_str()),
-                        m_debuglog_page_index);
+                DebugLog(wxString::Format(_T("parsed token(%d:%010d) (%s:%s)"), action_token, cmd_token,
+                                         action_token_str.c_str(), cmd_token_str.c_str()));
 
                 ResultParser *parser = new ResultParser;
                 parser->Parse(line, result_type);
 
                 if(parser->GetResultType() != dbg_mi::ResultParser::Result)
                 {
-                    log.Log(_T("sending parser event"), m_debuglog_page_index);
+                    DebugLog(_T("sending parser event"));
 
                     NotificationEvent event(parser);
                     //event.SetEventObject(this);
@@ -228,7 +232,6 @@ void CommandQueue::ParseOutput()
 
                     if(it != m_active_commands.end())
                     {
-//                        it->second->SetResult(parser);
                         ActionMap::iterator it_action = m_active_actions.find(action_token);
                         if(it_action != m_active_actions.end())
                         {
@@ -237,7 +240,7 @@ void CommandQueue::ParseOutput()
                         else
                         {
                             it->second->SetResult(parser);
-                            log.Log(parser->MakeDebugString(), m_debuglog_page_index);
+                            DebugLog(parser->MakeDebugString());
                         }
 
                     }
@@ -247,15 +250,14 @@ void CommandQueue::ParseOutput()
                         full_token_str.Printf(_T("full token: %ld (%d%10d)\n"),
                                               full_token, full_token >> 32, full_token & 0xffffffff);
 
-                        log.Log(_("token not found:") + action_token_str + _T(":") + cmd_token_str + _T(";")
-                                + full_token_str, m_debuglog_page_index);
+                        DebugLog(_("token not found:") + action_token_str + _T(":") + cmd_token_str + _T(";")
+                                 + full_token_str);
                     }
                 }
             }
         }
     }
     m_full_output.Remove(0, last_end);
-//    log.Log(_(""), m_debuglog_page_index);
 }
 
 void CommandQueue::AddAction(Action *action)
@@ -263,10 +265,6 @@ void CommandQueue::AddAction(Action *action)
     action->SetCommandQueue(this);
     action->SetID(m_last_action_id++);
     m_active_actions[action->GetID()] = action;
-
-//    LogManager &log = *Manager::Get()->GetLogManager();
-//    log.Log(wxString::Format(_T("Adding action: %d"), action->GetID()), m_debuglog_page_index);
-
     action->Start();
 }
 
@@ -274,6 +272,18 @@ void CommandQueue::RemoveAction(Action *action)
 {
     m_active_actions.erase(action->GetID());
     delete action;
+}
+
+void CommandQueue::Log(wxString const & s)
+{
+    LogManager &log = *Manager::Get()->GetLogManager();
+    log.Log(s, m_normal_log);
+}
+
+void CommandQueue::DebugLog(wxString const & s)
+{
+    LogManager &log = *Manager::Get()->GetLogManager();
+    log.Log(s, m_debug_log);
 }
 
 } // namespace dbg_mi

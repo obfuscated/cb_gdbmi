@@ -131,7 +131,7 @@ void Debugger_GDB_MI::OnAttach()
 
     m_log = dbg_manager.GetLogger(false, m_page_index);
     m_debug_log = dbg_manager.GetLogger(true, m_dbg_page_index);
-    m_command_queue.SetDebugLogPageIndex(m_dbg_page_index);
+    m_command_queue.SetLogPages(m_page_index, m_dbg_page_index);
 
     // do whatever initialization you need for your plugin
     // NOTE: after this function, the inherited member variable
@@ -575,7 +575,7 @@ void Debugger_GDB_MI::CommitBreakpoints()
     {
         // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
         if(it->GetIndex() == -1)
-            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it, m_dbg_page_index));
+            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it));
     }
 
     for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)

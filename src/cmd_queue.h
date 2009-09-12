@@ -78,6 +78,9 @@ public:
 
     virtual void Start() = 0;
     virtual void OnCommandResult(int32_t cmd_id) = 0;
+protected:
+    void Log(wxString const &s);
+    void DebugLog(wxString const &s);
 
 private:
     typedef std::tr1::unordered_map<int32_t, ResultParser*> CommandResult;
@@ -97,7 +100,7 @@ public:
     CommandQueue();
     ~CommandQueue();
 
-    void SetDebugLogPageIndex(int debuglog_page_index) { m_debuglog_page_index = debuglog_page_index; }
+    void SetLogPages(int normal, int debug) { m_normal_log = normal; m_debug_log = debug; }
 
     int64_t AddCommand(Command *command, bool generate_id);
     void RunQueue(PipedProcess *process);
@@ -105,6 +108,9 @@ public:
 
     void AddAction(Action *action);
     void RemoveAction(Action *action);
+
+    void Log(wxString const & s);
+    void DebugLog(wxString const & s);
 
 private:
     void ParseOutput();
@@ -119,7 +125,7 @@ private:
     int64_t m_last_cmd_id;
     int32_t m_last_action_id;
     wxMutex m_lock;
-    int     m_debuglog_page_index;
+    int m_normal_log, m_debug_log;
     wxString    m_full_output;
 };
 
