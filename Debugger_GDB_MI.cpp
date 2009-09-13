@@ -613,7 +613,6 @@ long Debugger_GDB_MI::GetChildPID()
 
 void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
 {
-#warning "not implemented"
     if(IsRunning())
     {
         if(IsStopped())
@@ -639,29 +638,21 @@ void Debugger_GDB_MI::Continue()
 void Debugger_GDB_MI::Next()
 {
     m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next"), m_is_stopped));
-//    ClearActiveMarkFromAllEditors();
-//    AddStringCommand(_T("-exec-next"));
 }
 
 void Debugger_GDB_MI::NextInstruction()
 {
     m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next-instruction"), m_is_stopped));
-//    ClearActiveMarkFromAllEditors();
-//    AddStringCommand(_T("-exec-next-instruction"));
 }
 
 void Debugger_GDB_MI::Step()
 {
     m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-step"), m_is_stopped));
-//    ClearActiveMarkFromAllEditors();
-//    AddStringCommand(_T("-exec-step"));
 }
 
 void Debugger_GDB_MI::StepOut()
 {
     m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-finish"), m_is_stopped));
-//    ClearActiveMarkFromAllEditors();
-//    AddStringCommand(_T("-exec-finish"));
 }
 
 bool Debugger_GDB_MI::DoBreak(bool child)
@@ -669,6 +660,7 @@ bool Debugger_GDB_MI::DoBreak(bool child)
     if(!IsRunning() || IsStopped())
         return true;
 
+    // FIXME (obfuscated#): do something similar for the windows platform
     // non-windows gdb can interrupt the running process. yay!
     if(m_pid <= 0) // look out for the "fake" PIDs (killall)
     {
@@ -685,7 +677,6 @@ bool Debugger_GDB_MI::DoBreak(bool child)
         }
         else
             wxKill(m_pid, wxSIGINT, &error);
-//        m_is_stopped = true;
         m_forced_break = true;
         return error == wxKILL_OK;
     }
