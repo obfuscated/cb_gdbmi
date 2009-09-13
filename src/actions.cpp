@@ -1,5 +1,6 @@
 #include "actions.h"
 
+#include <cbplugin.h>
 #include <logmanager.h>
 
 #include "cmd_result_parser.h"
@@ -41,7 +42,8 @@ void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
     }
 }
 
-RunAction::RunAction(const wxString &command, bool &is_stopped) :
+RunAction::RunAction(cbDebuggerPlugin *plugin, const wxString &command, bool &is_stopped) :
+    m_plugin(plugin),
     m_command(command),
     m_is_stopped(is_stopped)
 {
@@ -59,6 +61,7 @@ void RunAction::OnCommandResult(int32_t cmd_id)
     {
         DebugLog(wxT("RunAction success, the debugger is !stopped!"));
         m_is_stopped = false;
+        m_plugin->ClearActiveMarkFromAllEditors();
     }
 }
 

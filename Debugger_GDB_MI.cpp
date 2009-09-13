@@ -439,15 +439,20 @@ void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
             return;
         }
 
-        dbg_mi::Frame current_frame;
-        if(!current_frame.Parse(*frame_value))
+        if(!m_forced_break)
         {
-            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
-                                                 m_page_index);
-            return;
-        }
+            dbg_mi::Frame frame;
 
-        Manager::Get()->GetDebuggerManager()->SyncEditor(current_frame.GetFilename(), current_frame.GetLine(), true);
+            if(!frame.Parse(*frame_value))
+            {
+                Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
+                                                     m_page_index);
+            }
+            else
+            {
+                Manager::Get()->GetDebuggerManager()->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
+            }
+        }
         m_is_stopped = true;
         m_forced_break = false;
     }
@@ -627,36 +632,36 @@ void Debugger_GDB_MI::Continue()
 {
     if(IsStopped() || m_forced_break)
     {
-        ClearActiveMarkFromAllEditors();
-        m_command_queue.AddAction(new dbg_mi::RunAction(wxT("-exec-continue"), m_is_stopped));
-//        AddStringCommand(_T("-exec-continue"));
-//        RunQueue();
-//        m_is_stopped = false;
+        m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-continue"), m_is_stopped));
     }
 }
 
 void Debugger_GDB_MI::Next()
 {
-    ClearActiveMarkFromAllEditors();
-    AddStringCommand(_T("-exec-next"));
+    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next"), m_is_stopped));
+//    ClearActiveMarkFromAllEditors();
+//    AddStringCommand(_T("-exec-next"));
 }
 
 void Debugger_GDB_MI::NextInstruction()
 {
-    ClearActiveMarkFromAllEditors();
-    AddStringCommand(_T("-exec-next-instruction"));
+    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next-instruction"), m_is_stopped));
+//    ClearActiveMarkFromAllEditors();
+//    AddStringCommand(_T("-exec-next-instruction"));
 }
 
 void Debugger_GDB_MI::Step()
 {
-    ClearActiveMarkFromAllEditors();
-    AddStringCommand(_T("-exec-step"));
+    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-step"), m_is_stopped));
+//    ClearActiveMarkFromAllEditors();
+//    AddStringCommand(_T("-exec-step"));
 }
 
 void Debugger_GDB_MI::StepOut()
 {
-    ClearActiveMarkFromAllEditors();
-    AddStringCommand(_T("-exec-finish"));
+    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-finish"), m_is_stopped));
+//    ClearActiveMarkFromAllEditors();
+//    AddStringCommand(_T("-exec-finish"));
 }
 
 bool Debugger_GDB_MI::DoBreak(bool child)
@@ -689,6 +694,7 @@ bool Debugger_GDB_MI::DoBreak(bool child)
 void Debugger_GDB_MI::Break()
 {
     DoBreak(true);
+    m_forced_break = false;
 
     // Notify debugger plugins for end of debug session
     PluginManager *plm = Manager::Get()->GetPluginManager();

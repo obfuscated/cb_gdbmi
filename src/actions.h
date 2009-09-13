@@ -3,6 +3,8 @@
 
 #include "cmd_queue.h"
 
+class cbDebuggerPlugin;
+
 namespace dbg_mi
 {
 
@@ -25,11 +27,12 @@ private:
 class RunAction : public Action
 {
 public:
-    RunAction(const wxString &command, bool &is_stopped);
+    RunAction(cbDebuggerPlugin *plugin, const wxString &command, bool &is_stopped);
 
     virtual void Start();
     virtual void OnCommandResult(int32_t cmd_id);
 private:
+    cbDebuggerPlugin *m_plugin;
     wxString m_command;
     bool &m_is_stopped;
 };
