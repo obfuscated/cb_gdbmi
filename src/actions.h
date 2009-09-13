@@ -22,6 +22,7 @@ public:
 
 private:
     Breakpoint *m_breakpoint;
+    int m_initial_cmd;
 };
 
 class RunAction : public Action

@@ -91,6 +91,7 @@ int64_t CommandQueue::AddCommand(Command *command, bool generate_id)
     m_commands_to_execute.push_back(command);
     return command->GetFullID();
 }
+
 void CommandQueue::RunQueue(PipedProcess *process)
 {
     Queue executed_cmds;
@@ -117,6 +118,7 @@ void CommandQueue::RunQueue(PipedProcess *process)
         }
     }
 }
+
 void CommandQueue::AccumulateOutput(wxString const &output)
 {
     m_full_output += output;

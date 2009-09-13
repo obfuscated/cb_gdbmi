@@ -97,6 +97,12 @@ private:
 class CommandQueue
 {
 public:
+    enum ExecutionType
+    {
+        Asynchronous,
+        Synchronous
+    };
+public:
     CommandQueue();
     ~CommandQueue();
 

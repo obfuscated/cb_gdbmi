@@ -9,6 +9,7 @@
 #include <compilerfactory.h>
 #include <configurationpanel.h>
 #include <configmanager.h>
+#include <editbreakpointdlg.h>
 #include <loggers.h>
 #include <logmanager.h>
 #include <macrosmanager.h>
@@ -779,7 +780,50 @@ const cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index) const
 
 void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
 {
-    #warning "not implemented"
+    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+    {
+        if(&(it->Get()) != breakpoint)
+            continue;
+
+        switch(breakpoint->GetType())
+        {
+        case cbBreakpoint::Code:
+            {
+                cbBreakpoint temp(*breakpoint);
+                EditBreakpointDlg dialog(&temp);
+                PlaceWindow(&dialog);
+                if(dialog.ShowModal() == wxID_OK)
+                {
+                    // if the breakpoint is not sent to debugger, just copy
+                    if(it->GetIndex() != -1 || !IsRunning())
+                    {
+                        it->Get() = temp;
+                        it->SetIndex(-1);
+                    }
+                    else
+                    {
+                        if(!IsStopped())
+                            DoBreak(true);
+
+                        if(breakpoint->IsEnabled() == temp.IsEnabled())
+                        {
+                            if(breakpoint->IsEnabled())
+                                AddStringCommand(wxString::Format(wxT("-break-enable %d"), it->GetIndex()));
+                            else
+                                AddStringCommand(wxString::Format(wxT("-break-disable %d"), it->GetIndex()));
+                        }
+
+//                        if(breakpoint->
+                    }
+
+                }
+            }
+            break;
+        case cbBreakpoint::Data:
+            #warning "not implemented"
+            break;
+        }
+    }
 }
 
 void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint *breakpoint)
