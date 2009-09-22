@@ -657,3 +657,44 @@ TEST(TestTupleValueLookup2)
     const dbg_mi::ResultValue *r = result.GetTupleValue(wxT("a.b.c"));
     CHECK(status && !r);
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST(TestResultParser_TypeResult)
+{
+    dbg_mi::ResultParser::Type type = dbg_mi::ResultParser::ParseType(wxT("^running"));
+    CHECK_EQUAL(dbg_mi::ResultParser::Result, type);
+}
+
+TEST(TestResultParser_TypeExecAsyncOutput)
+{
+    dbg_mi::ResultParser::Type type = dbg_mi::ResultParser::ParseType(wxT("*stopped,reason=\"breakpoint-hit\""));
+    CHECK_EQUAL(dbg_mi::ResultParser::ExecAsyncOutput, type);
+}
+
+TEST(TestResultParser_TypeStatusAsyncOutput)
+{
+    dbg_mi::ResultParser::Type type;
+    type = dbg_mi::ResultParser::ParseType(wxT("+download,{section=\".text\",")
+                                           wxT("section-size=\"6668\",total-size=\"9880\"}"));
+    CHECK_EQUAL(dbg_mi::ResultParser::StatusAsyncOutput, type);
+}
+
+TEST(TestResultParser_TypeNotifyAsyncOutput)
+{
+    dbg_mi::ResultParser::Type type;
+    type = dbg_mi::ResultParser::ParseType(wxT("=some-notification"));
+    CHECK_EQUAL(dbg_mi::ResultParser::NotifyAsyncOutput, type);
+}
+
+TEST(TestResultParser_TypeUnknown)
+{
+    dbg_mi::ResultParser::Type type = dbg_mi::ResultParser::ParseType(wxT("stopped,reason=\"breakpoint-hit\""));
+    CHECK_EQUAL(dbg_mi::ResultParser::TypeUnknown, type);
+}
+
+TEST(TestResultParser_Running)
+{
+    dbg_mi::ResultParser parser;
+
+    CHECK(parser.Parse(wxT("running"), dbg_mi::ResultParser::Result));
+}
+

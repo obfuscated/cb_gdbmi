@@ -132,7 +132,7 @@ void Debugger_GDB_MI::OnAttach()
 
     m_log = dbg_manager.GetLogger(false, m_page_index);
     m_debug_log = dbg_manager.GetLogger(true, m_dbg_page_index);
-    m_command_queue.SetLogPages(m_page_index, m_dbg_page_index);
+//-    m_command_queue.SetLogPages(m_page_index, m_dbg_page_index);
 
     // do whatever initialization you need for your plugin
     // NOTE: after this function, the inherited member variable
@@ -469,16 +469,16 @@ void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 {
-    Manager::Get()->GetLogManager()->Log(wxT("Queue command: ") + command, m_dbg_page_index);
-    dbg_mi::Command *cmd = new dbg_mi::Command();
-    cmd->SetString(command);
-    m_command_queue.AddCommand(cmd, true);
+//-    Manager::Get()->GetLogManager()->Log(wxT("Queue command: ") + command, m_dbg_page_index);
+//-    dbg_mi::Command *cmd = new dbg_mi::Command();
+//-    cmd->SetString(command);
+//-    m_command_queue.AddCommand(cmd, true);
 }
 
 void Debugger_GDB_MI::RunQueue()
 {
-    if(m_process && IsStopped())
-        m_command_queue.RunQueue(m_process);
+//-    if(m_process && IsStopped())
+//-        m_command_queue.RunQueue(m_process);
 }
 
 void Debugger_GDB_MI::ParseOutput(wxString const &str)
@@ -486,7 +486,7 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
     if(str.IsEmpty())
         return;
     Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_dbg_page_index);
-    m_command_queue.AccumulateOutput(str);
+//-    m_command_queue.AccumulateOutput(str);
 }
 
 void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)
@@ -580,8 +580,8 @@ void Debugger_GDB_MI::CommitBreakpoints()
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
         // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
-        if(it->GetIndex() == -1)
-            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it));
+//-        if(it->GetIndex() == -1)
+//-            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it), dbg_mi::CommandQueue::Asynchronous);
     }
 
     for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
@@ -632,28 +632,33 @@ void Debugger_GDB_MI::Continue()
 {
     if(IsStopped() || m_forced_break)
     {
-        m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-continue"), m_is_stopped));
+//-        m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-continue"), m_is_stopped),
+//-                                  dbg_mi::CommandQueue::Synchronous);
     }
 }
 
 void Debugger_GDB_MI::Next()
 {
-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next"), m_is_stopped));
+//-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next"), m_is_stopped),
+//-                              dbg_mi::CommandQueue::Synchronous);
 }
 
 void Debugger_GDB_MI::NextInstruction()
 {
-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next-instruction"), m_is_stopped));
+//-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-next-instruction"), m_is_stopped),
+//-                              dbg_mi::CommandQueue::Synchronous);
 }
 
 void Debugger_GDB_MI::Step()
 {
-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-step"), m_is_stopped));
+//-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-step"), m_is_stopped),
+//-                              dbg_mi::CommandQueue::Synchronous);
 }
 
 void Debugger_GDB_MI::StepOut()
 {
-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-finish"), m_is_stopped));
+//-    m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-finish"), m_is_stopped),
+//-                              dbg_mi::CommandQueue::Synchronous);
 }
 
 bool Debugger_GDB_MI::DoBreak(bool child)

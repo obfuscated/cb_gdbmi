@@ -1,15 +1,20 @@
 #include "cmd_queue.h"
 
+/*
 #include <algorithm>
-#include <logmanager.h>
-#include <pipedprocess.h>
+#ifndef TEST_PROJECT
+#   include <logmanager.h>
+#   include <pipedprocess.h>
+#endif
 
 #include "cmd_result_parser.h"
 #include "events.h"
+*/
+#include "cmd_result_parser.h"
 
 namespace dbg_mi
 {
-
+/*
 Command::~Command()
 {
     delete m_result;
@@ -40,6 +45,7 @@ int32_t Action::QueueCommand(wxString const &cmd_string)
     Command *cmd = new Command;
     cmd->SetString(cmd_string);
     cmd->SetActionID(GetID());
+    cmd->SetWaitForAction(GetWaitForAction());
 
     cmd->SetID(m_last_cmd_id++);
 
@@ -76,8 +82,9 @@ CommandQueue::~CommandQueue()
         delete *it;
     for(CommandMap::iterator it = m_active_commands.begin(); it != m_active_commands.end(); ++it)
         delete it->second;
-    for(ActionMap::iterator it = m_active_actions.begin(); it != m_active_actions.end(); ++it)
-        delete it->second;
+    for(ActionContainer::iterator it = m_active_actions.begin(); it != m_active_actions.end(); ++it)
+    //    delete it->second;
+        delete *it;
 }
 
 int64_t CommandQueue::AddCommand(Command *command, bool generate_id)
@@ -85,8 +92,8 @@ int64_t CommandQueue::AddCommand(Command *command, bool generate_id)
     if(generate_id)
         command->SetID(m_last_cmd_id++);
 
-    wxString full_cmd = wxString::Format(_T("%d (last: %d)"), command->GetID(), m_last_cmd_id) + command->GetString();
-    DebugLog(_("adding commnad: ") + full_cmd);
+    wxString full_cmd = wxString::Format(wxT("%d (last: %d)"), command->GetID(), m_last_cmd_id) + command->GetString();
+    DebugLog(wxT("adding commnad: ") + full_cmd);
 
     m_commands_to_execute.push_back(command);
     return command->GetFullID();
@@ -103,8 +110,10 @@ void CommandQueue::RunQueue(PipedProcess *process)
         wxString full_cmd = wxString::Format(_T("%d%010d"), command->GetActionID(), command->GetID())
                             + command->GetString();
 
-        DebugLog(_("sending commnd: ") + full_cmd);
+        DebugLog(wxT("sending commnd: ") + full_cmd);
+#ifndef TEST_PROJECT
         process->SendString(full_cmd);
+#endif
 
         executed_cmds.push_back(command);
     }
@@ -113,7 +122,8 @@ void CommandQueue::RunQueue(PipedProcess *process)
         wxMutexLocker locker(m_lock);
         for(Queue::iterator it = executed_cmds.begin(); it != executed_cmds.end(); ++it)
         {
-            DebugLog(wxString::Format(wxT("Adding active command %010ld"), (*it)->GetFullID()));
+            DebugLog(wxString::Format(wxT("Adding active command %010ld (%d:%010d)"),
+                                      (*it)->GetFullID(), (*it)->GetActionID(), (*it)->GetID()));
             m_active_commands[(*it)->GetFullID()] = *it;
         }
     }
@@ -191,7 +201,7 @@ void CommandQueue::ParseOutput()
         {
             wxString token_str = m_full_output.substr(token_start, start - token_start);
             wxString line = m_full_output.substr(start + 1, end - start - 1);
-            DebugLog(_("token:") + token_str + _(";parsed line >>: ") + line + _(":<<"));
+            DebugLog(wxT("token:") + token_str + wxT(";parsed line >>: ") + line + wxT(":<<"));
 
             last_end = end;
             start = end = -1;
@@ -204,15 +214,15 @@ void CommandQueue::ParseOutput()
 
             if(!cmd_token_str.ToLong(&cmd_token, 10))
             {
-                DebugLog(_("cmd_token is not int:") + cmd_token_str + _T(";"));
+                DebugLog(wxT("cmd_token is not int:") + cmd_token_str + wxT(";"));
             }
             else if(!action_token_str.ToLong(&action_token, 10))
             {
-                DebugLog(_("action_token is not int:") + action_token_str + _T(";"));
+                DebugLog(wxT("action_token is not int:") + action_token_str + wxT(";"));
             }
             else
             {
-                DebugLog(wxString::Format(_T("parsed token(%d:%010d) (%s:%s)"), action_token, cmd_token,
+                DebugLog(wxString::Format(wxT("parsed token(%d:%010d) (%s:%s)"), action_token, cmd_token,
                                          action_token_str.c_str(), cmd_token_str.c_str()));
 
                 ResultParser *parser = new ResultParser;
@@ -220,11 +230,12 @@ void CommandQueue::ParseOutput()
 
                 if(parser->GetResultType() != dbg_mi::ResultParser::Result)
                 {
-                    DebugLog(_T("sending parser event"));
+                    DebugLog(wxT("sending parser event"));
 
+#ifndef TEST_PROJECT
                     NotificationEvent event(parser);
-                    //event.SetEventObject(this);
                     Manager::Get()->GetAppWindow()->GetEventHandler()->ProcessEvent(event);
+#endif
                     delete parser;
                 }
                 else
@@ -234,25 +245,32 @@ void CommandQueue::ParseOutput()
 
                     if(it != m_active_commands.end())
                     {
-                        ActionMap::iterator it_action = m_active_actions.find(action_token);
+                        ActionContainer::iterator it_action;
+                        for(it_action = m_active_actions.begin(); it_action != m_active_actions.end(); ++it_action)
+                        {
+                            DebugLog(wxString::Format(wxT("testing: %d == %d"), (*it_action)->GetID(), action_token));
+                            if((*it_action)->GetID() == action_token)
+                                break;
+                        }
                         if(it_action != m_active_actions.end())
                         {
-                            it_action->second->SetCommandResult(cmd_token, parser);
+                            DebugLog(wxString::Format(wxT("found action %d"), action_token));
+                            (*it_action)->SetCommandResult(cmd_token, parser);
                         }
                         else
                         {
+                            DebugLog(wxString::Format(wxT("found no action %d"), action_token));
                             it->second->SetResult(parser);
                             DebugLog(parser->MakeDebugString());
                         }
-
                     }
                     else
                     {
                         wxString full_token_str;
-                        full_token_str.Printf(_T("full token: %ld (%d%10d)\n"),
+                        full_token_str.Printf(wxT("full token: %ld (%d%10d)\n"),
                                               full_token, full_token >> 32, full_token & 0xffffffff);
 
-                        DebugLog(_("token not found:") + action_token_str + _T(":") + cmd_token_str + _T(";")
+                        DebugLog(wxT("token not found:") + action_token_str + wxT(":") + cmd_token_str + wxT(";")
                                  + full_token_str);
                     }
                 }
@@ -262,8 +280,10 @@ void CommandQueue::ParseOutput()
     m_full_output.Remove(0, last_end);
 }
 
-void CommandQueue::AddAction(Action *action)
+void CommandQueue::AddAction(Action *action, ExecutionType exec_type)
 {
+    if(exec_type == Synchronous)
+        action->SetWaitForAction(m_last_action_id);
     action->SetCommandQueue(this);
     action->SetID(m_last_action_id++);
     m_active_actions[action->GetID()] = action;
@@ -272,20 +292,95 @@ void CommandQueue::AddAction(Action *action)
 
 void CommandQueue::RemoveAction(Action *action)
 {
-    m_active_actions.erase(action->GetID());
-    delete action;
+    ActionContainer::iterator it_action;
+    for(it_action = m_active_actions.begin(); it_action != m_active_actions.end(); ++it_action)
+    {
+        if(*it_action == action)
+        {
+            DebugLog(wxString::Format(wxT("Removing action: %d"), action->GetID()));
+            m_active_actions.erase(it_action);
+            delete action;
+            return;
+        }
+    }
 }
 
 void CommandQueue::Log(wxString const & s)
 {
+#ifndef TEST_PROJECT
     LogManager &log = *Manager::Get()->GetLogManager();
     log.Log(s, m_normal_log);
+#endif
 }
 
 void CommandQueue::DebugLog(wxString const & s)
 {
+#ifndef TEST_PROJECT
     LogManager &log = *Manager::Get()->GetLogManager();
     log.Log(s, m_debug_log);
+#endif
+}
+*/
+bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_str)
+{
+    size_t pos = 0;
+    while(pos < line.length() && wxIsdigit(line[pos]))
+        ++pos;
+    if(pos <= 10)
+        return false;
+    long action_id, cmd_id;
+
+    wxString const &str_action = line.substr(0, pos - 10);
+    str_action.ToLong(&action_id, 10);
+
+    wxString const &str_cmd = line.substr(pos - 10, 10);
+    str_cmd.ToLong(&cmd_id, 10);
+
+    id = dbg_mi::CommandID(action_id, cmd_id);
+    result_str = line.substr(pos, line.length() - pos);
+    return true;
+}
+
+CommandResultMap::~CommandResultMap()
+{
+    for(Map::iterator it = m_map.begin(); it != m_map.end(); ++it)
+        delete it->second;
+}
+bool CommandResultMap::Set(CommandID const &id, ResultParser *parser)
+{
+    if(HasResult(id))
+        return false;
+    else
+    {
+        m_map[id] = parser;
+        return true;
+    }
+}
+int CommandResultMap::GetCount() const
+{
+    return m_map.size();
+}
+bool CommandResultMap::HasResult(CommandID const &id) const
+{
+    return m_map.find(id) != m_map.end();
+}
+
+bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map)
+{
+    while(executor.HasOutput())
+    {
+        dbg_mi::CommandID result_id;
+        dbg_mi::ResultParser *result = executor.GetResult(result_id);
+
+        if(result)
+        {
+            if(!result_map.Set(result_id, result))
+                delete result;
+        }
+        else
+            return false;
+    }
+    return true;
 }
 
 } // namespace dbg_mi

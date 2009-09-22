@@ -83,7 +83,8 @@ public:
         Result = 0,
         ExecAsyncOutput,
         StatusAsyncOutput,
-        NotifyAsyncOutput
+        NotifyAsyncOutput,
+        TypeUnknown
     };
 
     enum Class
@@ -98,6 +99,7 @@ public:
 
 public:
     bool Parse(wxString const &str, Type result_type);
+    static Type ParseType(wxString const &str);
 
     wxString MakeDebugString() const;
     Type GetResultType() const { return m_type; }

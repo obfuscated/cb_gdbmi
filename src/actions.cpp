@@ -8,6 +8,7 @@
 
 namespace dbg_mi
 {
+/*
 void BreakpointAddAction::Start()
 {
     wxString cmd(wxT("-break-insert "));
@@ -20,6 +21,7 @@ void BreakpointAddAction::Start()
 
     cmd += wxString::Format(wxT("%s:%d"), bp.GetFilename().c_str(), bp.GetLine());
     m_initial_cmd = QueueCommand(cmd);
+    DebugLog(wxString::Format(wxT("BreakpointAddAction::m_initial_cmd = %d\n"), m_initial_cmd));
 }
 
 void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
@@ -109,4 +111,5 @@ void WatchAction::OnCommandResult(int32_t cmd_id)
         return;
     }
 }
+*/
 } // namespace dbg_mi

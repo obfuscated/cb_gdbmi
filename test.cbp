@@ -34,6 +34,7 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add option="`wx-config --cflags`" />
+			<Add option="-DTEST_PROJECT" />
 			<Add directory="$(#unittest_pp)/src/" />
 			<Add directory="src" />
 		</Compiler>
@@ -45,11 +46,17 @@
 		<ExtraCommands>
 			<Add after="$(TARGET_OUTPUT_FILE)" />
 		</ExtraCommands>
+		<Unit filename="src/cmd_queue.cpp" />
+		<Unit filename="src/cmd_queue.h" />
 		<Unit filename="src/cmd_result_parser.cpp" />
 		<Unit filename="src/cmd_result_parser.h" />
 		<Unit filename="src/cmd_result_tokens.cpp" />
 		<Unit filename="src/cmd_result_tokens.h" />
+		<Unit filename="src/events.cpp" />
+		<Unit filename="src/events.h" />
 		<Unit filename="tests/main.cpp" />
+		<Unit filename="tests/mock_command_executor.h" />
+		<Unit filename="tests/test_cmd_queue.cpp" />
 		<Unit filename="tests/test_result_parser.cpp" />
 		<Extensions>
 			<envvars />

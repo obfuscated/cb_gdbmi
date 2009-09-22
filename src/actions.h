@@ -7,7 +7,7 @@ class cbDebuggerPlugin;
 
 namespace dbg_mi
 {
-
+/*
 class Breakpoint;
 
 class BreakpointAddAction : public Action
@@ -48,7 +48,7 @@ public:
 private:
     wxString m_variable_name;
 };
-
+*/
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_ACTIONS_H_

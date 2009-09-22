@@ -1,18 +1,24 @@
 #ifndef _DEBUGGER_MI_GDB_CMD_QUEUE_H_
 #define _DEBUGGER_MI_GDB_CMD_QUEUE_H_
 
-#include <wx/thread.h>
-#include <wx/string.h>
 
-#include <deque>
+#include <ostream>
 #include <tr1/unordered_map>
 
 
+#include <wx/string.h>
+/*
+#include <wx/thread.h>
+
+#include <deque>
+
+
 class PipedProcess;
+*/
 
 namespace dbg_mi
 {
-
+/*
 class ResultParser;
 
 class Command
@@ -21,6 +27,7 @@ public:
     Command() :
         m_id(0),
         m_action_id(0),
+        m_wait_for_action(-1),
         m_result(NULL)
     {
     }
@@ -37,6 +44,9 @@ public:
 
     int64_t GetFullID() const { return (static_cast<int64_t>(m_action_id) << 32) + m_id; }
 
+    void SetWaitForAction(int32_t id) { m_wait_for_action = id; }
+    int32_t GetWaitForAction() const { return m_wait_for_action; }
+
     void SetString(wxString const & command) { m_string = command; }
     wxString const & GetString() const { return m_string; }
 
@@ -45,6 +55,7 @@ private:
     wxString m_string;
     int32_t m_id;
     int32_t m_action_id;
+    int32_t m_wait_for_action;
     ResultParser *m_result;
 };
 
@@ -58,6 +69,7 @@ public:
         m_queue(NULL),
         m_id(-1),
         m_last_cmd_id(0),
+        m_wait_for_action(-1),
         m_started(false)
     {
     }
@@ -74,8 +86,14 @@ public:
     void SetID(int32_t id) { m_id = id; }
     int32_t GetID() const { return m_id; }
 
+    void SetWaitForAction(int32_t id) { m_wait_for_action = id; }
+    int32_t GetWaitForAction() const { return m_wait_for_action; }
+
     void SetCommandQueue(CommandQueue *queue) { m_queue = queue; }
 
+#ifdef TEST_PROJECT
+    CommandQueue* GetCommandQueue() const { return m_queue; }
+#endif
     virtual void Start() = 0;
     virtual void OnCommandResult(int32_t cmd_id) = 0;
 protected:
@@ -90,6 +108,7 @@ private:
     CommandResult   m_command_results;
     int32_t m_id;
     int32_t m_last_cmd_id;
+    int32_t m_wait_for_action;
     bool m_started;
 };
 
@@ -112,7 +131,7 @@ public:
     void RunQueue(PipedProcess *process);
     void AccumulateOutput(wxString const &output);
 
-    void AddAction(Action *action);
+    void AddAction(Action *action, ExecutionType exec_type);
     void RemoveAction(Action *action);
 
     void Log(wxString const & s);
@@ -123,18 +142,111 @@ private:
 private:
     typedef std::deque<Command*> Queue;
     typedef std::tr1::unordered_map<int64_t, Command*> CommandMap;
-    typedef std::tr1::unordered_map<int32_t, Action*> ActionMap;
+//    typedef std::tr1::unordered_map<int32_t, Action*> ActionContainer;
+    typedef std::deque<Action*> ActionContainer;
 
-    Queue   m_commands_to_execute;
-    CommandMap  m_active_commands;
-    ActionMap   m_active_actions;
-    int64_t m_last_cmd_id;
-    int32_t m_last_action_id;
-    wxMutex m_lock;
-    int m_normal_log, m_debug_log;
-    wxString    m_full_output;
+    Queue           m_commands_to_execute;
+    CommandMap      m_active_commands;
+    ActionContainer m_active_actions;
+    int64_t         m_last_cmd_id;
+    int32_t         m_last_action_id;
+    wxMutex         m_lock;
+    int             m_normal_log, m_debug_log;
+    wxString        m_full_output;
+};
+*/
+
+class ResultParser;
+
+class CommandID
+{
+public:
+    CommandID(int32_t action = -1, int32_t command_in_action = -1) :
+        m_action(action),
+        m_command_in_action(command_in_action)
+    {
+    }
+
+    bool operator ==(CommandID const &o) const
+    {
+        return m_action == o.m_action && m_command_in_action == o.m_command_in_action;
+    }
+    bool operator !=(CommandID const &o) const
+    {
+        return !(*this == o);
+    }
+
+
+    CommandID& operator++() // prefix
+    {
+        ++m_command_in_action;
+        return *this;
+    }
+
+    CommandID operator++(int) // postfix
+    {
+        CommandID old = *this;
+        ++m_command_in_action;
+        return old;
+    }
+
+    wxString ToString() const
+    {
+        return wxString::Format(wxT("%d%010d"), m_action, m_command_in_action);
+    }
+
+private:
+    int32_t m_action, m_command_in_action;
 };
 
+inline std::ostream& operator<< (std::ostream& s, CommandID const &id)
+{
+    s << id.ToString().utf8_str().data();
+    return s;
+}
+
+struct CommandIDHash
+{
+    std::size_t operator()(CommandID const &id) const
+    {
+        return 0;
+    }
+};
+
+bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_str);
+
+class CommandExecutor
+{
+public:
+    CommandID Execute(wxString const &cmd)
+    {
+        return DoExecute(cmd);
+    }
+    virtual wxString GetOutput() = 0;
+    virtual bool HasOutput() const = 0;
+    virtual bool ProcessOutput(wxString const &output) = 0;
+
+    virtual ResultParser* GetResult(CommandID &id) = 0;
+protected:
+    virtual CommandID DoExecute(wxString const &cmd) = 0;
+};
+
+class CommandResultMap
+{
+public:
+    ~CommandResultMap();
+    bool Set(CommandID const &id, ResultParser *parser);
+    int GetCount() const;
+    bool HasResult(CommandID const &id) const;
+private:
+    typedef std::tr1::unordered_map<CommandID, ResultParser*, CommandIDHash> Map;
+    Map m_map;
+};
+
+bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map);
+
+
 } // namespace dbg_mi
+
 
 #endif // _DEBUGGER_MI_GDB_CMD_QUEUE_H_

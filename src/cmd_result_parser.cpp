@@ -384,10 +384,34 @@ bool ResultParser::Parse(wxString const &str, Type result_type)
     else
         return false;
 
-    if(str[after_class_index] != _T(','))
+    if(str[after_class_index] == _T(','))
+        return ParseValue(str, m_value, after_class_index + 1);
+    else if(after_class_index != str.length())
         return false;
+    else
+        return true;
+}
 
-    return ParseValue(str, m_value, after_class_index + 1);
+ResultParser::Type ResultParser::ParseType(wxString const &str)
+{
+    if(str.empty())
+        return TypeUnknown;
+
+    switch(str[0])
+    {
+    case wxT('^'): // result record
+        return ResultParser::Result;
+    case wxT('*'):
+        return ResultParser::ExecAsyncOutput;
+
+    case wxT('+'):
+        return ResultParser::StatusAsyncOutput;
+
+    case wxT('='):
+        return ResultParser::NotifyAsyncOutput;
+    default:
+        return TypeUnknown;
+    }
 }
 
 wxString ResultParser::MakeDebugString() const
