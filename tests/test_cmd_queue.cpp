@@ -21,10 +21,15 @@
 /// hash function for CommandID
 // CommandID operator <<
 // refactor the CommnandResultMap
-/// replace CommnandResultMap with some kind of CommandDispatcher
+/// replace CommnandResultMap with some kind of CommandResultDispatcher
 // add tests for processing the output from the debugger
-/// introduce some kind of action class
+// introduce some kind of action class
 // test splitting dbg output to CommandID and result string
+// execute commands inside action derivates or some user code
+// add actions to CommandExecutor
+/// notification should go to some global place
+// extract actions from the CommandExecutor to ActionsMap
+/// remove actions from the ActionsMap when they have finished
 
 TEST(CommnadIDToString)
 {
@@ -214,3 +219,129 @@ TEST(DebuggerOutputSequential)
                             wxT("^done,bkpt={number=\"1\",addr=\"0x0001072c\",file=\"main.cpp\",")
                             wxT("fullname=\"/home/foo/main.cpp\",line=\"4\",times=\"0\"}"));
 }
+
+struct TestAction : public dbg_mi::Action
+{
+    TestAction(bool *destroyed = NULL) :
+        on_start_called(false),
+        m_destroyed(destroyed)
+    {
+    }
+    ~TestAction()
+    {
+        if(m_destroyed)
+            *m_destroyed = true;
+    }
+
+    virtual void OnStart()
+    {
+        on_start_called = true;
+    }
+
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, wxString const &output_)
+    {
+        command_id = id;
+        output = output_;
+        Finish();
+    }
+
+    dbg_mi::CommandID command_id;
+    wxString output;
+    bool on_start_called;
+private:
+    bool *m_destroyed;
+};
+
+TEST(ActionInterfaceCtor)
+{
+    TestAction action;
+    CHECK(!action.Started() && !action.Finished());
+}
+
+TEST(ActionInterfaceStartingFinishing)
+{
+    TestAction action;
+    action.Start();
+    CHECK(action.Started() && !action.Finished());
+
+    action.Finish();
+    CHECK(action.Started() && action.Finished());
+}
+
+TEST(ActionInterfaceOnStart)
+{
+    TestAction action;
+    action.Start();
+    CHECK(action.Started() && action.on_start_called);
+}
+
+TEST(ActionInterfaceOnCmdOutput)
+{
+    TestAction action;
+    action.Start();
+
+    dbg_mi::CommandID id(100, 1);
+    wxString output = wxT("^running");
+    action.OnCommandOutput(id, output);
+
+    CHECK(action.command_id == id && action.output == output);
+    CHECK(action.Finished());
+}
+
+TEST(ActionInterfaceExecCommands)
+{
+    TestAction action;
+    action.Execute(wxT("-break-insert main.cpp"));
+    action.Execute(wxT("-exec-run"));
+
+    CHECK_EQUAL(2, action.GetPendingCommandsCount());
+    CHECK(action.PopPendingCommand() == wxT("-break-insert main.cpp"));
+    CHECK(action.PopPendingCommand() == wxT("-exec-run"));
+}
+
+struct ActionsMapFixture
+{
+    ActionsMapFixture()
+    {
+        action = new TestAction(&action_destroyed);
+        actions_map.Add(action);
+    }
+
+    dbg_mi::ActionsMap actions_map;
+    TestAction *action;
+    MockCommandExecutor exec;
+    bool action_destroyed;
+};
+
+TEST_FIXTURE(ActionsMapFixture, Empty)
+{
+    CHECK(!actions_map.Empty());
+}
+
+TEST_FIXTURE(ActionsMapFixture, ActionStarted)
+{
+    actions_map.Run(exec);
+    CHECK(action->Started());
+}
+
+TEST_FIXTURE(ActionsMapFixture, ActionDestroyed)
+{
+    action->Finish();
+    actions_map.Run(exec);
+    CHECK(action_destroyed);
+}
+
+//TEST(Dispatcher)
+//{
+//    MockCommandExecutor exec;
+//
+//    TestAction action1;
+//    TestAction action2;
+//
+//    action1.Execute(wxT("-break-insert main.cpp:10"));
+//    action1.Execute(wxT("-break-insert main.cpp:20"));
+//
+//    action2.Execute(wxT("-exec-run"));
+//
+//    exec.
+//}

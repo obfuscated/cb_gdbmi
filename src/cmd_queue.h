@@ -2,7 +2,9 @@
 #define _DEBUGGER_MI_GDB_CMD_QUEUE_H_
 
 
+#include <deque>
 #include <ostream>
+#include <tr1/utility>
 #include <tr1/unordered_map>
 
 
@@ -10,7 +12,6 @@
 /*
 #include <wx/thread.h>
 
-#include <deque>
 
 
 class PipedProcess;
@@ -215,13 +216,73 @@ struct CommandIDHash
 
 bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_str);
 
-class CommandExecutor
+class Action
 {
 public:
+    typedef std::deque<wxString> PendingCommands;
+public:
+    Action() :
+        m_started(false),
+        m_finished(false)
+    {
+    }
+
+    virtual ~Action() {}
+
+    void Start()
+    {
+        m_started = true;
+        OnStart();
+    }
+
+    void Finish()
+    {
+        m_finished = true;
+    }
+
+    bool Started() const { return m_started; }
+    bool Finished() const { return m_finished; }
+
+    void Execute(wxString const &command)
+    {
+        m_pending_commands.push_back(command);
+    }
+
+    int GetPendingCommandsCount() const { return m_pending_commands.size(); }
+    bool HasPendingCommands() const { return !m_pending_commands.empty(); }
+
+    wxString PopPendingCommand()
+    {
+        assert(HasPendingCommands());
+        wxString cmd = m_pending_commands.front();
+        m_pending_commands.pop_front();
+        return cmd;
+    }
+
+
+public:
+    virtual void OnCommandOutput(CommandID const &id, wxString const &output) = 0;
+protected:
+    virtual void OnStart() = 0;
+private:
+    PendingCommands m_pending_commands;
+    bool m_started;
+    bool m_finished;
+};
+
+class CommandExecutor
+{
+//    CommandExecutor const& operator=(CommandExecutor const &);
+//    CommandExecutor(CommandExecutor const &);
+public:
+//    CommandExecutor() {}
+    virtual ~CommandExecutor() {}
+
     CommandID Execute(wxString const &cmd)
     {
         return DoExecute(cmd);
     }
+
     virtual wxString GetOutput() = 0;
     virtual bool HasOutput() const = 0;
     virtual bool ProcessOutput(wxString const &output) = 0;
@@ -229,6 +290,20 @@ public:
     virtual ResultParser* GetResult(CommandID &id) = 0;
 protected:
     virtual CommandID DoExecute(wxString const &cmd) = 0;
+
+};
+
+class ActionsMap
+{
+public:
+    ~ActionsMap();
+    void Add(Action *action);
+    bool Empty() const { return m_actions.empty(); }
+    void Run(CommandExecutor &executor);
+private:
+    typedef std::deque<Action*> Actions;
+
+    Actions m_actions;
 };
 
 class CommandResultMap

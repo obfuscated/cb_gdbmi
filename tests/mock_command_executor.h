@@ -87,5 +87,6 @@ private:
     bool m_auto_process_output;
 };
 
+
 #endif // _TESTS_MOCK_COMMAND_EXECUTOR_H_
 

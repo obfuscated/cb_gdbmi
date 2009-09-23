@@ -383,4 +383,43 @@ bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map)
     return true;
 }
 
+ActionsMap::~ActionsMap()
+{
+    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+        delete *it;
+}
+
+void ActionsMap::Add(Action *action)
+{
+    m_actions.push_back(action);
+}
+
+void ActionsMap::Run(CommandExecutor &executor)
+{
+    if(Empty())
+        return;
+    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+    {
+        Action &action = **it;
+
+        if(!action.Started())
+        {
+            action.Start();
+        }
+        if(action.Finished())
+        {
+            Actions::iterator del_it = it;
+            --it;
+            delete *del_it;
+            m_actions.erase(del_it);
+        }
+
+        while(action.HasPendingCommands())
+        {
+            wxString const &command = action.PopPendingCommand();
+            executor.Execute(command);
+        }
+    }
+}
+
 } // namespace dbg_mi
