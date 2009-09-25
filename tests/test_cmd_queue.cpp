@@ -34,7 +34,7 @@
 /// add some metrics for the count of actions in the ActionsMap
 // add ids to actions
 // action ids should be set automatically
-/// associate CommandIDs to the commands executed for every action
+// associate CommandIDs to the commands executed for every action
 
 TEST(CommnadIDToString)
 {
