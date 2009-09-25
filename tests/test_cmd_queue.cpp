@@ -29,7 +29,12 @@
 // add actions to CommandExecutor
 /// notification should go to some global place
 // extract actions from the CommandExecutor to ActionsMap
-/// remove actions from the ActionsMap when they have finished
+// remove actions from the ActionsMap when they have finished
+// processes commands for finished actions
+/// add some metrics for the count of actions in the ActionsMap
+// add ids to actions
+// action ids should be set automatically
+/// associate CommandIDs to the commands executed for every action
 
 TEST(CommnadIDToString)
 {
@@ -182,16 +187,40 @@ TEST(TestParseDebuggerOutputLine)
     CHECK(wxT("^running") == result_str);
 }
 
-void ProcessOutputTestHelper(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID const &id, wxString const &command)
+bool ProcessOutputTestHelper(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID const &id, wxString const &command)
 {
-    CHECK(exec.ProcessOutput(id.ToString() + command));
-    CHECK(exec.HasOutput());
+    if(!exec.ProcessOutput(id.ToString() + command))
+        return false;
+    if(!exec.HasOutput())
+        return false;
 
     dbg_mi::CommandID result_id;
     dbg_mi::ResultParser *parser;
 
     parser = exec.GetResult(result_id);
-    CHECK(parser && result_id != dbg_mi::CommandID() && result_id == id);
+    return parser && result_id != dbg_mi::CommandID() && result_id == id;
+}
+
+bool ProcessOutputTestHelperSimple(dbg_mi::CommandExecutor &exec)
+{
+    if(!exec.HasOutput())
+        return false;
+
+    dbg_mi::CommandID result_id;
+    dbg_mi::ResultParser *parser = exec.GetResult(result_id);
+    return parser && result_id != dbg_mi::CommandID();
+}
+
+bool ProcessOutputTestResult(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID const &id, wxString const &result)
+{
+    if(!exec.HasOutput())
+        return false;
+
+    dbg_mi::CommandID result_id;
+    dbg_mi::ResultParser *parser;
+
+    parser = exec.GetResult(result_id);
+    return parser && result_id != dbg_mi::CommandID() && result_id == id;
 }
 
 TEST(DebuggerOutputParallel)
@@ -200,24 +229,26 @@ TEST(DebuggerOutputParallel)
     dbg_mi::CommandID id1 = exec.Execute(wxT("-break-insert main.cpp:400"));
     dbg_mi::CommandID id2 = exec.Execute(wxT("-exec-run"));
 
-    ProcessOutputTestHelper(exec, id1, wxT("^running"));
-    ProcessOutputTestHelper(exec,
-                            id2,
-                            wxT("^done,bkpt={number=\"1\",addr=\"0x0001072c\",file=\"main.cpp\",")
-                            wxT("fullname=\"/home/foo/main.cpp\",line=\"4\",times=\"0\"}"));
+    CHECK(ProcessOutputTestHelper(exec, id1, wxT("^running")));
+    CHECK(ProcessOutputTestHelper(exec,
+                                  id2,
+                                  wxT("^done,bkpt={number=\"1\",addr=\"0x0001072c\",file=\"main.cpp\",")
+                                  wxT("fullname=\"/home/foo/main.cpp\",line=\"4\",times=\"0\"}"))
+          );
 }
 
 TEST(DebuggerOutputSequential)
 {
     MockCommandExecutor exec(false);
     dbg_mi::CommandID id1 = exec.Execute(wxT("-break-insert main.cpp:400"));
-    ProcessOutputTestHelper(exec, id1, wxT("^running"));
+    CHECK(ProcessOutputTestHelper(exec, id1, wxT("^running")));
 
     dbg_mi::CommandID id2 = exec.Execute(wxT("-exec-run"));
-    ProcessOutputTestHelper(exec,
-                            id2,
-                            wxT("^done,bkpt={number=\"1\",addr=\"0x0001072c\",file=\"main.cpp\",")
-                            wxT("fullname=\"/home/foo/main.cpp\",line=\"4\",times=\"0\"}"));
+    CHECK(ProcessOutputTestHelper(exec,
+                                  id2,
+                                  wxT("^done,bkpt={number=\"1\",addr=\"0x0001072c\",file=\"main.cpp\",")
+                                  wxT("fullname=\"/home/foo/main.cpp\",line=\"4\",times=\"0\"}"))
+          );
 }
 
 struct TestAction : public dbg_mi::Action
@@ -266,6 +297,8 @@ TEST(ActionInterfaceStartingFinishing)
 
     action.Finish();
     CHECK(action.Started() && action.Finished());
+    CHECK_EQUAL(-1, action.GetID());
+    CHECK(!action.HasPendingCommands());
 }
 
 TEST(ActionInterfaceOnStart)
@@ -295,8 +328,42 @@ TEST(ActionInterfaceExecCommands)
     action.Execute(wxT("-exec-run"));
 
     CHECK_EQUAL(2, action.GetPendingCommandsCount());
-    CHECK(action.PopPendingCommand() == wxT("-break-insert main.cpp"));
-    CHECK(action.PopPendingCommand() == wxT("-exec-run"));
+    dbg_mi::CommandID id;
+    CHECK(action.PopPendingCommand(id) == wxT("-break-insert main.cpp"));
+    CHECK(action.PopPendingCommand(id) == wxT("-exec-run"));
+}
+
+TEST(ActionInterfaceIDs)
+{
+    TestAction action;
+
+    action.SetID(10);
+    CHECK_EQUAL(10, action.GetID());
+}
+
+TEST(ActionInterfaceExecuteCommandID)
+{
+    TestAction a;
+    a.SetID(10);
+
+    int id1 = a.Execute(wxT("-exec-run"));
+    int id2 = a.Execute(wxT("-exec-next"));
+
+    CHECK_EQUAL(0, id1);
+    CHECK_EQUAL(1, id2);
+}
+
+TEST(ActionMapAutomaticActionID)
+{
+    TestAction *a1 = new TestAction;
+    TestAction *a2 = new TestAction;
+    dbg_mi::ActionsMap actions;
+
+    actions.Add(a1);
+    actions.Add(a2);
+
+    CHECK_EQUAL(1, a1->GetID());
+    CHECK_EQUAL(2, a2->GetID());
 }
 
 struct ActionsMapFixture
@@ -305,6 +372,7 @@ struct ActionsMapFixture
     {
         action = new TestAction(&action_destroyed);
         actions_map.Add(action);
+        action->SetID(142);
     }
 
     dbg_mi::ActionsMap actions_map;
@@ -329,6 +397,34 @@ TEST_FIXTURE(ActionsMapFixture, ActionDestroyed)
     action->Finish();
     actions_map.Run(exec);
     CHECK(action_destroyed);
+}
+
+TEST_FIXTURE(ActionsMapFixture, ActionExecute)
+{
+    action->Execute(wxT("-break-insert main.cpp:10"));
+    action->Execute(wxT("-break-insert main.cpp:20"));
+    actions_map.Run(exec);
+    ProcessOutputTestHelperSimple(exec);
+    ProcessOutputTestHelperSimple(exec);
+}
+
+TEST_FIXTURE(ActionsMapFixture, ActionExecuteAndFinish)
+{
+    action->Execute(wxT("-break-insert main.cpp:10"));
+    action->Execute(wxT("-break-insert main.cpp:20"));
+    action->Finish();
+    actions_map.Run(exec);
+    CHECK(ProcessOutputTestHelperSimple(exec));
+    CHECK(ProcessOutputTestHelperSimple(exec));
+}
+
+TEST_FIXTURE(ActionsMapFixture, ActionExecuteCheckIDs)
+{
+    action->Execute(wxT("-exec-run"));
+    action->Execute(wxT("-exec-run"));
+    actions_map.Run(exec);
+    CHECK(ProcessOutputTestResult(exec, dbg_mi::CommandID(action->GetID(), 0), wxT("^running")));
+    CHECK(ProcessOutputTestResult(exec, dbg_mi::CommandID(action->GetID(), 1), wxT("^running")));
 }
 
 //TEST(Dispatcher)

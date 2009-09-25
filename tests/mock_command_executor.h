@@ -19,6 +19,11 @@ public:
     {
     }
 
+    virtual void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
+    {
+        DoExecute(id, cmd);
+    }
+
     virtual wxString GetOutput() { return m_result; }
     virtual bool HasOutput() const { return m_results.size() > 0; }
 
@@ -46,14 +51,25 @@ public:
             delete parser;
             parser = NULL;
         }
+        printf(">>[%s]>>%s<\n", r.id.ToString().utf8_str().data(), r.output.utf8_str().data());
+
         m_results.pop_front();
         return parser;
     }
 protected:
     virtual dbg_mi::CommandID DoExecute(wxString const &cmd)
     {
+        dbg_mi::CommandID id(1, m_last++);
+        if(DoExecute(id, cmd))
+            return id;
+        else
+            return dbg_mi::CommandID();
+    }
+
+    bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd)
+    {
         Result r;
-        r.id = dbg_mi::CommandID(1, m_last++);
+        r.id = id;
         if(cmd == wxT("-exec-run"))
         {
             r.output = wxT("^running");
@@ -72,12 +88,11 @@ protected:
                 m_result = r.id.ToString() + r.output;
                 m_results.push_back(r);
             }
-            return r.id;
+            return true;
         }
         else
-            return dbg_mi::CommandID();
+            return false;
     }
-
 private:
     wxString m_result;
     int32_t m_last;

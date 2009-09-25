@@ -218,16 +218,33 @@ bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_st
 
 class Action
 {
-public:
-    typedef std::deque<wxString> PendingCommands;
+//public:
+    struct Command
+    {
+        Command() {}
+        Command(wxString const &string_, int id_) :
+            string(string_),
+            id(id_)
+        {
+        }
+
+        wxString string;
+        int id;
+    };
+    typedef std::deque<Command> PendingCommands;
 public:
     Action() :
+        m_id(-1),
+        m_last_command_id(0),
         m_started(false),
         m_finished(false)
     {
     }
 
     virtual ~Action() {}
+
+    void SetID(int id) { m_id = id; }
+    int GetID() const { return m_id; }
 
     void Start()
     {
@@ -243,20 +260,23 @@ public:
     bool Started() const { return m_started; }
     bool Finished() const { return m_finished; }
 
-    void Execute(wxString const &command)
+    int Execute(wxString const &command)
     {
-        m_pending_commands.push_back(command);
+        m_pending_commands.push_back(Command(command, m_last_command_id));
+        return m_last_command_id++;
     }
 
     int GetPendingCommandsCount() const { return m_pending_commands.size(); }
     bool HasPendingCommands() const { return !m_pending_commands.empty(); }
 
-    wxString PopPendingCommand()
+    wxString PopPendingCommand(CommandID &id)
     {
         assert(HasPendingCommands());
-        wxString cmd = m_pending_commands.front();
+        Command cmd = m_pending_commands.front();
         m_pending_commands.pop_front();
-        return cmd;
+
+        id = CommandID(GetID(), cmd.id);
+        return cmd.string;
     }
 
 
@@ -266,6 +286,8 @@ protected:
     virtual void OnStart() = 0;
 private:
     PendingCommands m_pending_commands;
+    int m_id;
+    int m_last_command_id;
     bool m_started;
     bool m_finished;
 };
@@ -283,6 +305,8 @@ public:
         return DoExecute(cmd);
     }
 
+    virtual void ExecuteSimple(CommandID const &id, wxString const &cmd) = 0;
+
     virtual wxString GetOutput() = 0;
     virtual bool HasOutput() const = 0;
     virtual bool ProcessOutput(wxString const &output) = 0;
@@ -296,6 +320,7 @@ protected:
 class ActionsMap
 {
 public:
+    ActionsMap();
     ~ActionsMap();
     void Add(Action *action);
     bool Empty() const { return m_actions.empty(); }
@@ -304,6 +329,7 @@ private:
     typedef std::deque<Action*> Actions;
 
     Actions m_actions;
+    int m_last_id;
 };
 
 class CommandResultMap

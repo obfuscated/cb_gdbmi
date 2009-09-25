@@ -383,6 +383,11 @@ bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map)
     return true;
 }
 
+ActionsMap::ActionsMap() :
+    m_last_id(1)
+{
+}
+
 ActionsMap::~ActionsMap()
 {
     for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
@@ -391,6 +396,7 @@ ActionsMap::~ActionsMap()
 
 void ActionsMap::Add(Action *action)
 {
+    action->SetID(m_last_id++);
     m_actions.push_back(action);
 }
 
@@ -406,18 +412,19 @@ void ActionsMap::Run(CommandExecutor &executor)
         {
             action.Start();
         }
+        while(action.HasPendingCommands())
+        {
+            CommandID id;
+            wxString const &command = action.PopPendingCommand(id);
+            executor.ExecuteSimple(id, command);
+        }
+
         if(action.Finished())
         {
             Actions::iterator del_it = it;
             --it;
             delete *del_it;
             m_actions.erase(del_it);
-        }
-
-        while(action.HasPendingCommands())
-        {
-            wxString const &command = action.PopPendingCommand();
-            executor.Execute(command);
         }
     }
 }
