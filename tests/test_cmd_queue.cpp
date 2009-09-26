@@ -27,7 +27,7 @@
 // test splitting dbg output to CommandID and result string
 // execute commands inside action derivates or some user code
 // add actions to CommandExecutor
-/// notification should go to some global place
+// notification should go to some global place
 // extract actions from the CommandExecutor to ActionsMap
 // remove actions from the ActionsMap when they have finished
 // processes commands for finished actions
@@ -35,6 +35,9 @@
 // add ids to actions
 // action ids should be set automatically
 // associate CommandIDs to the commands executed for every action
+// CommandID getters for action id and command id
+// find action in actions_map
+/// make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
 
 TEST(CommnadIDToString)
 {
@@ -67,6 +70,18 @@ TEST(CommandIDOutputOperator)
     s << id;
 
     CHECK(s.str() == id.ToString().utf8_str().data());
+}
+
+TEST(CommandIDGetActionID)
+{
+    dbg_mi::CommandID id(125, 0);
+    CHECK_EQUAL(125, id.GetActionID());
+}
+
+TEST(CommandIDGetCommandID)
+{
+    dbg_mi::CommandID id(125, 23);
+    CHECK_EQUAL(23, id.GetCommandID());
 }
 
 TEST(ExecuteCommand)
@@ -346,11 +361,11 @@ TEST(ActionInterfaceExecuteCommandID)
     TestAction a;
     a.SetID(10);
 
-    int id1 = a.Execute(wxT("-exec-run"));
-    int id2 = a.Execute(wxT("-exec-next"));
+    dbg_mi::CommandID const &id1 = a.Execute(wxT("-exec-run"));
+    dbg_mi::CommandID const &id2 = a.Execute(wxT("-exec-next"));
 
-    CHECK_EQUAL(0, id1);
-    CHECK_EQUAL(1, id2);
+    CHECK_EQUAL(dbg_mi::CommandID(a.GetID(), 0), id1);
+    CHECK_EQUAL(dbg_mi::CommandID(a.GetID(), 1), id2);
 }
 
 TEST(ActionMapAutomaticActionID)
@@ -372,13 +387,14 @@ struct ActionsMapFixture
     {
         action = new TestAction(&action_destroyed);
         actions_map.Add(action);
-        action->SetID(142);
+        actions_id = action->GetID();
     }
 
     dbg_mi::ActionsMap actions_map;
     TestAction *action;
     MockCommandExecutor exec;
     bool action_destroyed;
+    int actions_id;
 };
 
 TEST_FIXTURE(ActionsMapFixture, Empty)
@@ -420,6 +436,7 @@ TEST_FIXTURE(ActionsMapFixture, ActionExecuteAndFinish)
 
 TEST_FIXTURE(ActionsMapFixture, ActionExecuteCheckIDs)
 {
+    action->SetID(142);
     action->Execute(wxT("-exec-run"));
     action->Execute(wxT("-exec-run"));
     actions_map.Run(exec);
@@ -427,17 +444,84 @@ TEST_FIXTURE(ActionsMapFixture, ActionExecuteCheckIDs)
     CHECK(ProcessOutputTestResult(exec, dbg_mi::CommandID(action->GetID(), 1), wxT("^running")));
 }
 
-//TEST(Dispatcher)
-//{
-//    MockCommandExecutor exec;
-//
-//    TestAction action1;
-//    TestAction action2;
-//
-//    action1.Execute(wxT("-break-insert main.cpp:10"));
-//    action1.Execute(wxT("-break-insert main.cpp:20"));
-//
-//    action2.Execute(wxT("-exec-run"));
-//
-//    exec.
-//}
+
+TEST_FIXTURE(ActionsMapFixture, ActionExecuteCheckIDs2)
+{
+    dbg_mi::CommandID id1 = action->Execute(wxT("-exec-run"));
+    dbg_mi::CommandID id2 = action->Execute(wxT("-exec-run"));
+    actions_map.Run(exec);
+    CHECK(ProcessOutputTestResult(exec, id1, wxT("^running")));
+    CHECK(ProcessOutputTestResult(exec, id2, wxT("^running")));
+}
+
+TEST_FIXTURE(ActionsMapFixture, FindAction)
+{
+    dbg_mi::Action *found_action = actions_map.Find(actions_id);
+
+    CHECK_EQUAL(action, found_action);
+}
+
+struct DispatchedAction : public dbg_mi::Action
+{
+public:
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, wxString const &output)
+    {
+        dispatched_id = id;
+    }
+protected:
+    virtual void OnStart()
+    {
+    }
+
+public:
+    dbg_mi::CommandID dispatched_id;
+};
+
+struct DispatchOnNotify
+{
+    DispatchOnNotify() : notification(false)
+    {
+    }
+
+    void operator()(dbg_mi::ResultParser const &parser)
+    {
+        if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+            notification = true;
+    }
+
+    bool notification;
+};
+
+struct DispatcherFixture
+{
+    DispatcherFixture()
+    {
+        action = new DispatchedAction;
+        actions_map.Add(action);
+        id = action->Execute(wxT("-exec-run"));
+
+        actions_map.Run(exec);
+        exec.ProcessOutput(wxT("00000000001*stopped"));
+    }
+
+    dbg_mi::ActionsMap actions_map;
+    MockCommandExecutor exec;
+    bool action_destroyed;
+    dbg_mi::CommandID id;
+    DispatchedAction *action;
+    DispatchOnNotify on_notify;
+};
+
+
+TEST_FIXTURE(DispatcherFixture, Main)
+{
+    CHECK(dbg_mi::Dispatch(exec, actions_map, on_notify));
+    CHECK_EQUAL(id, action->dispatched_id);
+}
+
+TEST_FIXTURE(DispatcherFixture, Notifications)
+{
+    CHECK(dbg_mi::Dispatch(exec, actions_map, on_notify));
+    CHECK_EQUAL(id, action->dispatched_id);
+    CHECK(on_notify.notification);
+}

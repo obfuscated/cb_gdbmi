@@ -10,7 +10,6 @@
 #include "cmd_result_parser.h"
 #include "events.h"
 */
-#include "cmd_result_parser.h"
 
 namespace dbg_mi
 {
@@ -400,6 +399,26 @@ void ActionsMap::Add(Action *action)
     m_actions.push_back(action);
 }
 
+Action* ActionsMap::Find(int id)
+{
+    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+    {
+        if((*it)->GetID() == id)
+            return *it;
+    }
+    return NULL;
+}
+
+Action const * ActionsMap::Find(int id) const
+{
+    for(Actions::const_iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+    {
+        if((*it)->GetID() == id)
+            return *it;
+    }
+    return NULL;
+}
+
 void ActionsMap::Run(CommandExecutor &executor)
 {
     if(Empty())
@@ -428,5 +447,4 @@ void ActionsMap::Run(CommandExecutor &executor)
         }
     }
 }
-
 } // namespace dbg_mi

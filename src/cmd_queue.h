@@ -9,6 +9,8 @@
 
 
 #include <wx/string.h>
+
+#include "cmd_result_parser.h"
 /*
 #include <wx/thread.h>
 
@@ -157,12 +159,10 @@ private:
 };
 */
 
-class ResultParser;
-
 class CommandID
 {
 public:
-    CommandID(int32_t action = -1, int32_t command_in_action = -1) :
+    explicit CommandID(int32_t action = -1, int32_t command_in_action = -1) :
         m_action(action),
         m_command_in_action(command_in_action)
     {
@@ -194,6 +194,16 @@ public:
     wxString ToString() const
     {
         return wxString::Format(wxT("%d%010d"), m_action, m_command_in_action);
+    }
+
+    int32_t GetActionID() const
+    {
+        return m_action;
+    }
+
+    int32_t GetCommandID() const
+    {
+        return m_command_in_action;
     }
 
 private:
@@ -260,10 +270,10 @@ public:
     bool Started() const { return m_started; }
     bool Finished() const { return m_finished; }
 
-    int Execute(wxString const &command)
+    CommandID Execute(wxString const &command)
     {
         m_pending_commands.push_back(Command(command, m_last_command_id));
-        return m_last_command_id++;
+        return CommandID(m_id, m_last_command_id++);
     }
 
     int GetPendingCommandsCount() const { return m_pending_commands.size(); }
@@ -322,7 +332,11 @@ class ActionsMap
 public:
     ActionsMap();
     ~ActionsMap();
+
     void Add(Action *action);
+    Action* Find(int id);
+    Action const * Find(int id) const;
+
     bool Empty() const { return m_actions.empty(); }
     void Run(CommandExecutor &executor);
 private:
@@ -346,6 +360,36 @@ private:
 
 bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map);
 
+template<typename OnNotify>
+bool Dispatch(CommandExecutor &exec, ActionsMap &actions_map, OnNotify &on_notify)
+{
+    while(exec.HasOutput())
+    {
+        CommandID id;
+        ResultParser *parser = exec.GetResult(id);
+
+        if(!parser)
+            return false;
+
+        switch(parser->GetResultType())
+        {
+        case ResultParser::Result:
+            {
+                Action *action = actions_map.Find(id.GetActionID());
+                if(action)
+                    action->OnCommandOutput(id, wxT(""));
+            }
+            break;
+        case ResultParser::TypeUnknown:
+            break;
+        default:
+            on_notify(*parser);
+        }
+
+        delete parser;
+    }
+    return true;
+}
 
 } // namespace dbg_mi
 
