@@ -18,7 +18,7 @@
 // map CommandID <-> output from the command
 // the output should be parsed in a ResultParser
 // test the CommandResultMap interface [not needed]
-/// hash function for CommandID
+// hash function for CommandID [not needed]
 // CommandID operator <<
 // refactor the CommnandResultMap
 // replace CommnandResultMap with some kind of CommandResultDispatcher
@@ -38,7 +38,7 @@
 // CommandID getters for action id and command id
 // find action in actions_map
 // make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
-/// remove CommandResultMap
+// remove CommandResultMap
 /// add lazy ResultParser evaluation
 
 TEST(CommnadIDToString)

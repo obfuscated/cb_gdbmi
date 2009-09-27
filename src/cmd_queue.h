@@ -216,14 +216,6 @@ inline std::ostream& operator<< (std::ostream& s, CommandID const &id)
     return s;
 }
 
-struct CommandIDHash
-{
-    std::size_t operator()(CommandID const &id) const
-    {
-        return 0;
-    }
-};
-
 bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_str);
 
 class Action
