@@ -213,7 +213,9 @@ bool ProcessOutputTestHelper(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID co
     dbg_mi::ResultParser *parser;
 
     parser = exec.GetResult(result_id);
-    return parser && result_id != dbg_mi::CommandID() && result_id == id;
+    bool result = parser && result_id != dbg_mi::CommandID() && result_id == id;
+    delete parser;
+    return result;
 }
 
 bool ProcessOutputTestHelperSimple(dbg_mi::CommandExecutor &exec)
@@ -223,7 +225,9 @@ bool ProcessOutputTestHelperSimple(dbg_mi::CommandExecutor &exec)
 
     dbg_mi::CommandID result_id;
     dbg_mi::ResultParser *parser = exec.GetResult(result_id);
-    return parser && result_id != dbg_mi::CommandID();
+    bool result = parser && result_id != dbg_mi::CommandID();
+    delete parser;
+    return result;
 }
 
 bool ProcessOutputTestResult(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID const &id, wxString const &result)
@@ -235,7 +239,9 @@ bool ProcessOutputTestResult(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID co
     dbg_mi::ResultParser *parser;
 
     parser = exec.GetResult(result_id);
-    return parser && result_id != dbg_mi::CommandID() && result_id == id;
+    bool temp_result = parser && result_id != dbg_mi::CommandID() && result_id == id;
+    delete parser;
+    return temp_result;
 }
 
 TEST(DebuggerOutputParallel)

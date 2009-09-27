@@ -413,7 +413,7 @@ TEST_FIXTURE(TestList, Status)
 TEST_FIXTURE(TestList, DebugString)
 {
     wxString s = result.MakeDebugString();
-    CHECK(s == _T("{a=[5,6,7]}"));
+    CHECK_EQUAL(wxT("{a=[5,6,7]}"), s);
 }
 
 TEST_FIXTURE(TestList, ListValue1)

@@ -27,12 +27,14 @@ public:
     {
     }
 
+    ~ResultValue();
+
     void SetName(wxString const &name) { m_name = name; }
-    void SetSimpleValue(wxString const &value) { m_value.simple = value; }
+    void SetSimpleValue(wxString const &value) { assert(m_type == Simple); m_value.simple = value; }
 
 
     Type GetType() const { return m_type; }
-    void SetType(Type type) { m_type = type; }
+    void SetType(Type type);
     wxString const & GetName() const { return m_name; }
 
     wxString const & GetSimpleValue() const { assert(m_type == Simple); return m_value.simple; }

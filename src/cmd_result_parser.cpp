@@ -100,6 +100,7 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
             {
                 if(step == Name)
                 {
+                    curr_value->SetType(ResultValue::Simple);
                     curr_value->SetSimpleValue(curr_value->GetName());
                     curr_value->SetName(_T(""));
                 }
@@ -178,8 +179,13 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
             break;
 
         case Token::TupleEnd:
-            if(!curr_value || tuple.GetType() != ResultValue::Tuple || !want_closing_brace)
+            if(!curr_value)
                 return false;
+            if(tuple.GetType() != ResultValue::Tuple || !want_closing_brace)
+            {
+                delete curr_value;
+                return false;
+            }
             if(step != Value)
             {
                 delete curr_value;
@@ -190,10 +196,17 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
             return true;
 
         case Token::ListEnd:
-            if(!curr_value || tuple.GetType() != ResultValue::Array || !want_closing_brace)
+            if(!curr_value)
                 return false;
+            if(tuple.GetType() != ResultValue::Array || !want_closing_brace)
+            {
+                delete curr_value;
+                return false;
+            }
+
             if(step == Name)
             {
+                curr_value->SetType(ResultValue::Simple);
                 curr_value->SetSimpleValue(curr_value->GetName());
                 curr_value->SetName(_T(""));
             }
@@ -206,6 +219,8 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
             start = pos + 1;
             tuple.SetTupleValue(curr_value);
             return true;
+        default:
+            assert(false);
         }
 
         pos = token.end;
@@ -237,6 +252,16 @@ bool ParseValue(wxString const &str, ResultValue &results, int start)
 {
     results.SetType(ResultValue::Tuple);
     return ParseTuple(str, start, results, false);
+}
+
+ResultValue::~ResultValue()
+{
+    for(Container::iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
+        delete *it;
+}
+void ResultValue::SetType(Type type)
+{
+    m_type = type;
 }
 
 void ResultValue::SetTupleValue(ResultValue *value)

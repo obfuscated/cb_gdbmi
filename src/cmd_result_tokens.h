@@ -16,10 +16,12 @@ struct Token
         ListEnd,
         Equal,
         String,
-        Comma
+        Comma,
+        Undefined
     };
 
-    Token()
+    Token() :
+        type(Undefined)
     {
     }
     Token(int start_, int end_, Type type_) :
