@@ -7,21 +7,21 @@
 
 // Test List
 //--------------------------------
-/// have Actions that execute commands
-/// execute Commands
-/// handle notifications from the debugger
+// have Actions that execute commands
+// execute Commands
+// handle notifications from the debugger
 // need a commnad executor, so we can execute commands
 // every new command should have a unique id
 // need a command id class
 // compare CommandID
 // need an increment operator in the CommandID
 // map CommandID <-> output from the command
-/// the output should be parsed in a ResultParser
-/// test the CommandResultMap interface
+// the output should be parsed in a ResultParser
+// test the CommandResultMap interface [not needed]
 /// hash function for CommandID
 // CommandID operator <<
 // refactor the CommnandResultMap
-/// replace CommnandResultMap with some kind of CommandResultDispatcher
+// replace CommnandResultMap with some kind of CommandResultDispatcher
 // add tests for processing the output from the debugger
 // introduce some kind of action class
 // test splitting dbg output to CommandID and result string
@@ -38,6 +38,8 @@
 // CommandID getters for action id and command id
 // find action in actions_map
 // make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
+/// remove CommandResultMap
+/// add lazy ResultParser evaluation
 
 TEST(CommnadIDToString)
 {
@@ -112,82 +114,82 @@ TEST(ExecuteGetResult)
     delete result;
 }
 
-struct CommandResultMapInterfaceFixture
-{
-    CommandResultMapInterfaceFixture()
-    {
-        p1 = new dbg_mi::ResultParser;
-        p2 = new dbg_mi::ResultParser;
-        p3 = new dbg_mi::ResultParser;
-
-        id1 = dbg_mi::CommandID(1, 1);
-        id2 = dbg_mi::CommandID(1, 2);
-        id3 = dbg_mi::CommandID(1, 3);
-
-        status = map.Set(id1, p1);
-        status &= map.Set(id2, p2);
-        status &= map.Set(id3, p3);
-    }
-
-    dbg_mi::CommandResultMap map;
-    dbg_mi::ResultParser *p1, *p2, *p3;
-    dbg_mi::CommandID id1, id2, id3;
-
-    bool status;
-};
-
-TEST_FIXTURE(CommandResultMapInterfaceFixture, Status)
-{
-    CHECK(status);
-}
-
-TEST_FIXTURE(CommandResultMapInterfaceFixture, Count)
-{
-    CHECK_EQUAL(3, map.GetCount());
-}
-
-TEST_FIXTURE(CommandResultMapInterfaceFixture, HasResults)
-{
-    CHECK(map.HasResult(id1) && map.HasResult(id2) && map.HasResult(id3));
-}
-
-//TEST_FIXTURE(CommandResultMapInterfaceFixture, GetResultForID)
+//struct CommandResultMapInterfaceFixture
 //{
-//    dbg_mi::ResultParser *p1 = map.GetResult(id1);
+//    CommandResultMapInterfaceFixture()
+//    {
+//        p1 = new dbg_mi::ResultParser;
+//        p2 = new dbg_mi::ResultParser;
+//        p3 = new dbg_mi::ResultParser;
+//
+//        id1 = dbg_mi::CommandID(1, 1);
+//        id2 = dbg_mi::CommandID(1, 2);
+//        id3 = dbg_mi::CommandID(1, 3);
+//
+//        status = map.Set(id1, p1);
+//        status &= map.Set(id2, p2);
+//        status &= map.Set(id3, p3);
+//    }
+//
+//    dbg_mi::CommandResultMap map;
+//    dbg_mi::ResultParser *p1, *p2, *p3;
+//    dbg_mi::CommandID id1, id2, id3;
+//
+//    bool status;
+//};
+//
+//TEST_FIXTURE(CommandResultMapInterfaceFixture, Status)
+//{
+//    CHECK(status);
 //}
+//
+//TEST_FIXTURE(CommandResultMapInterfaceFixture, Count)
+//{
+//    CHECK_EQUAL(3, map.GetCount());
+//}
+//
+//TEST_FIXTURE(CommandResultMapInterfaceFixture, HasResults)
+//{
+//    CHECK(map.HasResult(id1) && map.HasResult(id2) && map.HasResult(id3));
+//}
+//
+////TEST_FIXTURE(CommandResultMapInterfaceFixture, GetResultForID)
+////{
+////    dbg_mi::ResultParser *p1 = map.GetResult(id1);
+////}
 
-struct CommandResultMapFixture
-{
-    CommandResultMapFixture()
-    {
-        id1 = exec.Execute(wxT("-break-insert main.cpp:400"));
-        id2 = exec.Execute(wxT("-exec-run"));
-
-        result = dbg_mi::ProcessOutput(exec, map);
-    }
-
-    MockCommandExecutor exec;
-    dbg_mi::CommandID id1;
-    dbg_mi::CommandID id2;
-    dbg_mi::CommandResultMap map;
-
-    bool result;
-};
-
-TEST_FIXTURE(CommandResultMapFixture, TestStatus)
-{
-    CHECK(result);
-}
-
-TEST_FIXTURE(CommandResultMapFixture, TestCount)
-{
-    CHECK_EQUAL(2, map.GetCount());
-}
-
-TEST_FIXTURE(CommandResultMapFixture, TestHasResult)
-{
-    CHECK(map.HasResult(id1) && map.HasResult(id2));
-}
+//struct CommandResultMapFixture
+//{
+//    CommandResultMapFixture()
+//    {
+//        id1 = exec.Execute(wxT("-break-insert main.cpp:400"));
+//        id2 = exec.Execute(wxT("-exec-run"));
+//
+//        result = dbg_mi::ProcessOutput(exec, map);
+//    }
+//
+//    MockCommandExecutor exec;
+//    dbg_mi::CommandID id1;
+//    dbg_mi::CommandID id2;
+//    dbg_mi::CommandResultMap map;
+//
+//    bool result;
+//};
+//
+//TEST_FIXTURE(CommandResultMapFixture, TestStatus)
+//{
+//    CHECK(result);
+//}
+//
+//TEST_FIXTURE(CommandResultMapFixture, TestCount)
+//{
+//    CHECK_EQUAL(2, map.GetCount());
+//}
+//
+//TEST_FIXTURE(CommandResultMapFixture, TestHasResult)
+//{
+//    CHECK(map.HasResult(id1) && map.HasResult(id2));
+//}
 
 
 TEST(TestParseDebuggerOutputLine)
@@ -526,13 +528,13 @@ struct DispatcherFixture
 
 TEST_FIXTURE(DispatcherFixture, Main)
 {
-    CHECK(dbg_mi::Dispatch(exec, actions_map, on_notify));
+    CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
     CHECK_EQUAL(id, action->dispatched_id);
 }
 
 TEST_FIXTURE(DispatcherFixture, Notifications)
 {
-    CHECK(dbg_mi::Dispatch(exec, actions_map, on_notify));
+    CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
     CHECK_EQUAL(id, action->dispatched_id);
     CHECK(on_notify.notification);
 }

@@ -228,7 +228,6 @@ bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_st
 
 class Action
 {
-//public:
     struct Command
     {
         Command() {}
@@ -346,22 +345,8 @@ private:
     int m_last_id;
 };
 
-class CommandResultMap
-{
-public:
-    ~CommandResultMap();
-    bool Set(CommandID const &id, ResultParser *parser);
-    int GetCount() const;
-    bool HasResult(CommandID const &id) const;
-private:
-    typedef std::tr1::unordered_map<CommandID, ResultParser*, CommandIDHash> Map;
-    Map m_map;
-};
-
-bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map);
-
 template<typename OnNotify>
-bool Dispatch(CommandExecutor &exec, ActionsMap &actions_map, OnNotify &on_notify)
+bool DispatchResults(CommandExecutor &exec, ActionsMap &actions_map, OnNotify &on_notify)
 {
     while(exec.HasOutput())
     {

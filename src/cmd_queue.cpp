@@ -340,48 +340,6 @@ bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_st
     return true;
 }
 
-CommandResultMap::~CommandResultMap()
-{
-    for(Map::iterator it = m_map.begin(); it != m_map.end(); ++it)
-        delete it->second;
-}
-bool CommandResultMap::Set(CommandID const &id, ResultParser *parser)
-{
-    if(HasResult(id))
-        return false;
-    else
-    {
-        m_map[id] = parser;
-        return true;
-    }
-}
-int CommandResultMap::GetCount() const
-{
-    return m_map.size();
-}
-bool CommandResultMap::HasResult(CommandID const &id) const
-{
-    return m_map.find(id) != m_map.end();
-}
-
-bool ProcessOutput(CommandExecutor &executor, CommandResultMap &result_map)
-{
-    while(executor.HasOutput())
-    {
-        dbg_mi::CommandID result_id;
-        dbg_mi::ResultParser *result = executor.GetResult(result_id);
-
-        if(result)
-        {
-            if(!result_map.Set(result_id, result))
-                delete result;
-        }
-        else
-            return false;
-    }
-    return true;
-}
-
 ActionsMap::ActionsMap() :
     m_last_id(1)
 {
