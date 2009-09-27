@@ -698,3 +698,81 @@ TEST(TestResultParser_Running)
     CHECK(parser.Parse(wxT("running"), dbg_mi::ResultParser::Result));
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST(ResultValueAssigmentOperator)
+{
+    dbg_mi::ResultValue v1, v2;
+
+    dbg_mi::ParseValue(_T("a = 5, b = 6"), v1);
+    v2 = v1;
+
+    CHECK(v1.MakeDebugString() == v2.MakeDebugString());
+}
+
+TEST(ResultValueCopyCtor)
+{
+    dbg_mi::ResultValue v1;
+
+    dbg_mi::ParseValue(_T("a = 5, b = 6"), v1);
+    dbg_mi::ResultValue v2(v1);
+
+    CHECK(v1.MakeDebugString() == v2.MakeDebugString());
+}
+
+TEST(ResultValueEquallityOperator)
+{
+    dbg_mi::ResultValue v1;
+    dbg_mi::ParseValue(_T("a = 5, b = 6"), v1);
+    dbg_mi::ResultValue v2(v1);
+
+    CHECK(v1 == v2);
+}
+
+TEST(ResultValueInequallityOperator)
+{
+    dbg_mi::ResultValue v1, v2;
+    dbg_mi::ParseValue(_T("a = 5, b = 6"), v1);
+    dbg_mi::ParseValue(_T("a = 5, c = 6"), v1);
+
+    CHECK(v1 != v2);
+}
+
+TEST(ResultParserAssigmentOperator)
+{
+    dbg_mi::ResultParser p1, p2;
+    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    p2 = p1;
+
+    CHECK(r1);
+    CHECK(p1.MakeDebugString() == p2.MakeDebugString());
+}
+TEST(ResultParserCopyCtor)
+{
+    dbg_mi::ResultParser p1;
+    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    dbg_mi::ResultParser p2(p1);
+
+    CHECK(r1);
+    CHECK(p1.MakeDebugString() == p2.MakeDebugString());
+}
+
+TEST(ResultParserEquallityOperator)
+{
+    dbg_mi::ResultParser p1, p2;
+    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r2 = p2.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+
+    CHECK(r1 && r2);
+    CHECK(p1 == p2);
+}
+
+TEST(ResultParserInequallityOperator)
+{
+    dbg_mi::ResultParser p1, p2;
+    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r2 = p2.Parse(_T("done,a = 5, c = 6"), dbg_mi::ResultParser::Result);
+
+    CHECK(r1 && r2);
+    CHECK(p1 != p2);
+}
+

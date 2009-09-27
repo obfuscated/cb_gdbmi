@@ -1,8 +1,7 @@
 #ifndef _DEBUGGER_MI_GDB_CMD_RESULT_PARSER_H_
 #define _DEBUGGER_MI_GDB_CMD_RESULT_PARSER_H_
 
-#include <deque>
-#include <map>
+#include <algorithm>
 #include <vector>
 #include <wx/string.h>
 
@@ -11,6 +10,13 @@ namespace dbg_mi
 
 class ResultValue
 {
+    struct Equal
+    {
+        bool operator()(ResultValue *l, ResultValue *r) const
+        {
+            return *l == *r;
+        }
+    };
 public:
     typedef std::vector<ResultValue*> Container;
     enum Type
@@ -20,14 +26,35 @@ public:
         Tuple
     };
 public:
-    ResultValue() {}
+    ResultValue() :
+        m_type(Simple)
+    {
+    }
     ResultValue(wxChar const *name, Type type) :
         m_name(name),
         m_type(type)
     {
     }
 
-    ~ResultValue();
+    bool operator ==(ResultValue const &o) const
+    {
+        if(m_name == o.m_name && m_type == o.m_type)
+        {
+            switch(m_type)
+            {
+            case Simple:
+                return m_value.simple == o.m_value.simple;
+            case Array:
+            case Tuple:
+                return std::equal(m_value.tuple.begin(), m_value.tuple.end(), o.m_value.tuple.begin(), Equal());
+                break;
+            }
+        }
+        return false;
+    }
+    bool operator !=(ResultValue const &o) const { return !(*this == o); }
+
+public:
 
     void SetName(wxString const &name) { m_name = name; }
     void SetSimpleValue(wxString const &value) { assert(m_type == Simple); m_value.simple = value; }
@@ -72,6 +99,34 @@ private:
     {
         wxString simple;
         Container tuple;
+
+        friend void swap(Value &lhs, Value &rhs)
+        {
+            lhs.simple.swap(rhs.simple);
+            std::swap(lhs.tuple, rhs.tuple);
+        }
+
+        Value() {}
+        Value(Value const &v) :
+            simple(v.simple)
+        {
+            for(Container::const_iterator it = v.tuple.begin(); it != v.tuple.end(); ++it)
+            {
+                tuple.push_back(new ResultValue(**it));
+            }
+        }
+        ~Value()
+        {
+            for(Container::const_iterator it = tuple.begin(); it != tuple.end(); ++it)
+                delete *it;
+        }
+
+        Value const& operator =(Value v)
+        {
+            swap(*this, v);
+            return *this;
+        }
+
     } m_value;
 };
 
@@ -98,6 +153,14 @@ public:
         ClassExit,
         ClassStopped
     };
+
+public:
+
+    bool operator ==(ResultParser const &o) const
+    {
+        return m_type == o.m_type && m_class == o.m_class && m_value == o.m_value;
+    }
+    bool operator !=(ResultParser const &o) const { return !(*this == o); }
 
 public:
     bool Parse(wxString const &str, Type result_type);

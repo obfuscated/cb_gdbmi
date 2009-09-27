@@ -37,7 +37,7 @@
 // associate CommandIDs to the commands executed for every action
 // CommandID getters for action id and command id
 // find action in actions_map
-/// make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
+// make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
 
 TEST(CommnadIDToString)
 {
@@ -290,15 +290,17 @@ struct TestAction : public dbg_mi::Action
         on_start_called = true;
     }
 
-    virtual void OnCommandOutput(dbg_mi::CommandID const &id, wxString const &output_)
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
         command_id = id;
-        output = output_;
+//        output = result.MakeDebugString();
+        this->result = result;
         Finish();
     }
 
     dbg_mi::CommandID command_id;
-    wxString output;
+    //wxString output;
+    dbg_mi::ResultParser result;
     bool on_start_called;
 private:
     bool *m_destroyed;
@@ -335,10 +337,13 @@ TEST(ActionInterfaceOnCmdOutput)
     action.Start();
 
     dbg_mi::CommandID id(100, 1);
+    dbg_mi::ResultParser parser;
+    parser.Parse(wxT("running"), dbg_mi::ResultParser::Result);
     wxString output = wxT("^running");
-    action.OnCommandOutput(id, output);
 
-    CHECK(action.command_id == id && action.output == output);
+    action.OnCommandOutput(id, parser);
+
+    CHECK(action.command_id == id && action.result == parser);
     CHECK(action.Finished());
 }
 
@@ -470,7 +475,7 @@ TEST_FIXTURE(ActionsMapFixture, FindAction)
 struct DispatchedAction : public dbg_mi::Action
 {
 public:
-    virtual void OnCommandOutput(dbg_mi::CommandID const &id, wxString const &output)
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
         dispatched_id = id;
     }
@@ -489,9 +494,9 @@ struct DispatchOnNotify
     {
     }
 
-    void operator()(dbg_mi::ResultParser const &parser)
+    void operator()(dbg_mi::ResultParser const &result)
     {
-        if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+        if(result.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
             notification = true;
     }
 

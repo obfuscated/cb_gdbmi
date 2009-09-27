@@ -254,11 +254,6 @@ bool ParseValue(wxString const &str, ResultValue &results, int start)
     return ParseTuple(str, start, results, false);
 }
 
-ResultValue::~ResultValue()
-{
-    for(Container::iterator it = m_value.tuple.begin(); it != m_value.tuple.end(); ++it)
-        delete *it;
-}
 void ResultValue::SetType(Type type)
 {
     m_type = type;

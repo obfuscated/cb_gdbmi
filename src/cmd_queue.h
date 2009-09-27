@@ -291,7 +291,7 @@ public:
 
 
 public:
-    virtual void OnCommandOutput(CommandID const &id, wxString const &output) = 0;
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result) = 0;
 protected:
     virtual void OnStart() = 0;
 private:
@@ -377,7 +377,7 @@ bool Dispatch(CommandExecutor &exec, ActionsMap &actions_map, OnNotify &on_notif
             {
                 Action *action = actions_map.Find(id.GetActionID());
                 if(action)
-                    action->OnCommandOutput(id, wxT(""));
+                    action->OnCommandOutput(id, *parser);
             }
             break;
         case ResultParser::TypeUnknown:
