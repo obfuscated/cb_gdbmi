@@ -4,160 +4,17 @@
 
 #include <deque>
 #include <ostream>
-#include <tr1/utility>
-#include <tr1/unordered_map>
-
 
 #include <wx/string.h>
 
 #include "cmd_result_parser.h"
 /*
 #include <wx/thread.h>
-
-
-
 class PipedProcess;
 */
 
 namespace dbg_mi
 {
-/*
-class ResultParser;
-
-class Command
-{
-public:
-    Command() :
-        m_id(0),
-        m_action_id(0),
-        m_wait_for_action(-1),
-        m_result(NULL)
-    {
-    }
-    ~Command();
-
-//    virtual void ParseOutput();
-
-public:
-    void SetID(int32_t id) { m_id = id; }
-    int32_t GetID() const { return m_id; }
-
-    void SetActionID(int32_t id) { m_action_id = id; }
-    int32_t GetActionID() const { return m_action_id; }
-
-    int64_t GetFullID() const { return (static_cast<int64_t>(m_action_id) << 32) + m_id; }
-
-    void SetWaitForAction(int32_t id) { m_wait_for_action = id; }
-    int32_t GetWaitForAction() const { return m_wait_for_action; }
-
-    void SetString(wxString const & command) { m_string = command; }
-    wxString const & GetString() const { return m_string; }
-
-    void SetResult(ResultParser *result) { m_result = result; }
-private:
-    wxString m_string;
-    int32_t m_id;
-    int32_t m_action_id;
-    int32_t m_wait_for_action;
-    ResultParser *m_result;
-};
-
-class CommandQueue;
-
-
-class Action
-{
-public:
-    Action() :
-        m_queue(NULL),
-        m_id(-1),
-        m_last_cmd_id(0),
-        m_wait_for_action(-1),
-        m_started(false)
-    {
-    }
-    virtual ~Action() {}
-
-
-    void MarkStarted();
-    int32_t QueueCommand(wxString const &cmd_string);
-    void Finish();
-
-    void SetCommandResult(int32_t cmd_id, ResultParser *parser);
-    ResultParser* GetCommandResult(int32_t cmd_id);
-
-    void SetID(int32_t id) { m_id = id; }
-    int32_t GetID() const { return m_id; }
-
-    void SetWaitForAction(int32_t id) { m_wait_for_action = id; }
-    int32_t GetWaitForAction() const { return m_wait_for_action; }
-
-    void SetCommandQueue(CommandQueue *queue) { m_queue = queue; }
-
-#ifdef TEST_PROJECT
-    CommandQueue* GetCommandQueue() const { return m_queue; }
-#endif
-    virtual void Start() = 0;
-    virtual void OnCommandResult(int32_t cmd_id) = 0;
-protected:
-    void Log(wxString const &s);
-    void DebugLog(wxString const &s);
-
-private:
-    typedef std::tr1::unordered_map<int32_t, ResultParser*> CommandResult;
-
-private:
-    CommandQueue    *m_queue;
-    CommandResult   m_command_results;
-    int32_t m_id;
-    int32_t m_last_cmd_id;
-    int32_t m_wait_for_action;
-    bool m_started;
-};
-
-
-class CommandQueue
-{
-public:
-    enum ExecutionType
-    {
-        Asynchronous,
-        Synchronous
-    };
-public:
-    CommandQueue();
-    ~CommandQueue();
-
-    void SetLogPages(int normal, int debug) { m_normal_log = normal; m_debug_log = debug; }
-
-    int64_t AddCommand(Command *command, bool generate_id);
-    void RunQueue(PipedProcess *process);
-    void AccumulateOutput(wxString const &output);
-
-    void AddAction(Action *action, ExecutionType exec_type);
-    void RemoveAction(Action *action);
-
-    void Log(wxString const & s);
-    void DebugLog(wxString const & s);
-
-private:
-    void ParseOutput();
-private:
-    typedef std::deque<Command*> Queue;
-    typedef std::tr1::unordered_map<int64_t, Command*> CommandMap;
-//    typedef std::tr1::unordered_map<int32_t, Action*> ActionContainer;
-    typedef std::deque<Action*> ActionContainer;
-
-    Queue           m_commands_to_execute;
-    CommandMap      m_active_commands;
-    ActionContainer m_active_actions;
-    int64_t         m_last_cmd_id;
-    int32_t         m_last_action_id;
-    wxMutex         m_lock;
-    int             m_normal_log, m_debug_log;
-    wxString        m_full_output;
-};
-*/
 
 class CommandID
 {
