@@ -411,7 +411,7 @@ bool ResultParser::Parse(wxString const &str, Type result_type)
 
     if(str[after_class_index] == _T(','))
         return ParseValue(str, m_value, after_class_index + 1);
-    else if(after_class_index != str.length())
+    else if(after_class_index != static_cast<int>(str.length()))
         return false;
     else
         return true;
