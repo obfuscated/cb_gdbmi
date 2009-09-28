@@ -95,7 +95,8 @@ public:
         m_id(-1),
         m_last_command_id(0),
         m_started(false),
-        m_finished(false)
+        m_finished(false),
+        m_wait_previous(false)
     {
     }
 
@@ -117,6 +118,9 @@ public:
 
     bool Started() const { return m_started; }
     bool Finished() const { return m_finished; }
+
+    void SetWaitPrevious(bool flag) { m_wait_previous = flag; }
+    bool GetWaitPrevious() const { return m_wait_previous; }
 
     CommandID Execute(wxString const &command)
     {
@@ -148,6 +152,7 @@ private:
     int m_last_command_id;
     bool m_started;
     bool m_finished;
+    bool m_wait_previous;
 };
 
 class CommandExecutor

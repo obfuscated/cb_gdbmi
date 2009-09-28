@@ -74,9 +74,14 @@ void ActionsMap::Run(CommandExecutor &executor)
 {
     if(Empty())
         return;
+    bool first = true;
     for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
     {
         Action &action = **it;
+
+        // test if we have a barrier action
+        if(action.GetWaitPrevious() && !first)
+            continue;
 
         if(!action.Started())
         {
@@ -91,11 +96,22 @@ void ActionsMap::Run(CommandExecutor &executor)
 
         if(action.Finished())
         {
-            Actions::iterator del_it = it;
-            --it;
-            delete *del_it;
-            m_actions.erase(del_it);
+            if(it == m_actions.begin())
+            {
+                delete *it;
+                m_actions.erase(it);
+                it = m_actions.begin();
+            }
+            else
+            {
+                Actions::iterator del_it = it;
+                --it;
+                delete *del_it;
+                m_actions.erase(del_it);
+            }
         }
+
+        first = false;
     }
 }
 } // namespace dbg_mi

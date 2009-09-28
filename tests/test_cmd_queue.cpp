@@ -42,8 +42,8 @@
 /// add lazy ResultParser evaluation
 // refactor the ResultParse::Parse interface
 /// add a metric to measure the time needed for a command to be executed
-/// add a way to tell a given action to way for the finishing of all previous actions in the ActionsMap
-/// rename ActionsMap to ActionsQueue
+// add a way to tell a given action to way for the finishing of all previous actions in the ActionsMap
+/// add logging
 
 TEST(CommnadIDToString)
 {
@@ -384,6 +384,14 @@ TEST(ActionInterfaceExecuteCommandID)
     CHECK_EQUAL(dbg_mi::CommandID(a.GetID(), 1), id2);
 }
 
+TEST(ActionInterfaceWaitPrevious)
+{
+    TestAction a;
+    CHECK(!a.GetWaitPrevious());
+    a.SetWaitPrevious(true);
+    CHECK(a.GetWaitPrevious());
+}
+
 TEST(ActionMapAutomaticActionID)
 {
     TestAction *a1 = new TestAction;
@@ -522,7 +530,6 @@ struct DispatcherFixture
 
     dbg_mi::ActionsMap actions_map;
     MockCommandExecutor exec;
-    bool action_destroyed;
     dbg_mi::CommandID id;
     DispatchedAction *action;
     DispatchOnNotify on_notify;
@@ -540,4 +547,77 @@ TEST_FIXTURE(DispatcherFixture, Notifications)
     CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
     CHECK_EQUAL(id, action->dispatched_id);
     CHECK(on_notify.notification);
+}
+
+struct DelayedDependencyAction : public dbg_mi::Action
+{
+public:
+    DelayedDependencyAction(bool &dependency_finished_) :
+        dependency_finished(dependency_finished_)
+    {
+    }
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
+    {
+        if(id.GetCommandID() == 2)
+        {
+            dependency_finished = true;
+            Finish();
+        }
+        else
+            Execute(wxT("-exec-run"));
+    }
+protected:
+    virtual void OnStart()
+    {
+        dependency_finished = false;
+        Execute(wxT("-exec-run"));
+    }
+public:
+    bool &dependency_finished;
+    bool correct;
+};
+struct DelayedAction : public dbg_mi::Action
+{
+public:
+    DelayedAction(bool &dependency_finished_) :
+        dependency_finished(dependency_finished_),
+        correct(false)
+    {
+    }
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
+    {
+    }
+protected:
+    virtual void OnStart()
+    {
+        if(dependency_finished)
+            correct = true;
+        Execute(wxT("-exec-run"));
+    }
+public:
+    bool &dependency_finished;
+    bool correct;
+};
+
+TEST(DelayedAction)
+{
+    dbg_mi::ActionsMap actions_map;
+    MockCommandExecutor exec;
+    DispatchOnNotify on_notify;
+    bool dependency_finished = false;
+    DelayedDependencyAction *dependency = new DelayedDependencyAction(dependency_finished);
+    DelayedAction *delayed = new DelayedAction(dependency_finished);
+    delayed->SetWaitPrevious(true);
+
+    actions_map.Add(dependency);
+    actions_map.Add(delayed);
+
+    while(!actions_map.Empty())
+    {
+        actions_map.Run(exec);
+        CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
+    }
+
+    CHECK(delayed->correct);
+    CHECK(dependency_finished);
 }
