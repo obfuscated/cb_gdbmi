@@ -486,7 +486,7 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
     if(str.IsEmpty())
         return;
     Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_dbg_page_index);
-//-    m_command_queue.AccumulateOutput(str);
+    m_executor.ProcessOutput(str);
 }
 
 void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)

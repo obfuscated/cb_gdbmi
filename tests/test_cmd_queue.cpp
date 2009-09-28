@@ -40,6 +40,10 @@
 // make OnCommandOutput to have a ResultParser parameter instead of "wxString const &output"
 // remove CommandResultMap
 /// add lazy ResultParser evaluation
+// refactor the ResultParse::Parse interface
+/// add a metric to measure the time needed for a command to be executed
+/// add a way to tell a given action to way for the finishing of all previous actions in the ActionsMap
+/// rename ActionsMap to ActionsQueue
 
 TEST(CommnadIDToString)
 {
@@ -340,8 +344,7 @@ TEST(ActionInterfaceOnCmdOutput)
 
     dbg_mi::CommandID id(100, 1);
     dbg_mi::ResultParser parser;
-    parser.Parse(wxT("running"), dbg_mi::ResultParser::Result);
-    wxString output = wxT("^running");
+    parser.Parse(wxT("^running"));
 
     action.OnCommandOutput(id, parser);
 

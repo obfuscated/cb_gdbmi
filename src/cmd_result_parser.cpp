@@ -365,9 +365,10 @@ wxString ResultValue::MakeDebugString() const
     }
 }
 
-bool ResultParser::Parse(wxString const &str, Type result_type)
+bool ResultParser::Parse(wxString const &s)
 {
-    m_type = result_type;
+    m_type = ParseType(s);
+    wxString str = s.substr(1, s.length() - 1);
 
     int after_class_index = 0;
 

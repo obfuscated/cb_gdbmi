@@ -22,6 +22,7 @@
 #include "cmd_queue.h"
 #include "definitions.h"
 #include "events.h"
+#include "gdb_executor.h"
 
 class PipedProcess;
 class TextCtrlLogger;
@@ -186,7 +187,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         int m_page_index, m_dbg_page_index;
         TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
-//-        dbg_mi::CommandQueue    m_command_queue;
+
+        dbg_mi::GDBExecutor m_executor;
+        dbg_mi::ActionsMap  m_actions;
 
         typedef std::vector<dbg_mi::Breakpoint> Breakpoints;
         Breakpoints m_breakpoints;

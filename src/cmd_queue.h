@@ -152,27 +152,71 @@ private:
 
 class CommandExecutor
 {
+public:
+    struct Result
+    {
+        dbg_mi::CommandID id;
+        wxString output;
+    };
 //    CommandExecutor const& operator=(CommandExecutor const &);
 //    CommandExecutor(CommandExecutor const &);
 public:
-//    CommandExecutor() {}
+    CommandExecutor() : m_last(0) {}
     virtual ~CommandExecutor() {}
 
     CommandID Execute(wxString const &cmd)
     {
-        return DoExecute(cmd);
+        dbg_mi::CommandID id(1, m_last++);
+        if(DoExecute(id, cmd))
+            return id;
+        else
+            return dbg_mi::CommandID();
     }
 
-    virtual void ExecuteSimple(CommandID const &id, wxString const &cmd) = 0;
+    void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
+    {
+        DoExecute(id, cmd);
+    }
 
     virtual wxString GetOutput() = 0;
-    virtual bool HasOutput() const = 0;
-    virtual bool ProcessOutput(wxString const &output) = 0;
 
-    virtual ResultParser* GetResult(CommandID &id) = 0;
+    bool HasOutput() const { return !m_results.empty(); }
+    bool ProcessOutput(wxString const &output)
+    {
+        dbg_mi::CommandID id;
+        Result r;
+
+        if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
+            return false;
+
+        m_results.push_back(r);
+        return true;
+    }
+
+    dbg_mi::ResultParser* GetResult(dbg_mi::CommandID &id)
+    {
+        assert(!m_results.empty());
+        Result const &r = m_results.front();
+
+        id = r.id;
+        dbg_mi::ResultParser *parser = new dbg_mi::ResultParser;
+        if(!parser->Parse(r.output))
+        {
+            delete parser;
+            parser = NULL;
+        }
+
+        m_results.pop_front();
+        return parser;
+    }
+
 protected:
-    virtual CommandID DoExecute(wxString const &cmd) = 0;
+    virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd) = 0;
 
+protected:
+    typedef std::deque<Result> Results;
+    Results m_results;
+    int32_t m_last;
 };
 
 class ActionsMap

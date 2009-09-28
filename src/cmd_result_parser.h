@@ -163,7 +163,7 @@ public:
     bool operator !=(ResultParser const &o) const { return !(*this == o); }
 
 public:
-    bool Parse(wxString const &str, Type result_type);
+    bool Parse(wxString const &str);
     static Type ParseType(wxString const &str);
 
     wxString MakeDebugString() const;

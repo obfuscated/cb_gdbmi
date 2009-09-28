@@ -7,64 +7,28 @@
 
 class MockCommandExecutor : public dbg_mi::CommandExecutor
 {
-    struct Result
-    {
-        dbg_mi::CommandID id;
-        wxString output;
-    };
 public:
     MockCommandExecutor(bool auto_process_output = true) :
-        m_last(0),
         m_auto_process_output(auto_process_output)
     {
     }
 
-    virtual void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
-    {
-        DoExecute(id, cmd);
-    }
+//    virtual void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
+//    {
+//        DoExecute(id, cmd);
+//    }
 
     virtual wxString GetOutput() { return m_result; }
-    virtual bool HasOutput() const { return m_results.size() > 0; }
 
-    virtual bool ProcessOutput(wxString const &output)
-    {
-        dbg_mi::CommandID id;
-        Result r;
-
-        if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
-            return false;
-
-        m_results.push_back(r);
-        return true;
-    }
-
-    virtual dbg_mi::ResultParser* GetResult(dbg_mi::CommandID &id)
-    {
-        assert(!m_results.empty());
-        Result const &r = m_results.front();
-
-        id = r.id;
-        dbg_mi::ResultParser *parser = new dbg_mi::ResultParser;
-        if(!parser->Parse(r.output.substr(1, r.output.length() - 1), dbg_mi::ResultParser::ParseType(r.output)))
-        {
-            delete parser;
-            parser = NULL;
-        }
-        printf(">>[%s]>>%s<\n", r.id.ToString().utf8_str().data(), r.output.utf8_str().data());
-
-        m_results.pop_front();
-        return parser;
-    }
 protected:
-    virtual dbg_mi::CommandID DoExecute(wxString const &cmd)
-    {
-        dbg_mi::CommandID id(1, m_last++);
-        if(DoExecute(id, cmd))
-            return id;
-        else
-            return dbg_mi::CommandID();
-    }
+//    virtual dbg_mi::CommandID DoExecute(wxString const &cmd)
+//    {
+//        dbg_mi::CommandID id(1, m_last++);
+//        if(DoExecute(id, cmd))
+//            return id;
+//        else
+//            return dbg_mi::CommandID();
+//    }
 
     bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd)
     {
@@ -95,10 +59,7 @@ protected:
     }
 private:
     wxString m_result;
-    int32_t m_last;
 
-    typedef std::deque<Result> Results;
-    Results m_results;
     bool m_auto_process_output;
 };
 

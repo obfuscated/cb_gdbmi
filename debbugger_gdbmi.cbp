@@ -53,6 +53,8 @@
 		<Unit filename="src/events.h" />
 		<Unit filename="src/frame.cpp" />
 		<Unit filename="src/frame.h" />
+		<Unit filename="src/gdb_executor.cpp" />
+		<Unit filename="src/gdb_executor.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

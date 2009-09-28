@@ -585,7 +585,7 @@ TEST(ParserFail13)
 TEST(ResultParse_TestType)
 {
     dbg_mi::ResultParser parser;
-    CHECK(parser.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result));
+    CHECK(parser.Parse(_T("^done,a = 5, b = 6")));
 
     CHECK_EQUAL(parser.GetResultType(), dbg_mi::ResultParser::Result);
 }
@@ -593,14 +593,14 @@ TEST(ResultParse_TestType)
 TEST(ResultParse_TestClass)
 {
     dbg_mi::ResultParser parser;
-    CHECK(parser.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result));
+    CHECK(parser.Parse(_T("^done,a = 5, b = 6")));
 
     CHECK(parser.GetResultClass() == dbg_mi::ResultParser::ClassDone);
 }
 TEST(ResultParse_NoClassComma)
 {
     dbg_mi::ResultParser parser;
-    bool r = parser.Parse(_T("done a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r = parser.Parse(_T("^done a = 5, b = 6"));
 
     CHECK(!r);
 }
@@ -608,7 +608,7 @@ TEST(ResultParse_NoClassComma)
 TEST(ResultParse_TestValues)
 {
     dbg_mi::ResultParser parser;
-    parser.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    parser.Parse(_T("^done,a = 5, b = 6"));
 
     dbg_mi::ResultValue const &v = parser.GetResultValue();
 
@@ -695,7 +695,7 @@ TEST(TestResultParser_Running)
 {
     dbg_mi::ResultParser parser;
 
-    CHECK(parser.Parse(wxT("running"), dbg_mi::ResultParser::Result));
+    CHECK(parser.Parse(wxT("^running")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -740,7 +740,7 @@ TEST(ResultValueInequallityOperator)
 TEST(ResultParserAssigmentOperator)
 {
     dbg_mi::ResultParser p1, p2;
-    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r1 = p1.Parse(_T("^done,a = 5, b = 6"));
     p2 = p1;
 
     CHECK(r1);
@@ -749,7 +749,7 @@ TEST(ResultParserAssigmentOperator)
 TEST(ResultParserCopyCtor)
 {
     dbg_mi::ResultParser p1;
-    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r1 = p1.Parse(_T("^done,a = 5, b = 6"));
     dbg_mi::ResultParser p2(p1);
 
     CHECK(r1);
@@ -759,8 +759,8 @@ TEST(ResultParserCopyCtor)
 TEST(ResultParserEquallityOperator)
 {
     dbg_mi::ResultParser p1, p2;
-    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
-    bool r2 = p2.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
+    bool r1 = p1.Parse(_T("^done,a = 5, b = 6"));
+    bool r2 = p2.Parse(_T("^done,a = 5, b = 6"));
 
     CHECK(r1 && r2);
     CHECK(p1 == p2);
@@ -769,8 +769,8 @@ TEST(ResultParserEquallityOperator)
 TEST(ResultParserInequallityOperator)
 {
     dbg_mi::ResultParser p1, p2;
-    bool r1 = p1.Parse(_T("done,a = 5, b = 6"), dbg_mi::ResultParser::Result);
-    bool r2 = p2.Parse(_T("done,a = 5, c = 6"), dbg_mi::ResultParser::Result);
+    bool r1 = p1.Parse(_T("^done,a = 5, b = 6"));
+    bool r2 = p2.Parse(_T("^done,a = 5, c = 6"));
 
     CHECK(r1 && r2);
     CHECK(p1 != p2);
