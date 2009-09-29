@@ -49,8 +49,8 @@ protected:
         {
             if(m_auto_process_output)
             {
+                ProcessOutput(r.id.ToString() + r.output);
                 m_result = r.id.ToString() + r.output;
-                m_results.push_back(r);
             }
             return true;
         }

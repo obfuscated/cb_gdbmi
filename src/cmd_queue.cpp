@@ -13,6 +13,7 @@
 
 namespace dbg_mi
 {
+
 bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_str)
 {
     size_t pos = 0;
@@ -30,6 +31,46 @@ bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_st
 
     id = dbg_mi::CommandID(action_id, cmd_id);
     result_str = line.substr(pos, line.length() - pos);
+    return true;
+}
+
+CommandID CommandExecutor::Execute(wxString const &cmd)
+{
+    dbg_mi::CommandID id(0, m_last++);
+    if(m_logger)
+        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
+    if(DoExecute(id, cmd))
+        return id;
+    else
+        return dbg_mi::CommandID();
+}
+void CommandExecutor::ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
+{
+    DoExecute(id, cmd);
+}
+
+bool CommandExecutor::ProcessOutput(wxString const &output)
+{
+    dbg_mi::CommandID id;
+    Result r;
+
+    if(m_logger)
+    {
+        if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
+        {
+            m_logger->Debug(wxT("unparsable_output==>") + output);
+            return false;
+        }
+        else
+            m_logger->Debug(wxT("output==>") + output);
+    }
+    else
+    {
+        if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
+            return false;
+    }
+
+    m_results.push_back(r);
     return true;
 }
 

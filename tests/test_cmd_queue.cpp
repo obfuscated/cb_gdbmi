@@ -44,6 +44,7 @@
 /// add a metric to measure the time needed for a command to be executed
 // add a way to tell a given action to way for the finishing of all previous actions in the ActionsMap
 /// add logging
+/// remove CommandExecutor::GetOutput()
 
 TEST(CommnadIDToString)
 {
@@ -478,10 +479,8 @@ public:
     }
     virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
-        printf("dependency::oncmdoutput(%s)\n", id.ToString().utf8_str().data());
         if(id.GetCommandID() == 2)
         {
-            printf("dependency::finished\n");
             dependency_finished = true;
             Finish();
         }
@@ -491,7 +490,6 @@ public:
 protected:
     virtual void OnStart()
     {
-        printf("dependency::onstart()\n");
         dependency_finished = false;
         Execute(wxT("-exec-run"));
     }
@@ -507,20 +505,15 @@ public:
         correct(correct_)
     {
         correct = false;
-        printf("delayed::ctor(%d)\n", static_cast<int>(correct));
     }
     virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
-        printf("delayed::oncmdoutput(%s)\n", id.ToString().utf8_str().data());
     }
 protected:
     virtual void OnStart()
     {
-        printf("delayed::onstart()\n");
         if(dependency_finished)
-        {
             correct = true;
-        }
         Execute(wxT("-exec-run"));
         Finish();
     }
@@ -555,15 +548,47 @@ TEST(DelayedAction)
     CHECK(correct);
     CHECK(dependency_finished);
 }
-//
-//
-//TEST(LoggingUsage)
-//{
-//    DummyLogger logger;
-//    dbg_mi::CommandExecutor exec;
-//    exec.SetLogger(&logger);
-//
-//    exec.Execute(wxT("-exec-run"));
-//
-//    CHECK_EQUAL(wxT("00000000000^running"), logger.Line(0));
-//}
+
+class DummyLogger : public dbg_mi::Logger
+{
+public:
+    virtual void Debug(wxString const &line)
+    {
+        m_debug.push_back(line);
+    }
+    virtual wxString GetDebugLine(int index) const
+    {
+        if(index < static_cast<int>(m_debug.size()))
+            return m_debug[index];
+        else
+            return wxEmptyString;
+    }
+public:
+    int GetDebugLineCount() const { return m_debug.size(); }
+private:
+    typedef std::vector<wxString> Lines;
+    Lines m_debug;
+};
+
+struct LoggingFixture
+{
+    LoggingFixture()
+    {
+        exec.SetLogger(&logger);
+    }
+    DummyLogger logger;
+    MockCommandExecutor exec;
+};
+
+TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorExecute)
+{
+    exec.Execute(wxT("-exec-run"));
+    CHECK_EQUAL(wxT("cmd==>00000000000-exec-run"), logger.GetDebugLine(0));
+}
+
+TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorProcessOutput)
+{
+    exec.Execute(wxT("-exec-run"));
+    CHECK_EQUAL(2, logger.GetDebugLineCount());
+    CHECK_EQUAL(wxT("output==>00000000000^running"), logger.GetDebugLine(1));
+}

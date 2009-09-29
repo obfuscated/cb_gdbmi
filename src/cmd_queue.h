@@ -16,6 +16,8 @@ class PipedProcess;
 namespace dbg_mi
 {
 
+class Logger;
+
 class CommandID
 {
 public:
@@ -163,40 +165,21 @@ public:
         dbg_mi::CommandID id;
         wxString output;
     };
-//    CommandExecutor const& operator=(CommandExecutor const &);
-//    CommandExecutor(CommandExecutor const &);
 public:
-    CommandExecutor() : m_last(0) {}
+    CommandExecutor() :
+        m_last(0),
+        m_logger(NULL)
+    {
+    }
     virtual ~CommandExecutor() {}
 
-    CommandID Execute(wxString const &cmd)
-    {
-        dbg_mi::CommandID id(1, m_last++);
-        if(DoExecute(id, cmd))
-            return id;
-        else
-            return dbg_mi::CommandID();
-    }
-
-    void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
-    {
-        DoExecute(id, cmd);
-    }
+    CommandID Execute(wxString const &cmd);
+    void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd);
 
     virtual wxString GetOutput() = 0;
 
     bool HasOutput() const { return !m_results.empty(); }
-    bool ProcessOutput(wxString const &output)
-    {
-        dbg_mi::CommandID id;
-        Result r;
-
-        if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
-            return false;
-
-        m_results.push_back(r);
-        return true;
-    }
+    bool ProcessOutput(wxString const &output);
 
     dbg_mi::ResultParser* GetResult(dbg_mi::CommandID &id)
     {
@@ -215,6 +198,8 @@ public:
         return parser;
     }
 
+    void SetLogger(Logger *logger) { m_logger = logger; }
+
 protected:
     virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd) = 0;
 
@@ -222,6 +207,7 @@ protected:
     typedef std::deque<Result> Results;
     Results m_results;
     int32_t m_last;
+    Logger *m_logger;
 };
 
 class ActionsMap
@@ -273,6 +259,15 @@ bool DispatchResults(CommandExecutor &exec, ActionsMap &actions_map, OnNotify &o
     }
     return true;
 }
+
+class Logger
+{
+public:
+    virtual ~Logger() {}
+
+    virtual void Debug(wxString const &line) = 0;
+    virtual wxString GetDebugLine(int index) const = 0;
+};
 
 } // namespace dbg_mi
 
