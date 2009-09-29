@@ -118,84 +118,6 @@ TEST(ExecuteGetResult)
     delete result;
 }
 
-//struct CommandResultMapInterfaceFixture
-//{
-//    CommandResultMapInterfaceFixture()
-//    {
-//        p1 = new dbg_mi::ResultParser;
-//        p2 = new dbg_mi::ResultParser;
-//        p3 = new dbg_mi::ResultParser;
-//
-//        id1 = dbg_mi::CommandID(1, 1);
-//        id2 = dbg_mi::CommandID(1, 2);
-//        id3 = dbg_mi::CommandID(1, 3);
-//
-//        status = map.Set(id1, p1);
-//        status &= map.Set(id2, p2);
-//        status &= map.Set(id3, p3);
-//    }
-//
-//    dbg_mi::CommandResultMap map;
-//    dbg_mi::ResultParser *p1, *p2, *p3;
-//    dbg_mi::CommandID id1, id2, id3;
-//
-//    bool status;
-//};
-//
-//TEST_FIXTURE(CommandResultMapInterfaceFixture, Status)
-//{
-//    CHECK(status);
-//}
-//
-//TEST_FIXTURE(CommandResultMapInterfaceFixture, Count)
-//{
-//    CHECK_EQUAL(3, map.GetCount());
-//}
-//
-//TEST_FIXTURE(CommandResultMapInterfaceFixture, HasResults)
-//{
-//    CHECK(map.HasResult(id1) && map.HasResult(id2) && map.HasResult(id3));
-//}
-//
-////TEST_FIXTURE(CommandResultMapInterfaceFixture, GetResultForID)
-////{
-////    dbg_mi::ResultParser *p1 = map.GetResult(id1);
-////}
-
-//struct CommandResultMapFixture
-//{
-//    CommandResultMapFixture()
-//    {
-//        id1 = exec.Execute(wxT("-break-insert main.cpp:400"));
-//        id2 = exec.Execute(wxT("-exec-run"));
-//
-//        result = dbg_mi::ProcessOutput(exec, map);
-//    }
-//
-//    MockCommandExecutor exec;
-//    dbg_mi::CommandID id1;
-//    dbg_mi::CommandID id2;
-//    dbg_mi::CommandResultMap map;
-//
-//    bool result;
-//};
-//
-//TEST_FIXTURE(CommandResultMapFixture, TestStatus)
-//{
-//    CHECK(result);
-//}
-//
-//TEST_FIXTURE(CommandResultMapFixture, TestCount)
-//{
-//    CHECK_EQUAL(2, map.GetCount());
-//}
-//
-//TEST_FIXTURE(CommandResultMapFixture, TestHasResult)
-//{
-//    CHECK(map.HasResult(id1) && map.HasResult(id2));
-//}
-
-
 TEST(TestParseDebuggerOutputLine)
 {
     wxString line = wxT("10000000005^running");
@@ -299,13 +221,11 @@ struct TestAction : public dbg_mi::Action
     virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
         command_id = id;
-//        output = result.MakeDebugString();
         this->result = result;
         Finish();
     }
 
     dbg_mi::CommandID command_id;
-    //wxString output;
     dbg_mi::ResultParser result;
     bool on_start_called;
 private:
