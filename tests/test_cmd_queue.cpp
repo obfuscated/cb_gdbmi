@@ -43,7 +43,7 @@
 // refactor the ResultParse::Parse interface
 /// add a metric to measure the time needed for a command to be executed
 // add a way to tell a given action to way for the finishing of all previous actions in the ActionsMap
-/// add logging
+// add logging
 /// remove CommandExecutor::GetOutput()
 
 TEST(CommnadIDToString)
