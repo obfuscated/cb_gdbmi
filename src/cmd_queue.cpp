@@ -101,6 +101,8 @@ void ActionsMap::Run(CommandExecutor &executor)
                 delete *it;
                 m_actions.erase(it);
                 it = m_actions.begin();
+                if(it == m_actions.end())
+                   break;
             }
             else
             {

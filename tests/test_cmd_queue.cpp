@@ -478,8 +478,10 @@ public:
     }
     virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
+        printf("dependency::oncmdoutput(%s)\n", id.ToString().utf8_str().data());
         if(id.GetCommandID() == 2)
         {
+            printf("dependency::finished\n");
             dependency_finished = true;
             Finish();
         }
@@ -489,6 +491,7 @@ public:
 protected:
     virtual void OnStart()
     {
+        printf("dependency::onstart()\n");
         dependency_finished = false;
         Execute(wxT("-exec-run"));
     }
@@ -499,24 +502,32 @@ public:
 struct DelayedAction : public dbg_mi::Action
 {
 public:
-    DelayedAction(bool &dependency_finished_) :
+    DelayedAction(bool &dependency_finished_, bool &correct_) :
         dependency_finished(dependency_finished_),
-        correct(false)
+        correct(correct_)
     {
+        correct = false;
+        printf("delayed::ctor(%d)\n", static_cast<int>(correct));
     }
     virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
     {
+        printf("delayed::oncmdoutput(%s)\n", id.ToString().utf8_str().data());
     }
 protected:
     virtual void OnStart()
     {
+        printf("delayed::onstart()\n");
         if(dependency_finished)
+        {
             correct = true;
+        }
         Execute(wxT("-exec-run"));
+        Finish();
     }
 public:
     bool &dependency_finished;
-    bool correct;
+private:
+    bool &correct;
 };
 
 TEST(DelayedAction)
@@ -524,9 +535,12 @@ TEST(DelayedAction)
     dbg_mi::ActionsMap actions_map;
     MockCommandExecutor exec;
     DispatchOnNotify on_notify;
+
     bool dependency_finished = false;
+    bool correct = false;
+
     DelayedDependencyAction *dependency = new DelayedDependencyAction(dependency_finished);
-    DelayedAction *delayed = new DelayedAction(dependency_finished);
+    DelayedAction *delayed = new DelayedAction(dependency_finished, correct);
     delayed->SetWaitPrevious(true);
 
     actions_map.Add(dependency);
@@ -538,6 +552,18 @@ TEST(DelayedAction)
         CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
     }
 
-    CHECK(delayed->correct);
+    CHECK(correct);
     CHECK(dependency_finished);
 }
+//
+//
+//TEST(LoggingUsage)
+//{
+//    DummyLogger logger;
+//    dbg_mi::CommandExecutor exec;
+//    exec.SetLogger(&logger);
+//
+//    exec.Execute(wxT("-exec-run"));
+//
+//    CHECK_EQUAL(wxT("00000000000^running"), logger.Line(0));
+//}
