@@ -46,6 +46,8 @@ CommandID CommandExecutor::Execute(wxString const &cmd)
 }
 void CommandExecutor::ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
 {
+    if(m_logger)
+        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
     DoExecute(id, cmd);
 }
 
@@ -72,6 +74,14 @@ bool CommandExecutor::ProcessOutput(wxString const &output)
 
     m_results.push_back(r);
     return true;
+}
+
+void CommandExecutor::Clear()
+{
+    m_last = 0;
+    m_results.clear();
+
+    DoClear();
 }
 
 ActionsMap::ActionsMap() :
@@ -111,10 +121,22 @@ Action const * ActionsMap::Find(int id) const
     return NULL;
 }
 
+void ActionsMap::Clear()
+{
+    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+        delete *it;
+    m_actions.clear();
+    m_last_id = 1;
+}
+
 void ActionsMap::Run(CommandExecutor &executor)
 {
     if(Empty())
         return;
+
+    Logger *logger = executor.GetLogger();
+    if(logger)
+        logger->Debug(wxString::Format(wxT("ActionsMap::Run -> actions to run: %u"), m_actions.size()));
     bool first = true;
     for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
     {
@@ -122,10 +144,22 @@ void ActionsMap::Run(CommandExecutor &executor)
 
         // test if we have a barrier action
         if(action.GetWaitPrevious() && !first)
+        {
+            if(logger)
+            {
+                logger->Debug(wxString::Format(wxT("ActionsMap::Run -> skipping barrier action: %p id: %d"),
+                                               &action, action.GetID()));
+            }
             continue;
+        }
 
         if(!action.Started())
         {
+            if(logger)
+            {
+                logger->Debug(wxString::Format(wxT("ActionsMap::Run -> starting action: %p id: %d"),
+                                               &action, action.GetID()));
+            }
             action.Start();
         }
         while(action.HasPendingCommands())
@@ -135,8 +169,15 @@ void ActionsMap::Run(CommandExecutor &executor)
             executor.ExecuteSimple(id, command);
         }
 
+        first = false;
         if(action.Finished())
         {
+            if(logger && action.HasPendingCommands())
+            {
+                logger->Debug(wxString::Format(wxT("ActionsMap::Run -> action[%p id: %d] ")
+                                               wxT("has pending commands but is being removed"),
+                                               &action, action.GetID()));
+            }
             if(it == m_actions.begin())
             {
                 delete *it;
@@ -144,6 +185,7 @@ void ActionsMap::Run(CommandExecutor &executor)
                 it = m_actions.begin();
                 if(it == m_actions.end())
                    break;
+                first = true;
             }
             else
             {
@@ -153,8 +195,6 @@ void ActionsMap::Run(CommandExecutor &executor)
                 m_actions.erase(del_it);
             }
         }
-
-        first = false;
     }
 }
 } // namespace dbg_mi

@@ -31,4 +31,18 @@ bool Frame::Parse(ResultValue const &frame_tuple)
     return true;
 }
 
+StoppedReason StoppedReason::Parse(ResultValue const &value)
+{
+    ResultValue const *reason = value.GetTupleValue(wxT("reason"));
+    if(!reason)
+        return Unknown;
+    wxString const &str = reason->GetSimpleValue();
+    if(str == wxT("breakpoint-hit"))
+        return BreakpointHit;
+    else if(str == wxT("exited-normally"))
+        return ExitedNormally;
+    else
+        return Unknown;
+}
+
 } // namespace dbg_mi

@@ -181,6 +181,8 @@ public:
     bool HasOutput() const { return !m_results.empty(); }
     bool ProcessOutput(wxString const &output);
 
+    void Clear();
+
     dbg_mi::ResultParser* GetResult(dbg_mi::CommandID &id)
     {
         assert(!m_results.empty());
@@ -199,9 +201,12 @@ public:
     }
 
     void SetLogger(Logger *logger) { m_logger = logger; }
+    Logger* GetLogger() { return m_logger; }
 
+    int32_t GetLastID() const { return m_last; }
 protected:
     virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd) = 0;
+    virtual void DoClear() = 0;
 
 protected:
     typedef std::deque<Result> Results;
@@ -219,6 +224,8 @@ public:
     void Add(Action *action);
     Action* Find(int id);
     Action const * Find(int id) const;
+    void Clear();
+    int GetLastID() const { return m_last_id; }
 
     bool Empty() const { return m_actions.empty(); }
     void Run(CommandExecutor &executor);

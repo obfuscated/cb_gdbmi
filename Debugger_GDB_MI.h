@@ -24,7 +24,7 @@
 #include "events.h"
 #include "gdb_executor.h"
 
-class PipedProcess;
+//class PipedProcess;
 class TextCtrlLogger;
 class Compiler;
 
@@ -71,17 +71,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           */
         virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
 
-//        virtual bool AddBreakpoint(const wxString& file, int line);
-//        virtual bool AddBreakpoint(const wxString& functionSignature);
-//        virtual bool RemoveBreakpoint(const wxString& file, int line);
-//        virtual bool RemoveBreakpoint(const wxString& functionSignature);
-//        virtual bool RemoveAllBreakpoints(const wxString& file = wxEmptyString);
-        virtual void EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines);
-
-//        virtual int GetBreakpointsCount() const;
-//        virtual void GetBreakpoint(int index, cbBreakpoint& breakpoint) const;
-//        virtual void UpdateBreakpoint(int index, cbBreakpoint const &breakpoint);
-
         virtual int Debug(bool breakOnEntry);
         virtual void Continue();
         virtual void RunToCursor(const wxString& filename, int line, const wxString& line_text);
@@ -110,6 +99,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void UpdateBreakpoint(cbBreakpoint *breakpoint);
         virtual void DeleteBreakpoint(cbBreakpoint* breakpoint);
         virtual void DeleteAllBreakpoints();
+        virtual void ShiftBreakpoint(int index, int lines_to_shift);
 
         // threads
         virtual int GetThreadsCount() const;
@@ -128,6 +118,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void AttachToProcess(const wxString& pid);
         virtual void DetachFromProcess();
 
+        virtual void GetCurrentPosition(wxString &filename, int &line);
         virtual void RequestUpdate(DebugWindows window);
     protected:
         /** Any descendent plugin should override this virtual method and
@@ -140,7 +131,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           * This means that a plugin might be loaded but <b>not</b> activated...\n
           * Think of this method as the actual constructor...
           */
-        virtual void OnAttach();
+        virtual void OnAttachReal();
 
         /** Any descendent plugin should override this virtual method and
           * perform any necessary de-initialization. This method is called by
@@ -169,7 +160,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void RunQueue();
         void ParseOutput(wxString const &str);
 
-        int LaunchProcess(const wxString& cmd, const wxString& cwd);
+//        int LaunchProcess(const wxString& cmd, const wxString& cwd);
         void ShowLog();
         bool SelectCompiler(cbProject &project, Compiler *&compiler,
                             ProjectBuildTarget *&target, long pid_to_attach);
@@ -182,21 +173,22 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         long GetChildPID();
     private:
         wxMenu *m_menu;
-        PipedProcess *m_process;
-        long    m_pid, m_child_pid;
+//        PipedProcess *m_process;
+//        long    m_pid, m_child_pid;
         int m_page_index, m_dbg_page_index;
         TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
 
         dbg_mi::GDBExecutor m_executor;
         dbg_mi::ActionsMap  m_actions;
+        dbg_mi::LogPaneLogger m_execution_logger;
 
         typedef std::vector<dbg_mi::Breakpoint> Breakpoints;
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
 
         bool emit_watch;
-        bool m_is_stopped;
-        bool m_forced_break;
+//        bool m_is_stopped;
+//        bool m_forced_break;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

@@ -9,27 +9,16 @@ class MockCommandExecutor : public dbg_mi::CommandExecutor
 {
 public:
     MockCommandExecutor(bool auto_process_output = true) :
-        m_auto_process_output(auto_process_output)
+        m_auto_process_output(auto_process_output),
+        m_has_been_cleared(false)
     {
     }
 
-//    virtual void ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
-//    {
-//        DoExecute(id, cmd);
-//    }
-
     virtual wxString GetOutput() { return m_result; }
 
-protected:
-//    virtual dbg_mi::CommandID DoExecute(wxString const &cmd)
-//    {
-//        dbg_mi::CommandID id(1, m_last++);
-//        if(DoExecute(id, cmd))
-//            return id;
-//        else
-//            return dbg_mi::CommandID();
-//    }
+    bool HasBeenCleared() const { return m_has_been_cleared; }
 
+protected:
     bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd)
     {
         Result r;
@@ -57,10 +46,16 @@ protected:
         else
             return false;
     }
+
+    virtual void DoClear()
+    {
+        m_has_been_cleared = true;
+    }
 private:
     wxString m_result;
 
     bool m_auto_process_output;
+    bool m_has_been_cleared;
 };
 
 

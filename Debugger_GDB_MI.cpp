@@ -81,8 +81,8 @@ void GetChildPIDs(int parent, std::vector<int> &childs)
 }
 }
 
-int id_gdb_process = wxNewId();
-int id_gdb_poll_timer = wxNewId();
+int const id_gdb_process = wxNewId();
+int const id_gdb_poll_timer = wxNewId();
 
 // events handling
 BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
@@ -101,21 +101,23 @@ END_EVENT_TABLE()
 // constructor
 Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
-    m_process(NULL),
-    m_pid(-1),
-    m_child_pid(-1),
+//    m_process(NULL),
+//    m_pid(-1),
+//    m_child_pid(-1),
     m_log(NULL),
-    m_debug_log(NULL),
-    m_is_stopped(true),
-    m_forced_break(false)
+    m_debug_log(NULL)//,
+//    m_is_stopped(true),
+//    m_forced_break(false)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
     // we add some, it will be nice that this code is in place already ;)
-    if(!Manager::LoadResource(_T("Debugger_GDB_MI.zip")))
+    if(!Manager::LoadResource(_T("debugger_gdbmi.zip")))
     {
-        NotifyMissingFile(_T("Debugger_GDB_MI.zip"));
+        NotifyMissingFile(_T("debugger_gdbmi.zip"));
     }
+
+    m_executor.SetLogger(&m_execution_logger);
 }
 
 // destructor
@@ -123,7 +125,7 @@ Debugger_GDB_MI::~Debugger_GDB_MI()
 {
 }
 
-void Debugger_GDB_MI::OnAttach()
+void Debugger_GDB_MI::OnAttachReal()
 {
     m_timer_poll_debugger.SetOwner(this, id_gdb_poll_timer);
 
@@ -132,6 +134,8 @@ void Debugger_GDB_MI::OnAttach()
 
     m_log = dbg_manager.GetLogger(false, m_page_index);
     m_debug_log = dbg_manager.GetLogger(true, m_dbg_page_index);
+
+
 //-    m_command_queue.SetLogPages(m_page_index, m_dbg_page_index);
 
     // do whatever initialization you need for your plugin
@@ -326,60 +330,60 @@ wxString Debugger_GDB_MI::GetDebuggee(ProjectBuildTarget* target)
     return out;
 }
 
-int Debugger_GDB_MI::LaunchProcess(const wxString& cmd, const wxString& cwd)
-{
-    if(m_process)
-        return -1;
-
-    // start the gdb process
-    m_process = new PipedProcess((void**)&m_process, this, id_gdb_process, true, cwd);
-    Manager::Get()->GetLogManager()->Log(_("Starting debugger: "), m_page_index);
-    m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
-    m_child_pid = -1;
-
-#ifdef __WXMAC__
-    if (m_pid == -1)
-    {
-        Manager::Get()->GetLogManager()->LogError(_("debugger has fake macos PID"), m_page_index);
-    }
-#endif
-
-    if (!m_pid)
-    {
-        delete m_process;
-        m_process = 0;
-        Manager::Get()->GetLogManager()->Log(_("failed"), m_page_index);
-        return -1;
-    }
-    else if (!m_process->GetOutputStream())
-    {
-        delete m_process;
-        m_process = 0;
-        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stdin)"), m_page_index);
-        return -2;
-    }
-    else if (!m_process->GetInputStream())
-    {
-        delete m_process;
-        m_process = 0;
-        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stdout)"), m_page_index);
-        return -2;
-    }
-    else if (!m_process->GetErrorStream())
-    {
-        delete m_process;
-        m_process = 0;
-        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stderr)"), m_page_index);
-        return -2;
-    }
-    Manager::Get()->GetLogManager()->Log(_("done"), m_page_index);
-
-    return 0;
-}
+//int Debugger_GDB_MI::LaunchProcess(const wxString& cmd, const wxString& cwd)
+//{
+//    if(m_process)
+//        return -1;
+//
+//    // start the gdb process
+//    m_process = new PipedProcess((void**)&m_process, this, id_gdb_process, true, cwd);
+//    Manager::Get()->GetLogManager()->Log(_("Starting debugger: "), m_page_index);
+//    m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
+//    m_child_pid = -1;
+//
+//#ifdef __WXMAC__
+//    if (m_pid == -1)
+//    {
+//        Manager::Get()->GetLogManager()->LogError(_("debugger has fake macos PID"), m_page_index);
+//    }
+//#endif
+//
+//    if (!m_pid)
+//    {
+//        delete m_process;
+//        m_process = 0;
+//        Manager::Get()->GetLogManager()->Log(_("failed"), m_page_index);
+//        return -1;
+//    }
+//    else if (!m_process->GetOutputStream())
+//    {
+//        delete m_process;
+//        m_process = 0;
+//        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stdin)"), m_page_index);
+//        return -2;
+//    }
+//    else if (!m_process->GetInputStream())
+//    {
+//        delete m_process;
+//        m_process = 0;
+//        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stdout)"), m_page_index);
+//        return -2;
+//    }
+//    else if (!m_process->GetErrorStream())
+//    {
+//        delete m_process;
+//        m_process = 0;
+//        Manager::Get()->GetLogManager()->Log(_("failed (to get debugger's stderr)"), m_page_index);
+//        return -2;
+//    }
+//    Manager::Get()->GetLogManager()->Log(_("done"), m_page_index);
+//
+//    return 0;
+//}
 
 void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
 {
-    wxString msg = event.GetString();
+    wxString const &msg = event.GetString();
     if (!msg.IsEmpty())
     {
 //        Manager::Get()->GetLogManager()->Log(m_PageIndex, _T("O>>> %s"), msg.c_str());
@@ -389,7 +393,7 @@ void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
 
 void Debugger_GDB_MI::OnGDBError(wxCommandEvent& event)
 {
-    wxString msg = event.GetString();
+    wxString const &msg = event.GetString();
     if (!msg.IsEmpty())
     {
 //        Manager::Get()->GetLogManager()->Log(m_PageIndex, _T("E>>> %s"), msg.c_str());
@@ -402,11 +406,17 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
     ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("debugger terminated!"), m_page_index);
     m_timer_poll_debugger.Stop();
+    m_actions.Clear();
+    m_executor.Clear();
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
 {
-    if (m_process && m_process->HasInput())
+    if(m_executor.IsStopped() && m_executor.IsRunning())
+    {
+        m_actions.Run(m_executor);
+    }
+    if(m_executor.ProcessHasInput())
         event.RequestMore();
     else
         event.Skip();
@@ -420,51 +430,51 @@ void Debugger_GDB_MI::OnTimer(wxTimerEvent& event)
 
 void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
 {
-    wxString const &log_str = event.GetResultParser()->MakeDebugString();
-    Manager::Get()->GetLogManager()->Log(log_str, m_page_index);
-
-    Manager::Get()->GetLogManager()->Log(_T("notification event recieved!"), m_page_index);
-
-    dbg_mi::ResultParser const *parser = event.GetResultParser();
-
-    if(!parser)
-        return;
-
-    if(parser->GetResultClass() == dbg_mi::ResultParser::ClassStopped)
-    {
-        dbg_mi::ResultValue const *frame_value = parser->GetResultValue().GetTupleValue(_T("frame"));
-        if(!frame_value)
-        {
-            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find frame value:("),
-                                                 m_page_index);
-            return;
-        }
-
-        if(!m_forced_break)
-        {
-            dbg_mi::Frame frame;
-
-            if(!frame.Parse(*frame_value))
-            {
-                Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
-                                                     m_page_index);
-            }
-            else
-            {
-                Manager::Get()->GetDebuggerManager()->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
-            }
-        }
-        m_is_stopped = true;
-        m_forced_break = false;
-    }
-
-//    if(emit_watch)
-//    {
-//        emit_watch = false;
+//    wxString const &log_str = event.GetResultParser()->MakeDebugString();
+//    Manager::Get()->GetLogManager()->Log(log_str, m_page_index);
 //
-//        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("v"), m_page_index));
-//        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("fill_vector"), m_page_index));
+//    Manager::Get()->GetLogManager()->Log(_T("notification event recieved!"), m_page_index);
+//
+//    dbg_mi::ResultParser const *parser = event.GetResultParser();
+//
+//    if(!parser)
+//        return;
+//
+//    if(parser->GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+//    {
+//        dbg_mi::ResultValue const *frame_value = parser->GetResultValue().GetTupleValue(_T("frame"));
+//        if(!frame_value)
+//        {
+//            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find frame value:("),
+//                                                 m_page_index);
+//            return;
+//        }
+//
+//        if(!m_forced_break)
+//        {
+//            dbg_mi::Frame frame;
+//
+//            if(!frame.Parse(*frame_value))
+//            {
+//                Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
+//                                                     m_page_index);
+//            }
+//            else
+//            {
+//                Manager::Get()->GetDebuggerManager()->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
+//            }
+//        }
+//        m_is_stopped = true;
+//        m_forced_break = false;
 //    }
+//
+////    if(emit_watch)
+////    {
+////        emit_watch = false;
+////
+////        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("v"), m_page_index));
+////        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("fill_vector"), m_page_index));
+////    }
 }
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)
@@ -473,26 +483,111 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 //-    dbg_mi::Command *cmd = new dbg_mi::Command();
 //-    cmd->SetString(command);
 //-    m_command_queue.AddCommand(cmd, true);
+    m_executor.Execute(command);
 }
+
+struct Notifications
+{
+    Notifications(dbg_mi::GDBExecutor &executor, int page_index) :
+        m_page_index(page_index),
+        m_executor(executor)
+    {
+    }
+
+    void operator()(dbg_mi::ResultParser const &parser)
+    {
+        LogManager *log = Manager::Get()->GetLogManager();
+        log->Log(_T("notification event recieved!"), m_page_index);
+
+        if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+        {
+            dbg_mi::ResultValue const &result_value = parser.GetResultValue();
+            dbg_mi::StoppedReason reason = dbg_mi::StoppedReason::Parse(result_value);
+
+            if(reason == dbg_mi::StoppedReason::ExitedNormally)
+            {
+                m_executor.Execute(wxT("-gdb-exit"));
+            }
+            else
+            {
+                dbg_mi::ResultValue const *frame_value = result_value.GetTupleValue(_T("frame"));
+                if(!frame_value)
+                {
+                    log->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find frame value:("),
+                                                         m_page_index);
+                    log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification: %s"),
+                                              parser.MakeDebugString().c_str()),
+                             m_page_index);
+
+                    return;
+                }
+
+    //            if(!m_forced_break)
+                {
+                    dbg_mi::Frame frame;
+
+                    if(!frame.Parse(*frame_value))
+                    {
+                        log->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
+                                                             m_page_index);
+                        log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification: %s"),
+                                                  parser.MakeDebugString().c_str()),
+                                 m_page_index);
+                    }
+                    else
+                    {
+                        Manager::Get()->GetDebuggerManager()->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
+                    }
+                }
+                m_executor.Stopped(true);
+    //            m_is_stopped = true;
+    //            m_forced_break = false;
+            }
+        }
+    }
+private:
+    int m_page_index;
+    dbg_mi::GDBExecutor &m_executor;
+};
 
 void Debugger_GDB_MI::RunQueue()
 {
 //-    if(m_process && IsStopped())
 //-        m_command_queue.RunQueue(m_process);
+    if(m_executor.IsRunning())
+    {
+        Notifications notifications(m_executor, m_page_index);
+        dbg_mi::DispatchResults(m_executor, m_actions, notifications);
+
+        if(m_executor.IsStopped())
+            m_actions.Run(m_executor);
+    }
 }
 
 void Debugger_GDB_MI::ParseOutput(wxString const &str)
 {
-    if(str.IsEmpty())
-        return;
-    Manager::Get()->GetLogManager()->Log(_T(">>>") + str, m_dbg_page_index);
-    m_executor.ProcessOutput(str);
+    if(!str.IsEmpty())
+    {
+        wxArrayString const &lines = GetArrayFromString(str, _T('\n'));
+        for(size_t ii = 0; ii < lines.GetCount(); ++ii)
+            m_executor.ProcessOutput(lines[ii]);
+        m_actions.Run(m_executor);
+    }
 }
 
-void Debugger_GDB_MI::EditorLinesAddedOrRemoved(cbEditor* editor, int startline, int lines)
+struct StopNotification
 {
-    #warning "not implemented"
-}
+    StopNotification(dbg_mi::GDBExecutor &executor) : m_executor(executor)
+    {
+    }
+
+    void operator()(bool stopped)
+    {
+        m_executor.Stopped(stopped);
+    }
+
+    dbg_mi::GDBExecutor &m_executor;
+};
 
 int Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
@@ -559,17 +654,16 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
 
     emit_watch = true;
 
-    int ret = LaunchProcess(cmd, working_dir);
+    int ret = m_executor.LaunchProcess(cmd, working_dir, id_gdb_process, this);
 
-    AddStringCommand(_T("-enable-timings"));
+    m_executor.Stopped(true);
+    m_executor.Execute(_T("-enable-timings"));
     CommitBreakpoints();
 
-    AddStringCommand(_T("-exec-run"));
-    m_is_stopped = true;
-
-    RunQueue();
-    m_is_stopped = false;
-    m_forced_break = false;
+    m_actions.Add(new dbg_mi::RunAction<StopNotification>(this, wxT("-exec-run"),
+                                                          StopNotification(m_executor), m_execution_logger)
+                  );
+    m_actions.Run(m_executor);
 
     m_timer_poll_debugger.Start(20);
     return 0;
@@ -580,7 +674,8 @@ void Debugger_GDB_MI::CommitBreakpoints()
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
         // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
-//-        if(it->GetIndex() == -1)
+        if(it->GetIndex() == -1)
+            m_actions.Add(new dbg_mi::BreakpointAddAction(&*it, m_execution_logger));
 //-            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it), dbg_mi::CommandQueue::Asynchronous);
     }
 
@@ -594,22 +689,24 @@ void Debugger_GDB_MI::CommitBreakpoints()
 
 long Debugger_GDB_MI::GetChildPID()
 {
-    if(m_pid <= 0)
-        m_child_pid = -1;
-    else if(m_child_pid <= 0)
-    {
-        std::vector<int> children;
-        GetChildPIDs(m_pid, children);
-
-        if(children.size() != 0)
-        {
-            if(children.size() > 1)
-                Manager::Get()->GetLogManager()->Log(wxT("the debugger has more that one child"));
-            m_child_pid = children.front();
-        }
-    }
-
-    return m_child_pid;
+//    if(m_pid <= 0)
+//        m_child_pid = -1;
+//    else if(m_child_pid <= 0)
+//    {
+//        std::vector<int> children;
+//        GetChildPIDs(m_pid, children);
+//
+//        if(children.size() != 0)
+//        {
+//            if(children.size() > 1)
+//                Manager::Get()->GetLogManager()->Log(wxT("the debugger has more that one child"));
+//            m_child_pid = children.front();
+//        }
+//    }
+//
+//    return m_child_pid;
+    cbAssert(false);
+    return -1;
 }
 
 void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
@@ -630,11 +727,11 @@ void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
 
 void Debugger_GDB_MI::Continue()
 {
-    if(IsStopped() || m_forced_break)
-    {
+//-    if(IsStopped() || m_forced_break)
+//-    {
 //-        m_command_queue.AddAction(new dbg_mi::RunAction(this, wxT("-exec-continue"), m_is_stopped),
 //-                                  dbg_mi::CommandQueue::Synchronous);
-    }
+//-    }
 }
 
 void Debugger_GDB_MI::Next()
@@ -665,33 +762,34 @@ bool Debugger_GDB_MI::DoBreak(bool child)
 {
     if(!IsRunning() || IsStopped())
         return true;
-
-    // FIXME (obfuscated#): do something similar for the windows platform
-    // non-windows gdb can interrupt the running process. yay!
-    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
-    {
-        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
-        return false;
-    }
-    else
-    {
-        wxKillError error;
-        if(child)
-        {
-            GetChildPID();
-            wxKill(m_child_pid, wxSIGINT, &error);
-        }
-        else
-            wxKill(m_pid, wxSIGINT, &error);
-        m_forced_break = true;
-        return error == wxKILL_OK;
-    }
+    cbAssert(false);
+    return false;
+//    // FIXME (obfuscated#): do something similar for the windows platform
+//    // non-windows gdb can interrupt the running process. yay!
+//    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
+//    {
+//        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
+//        return false;
+//    }
+//    else
+//    {
+//        wxKillError error;
+//        if(child)
+//        {
+//            GetChildPID();
+//            wxKill(m_child_pid, wxSIGINT, &error);
+//        }
+//        else
+//            wxKill(m_pid, wxSIGINT, &error);
+//        m_forced_break = true;
+//        return error == wxKILL_OK;
+//    }
 }
 
 void Debugger_GDB_MI::Break()
 {
     DoBreak(true);
-    m_forced_break = false;
+//-    m_forced_break = false;
 
     // Notify debugger plugins for end of debug session
     PluginManager *plm = Manager::Get()->GetPluginManager();
@@ -705,20 +803,19 @@ void Debugger_GDB_MI::Stop()
         return;
     ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
-    if(m_process)
-    {
-        DoBreak(false);
-        AddStringCommand(_T("-gdb-exit"));
-        RunQueue();
-    }
+    cbAssert(false);
+
+    DoBreak(false);
+    AddStringCommand(_T("-gdb-exit"));
+//    RunQueue();
 }
 bool Debugger_GDB_MI::IsRunning() const
 {
-    return m_process;
+    return m_executor.IsRunning();
 }
 bool Debugger_GDB_MI::IsStopped() const
 {
-    return m_is_stopped;
+    return m_executor.IsStopped();
 }
 int Debugger_GDB_MI::GetExitCode() const
 {
@@ -871,6 +968,11 @@ void Debugger_GDB_MI::DeleteAllBreakpoints()
     m_breakpoints.clear();
 }
 
+void Debugger_GDB_MI::ShiftBreakpoint(int index, int lines_to_shift)
+{
+    #warning "not implemented"
+}
+
 int Debugger_GDB_MI::GetThreadsCount() const
 {
     #warning "not implemented"
@@ -936,3 +1038,10 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
 {
     #warning "not implemented"
 }
+
+void Debugger_GDB_MI::GetCurrentPosition(wxString &filename, int &line)
+{
+    #warning "not implemented"
+}
+
+

@@ -8,8 +8,8 @@
 
 namespace dbg_mi
 {
-/*
-void BreakpointAddAction::Start()
+
+void BreakpointAddAction::OnStart()
 {
     wxString cmd(wxT("-break-insert "));
     cbBreakpoint &bp = m_breakpoint->Get();
@@ -20,19 +20,17 @@ void BreakpointAddAction::Start()
         cmd += wxT("-i ") + wxString::Format(wxT("%d "), bp.GetIgnoreCount());
 
     cmd += wxString::Format(wxT("%s:%d"), bp.GetFilename().c_str(), bp.GetLine());
-    m_initial_cmd = QueueCommand(cmd);
-    DebugLog(wxString::Format(wxT("BreakpointAddAction::m_initial_cmd = %d\n"), m_initial_cmd));
+    m_initial_cmd = Execute(cmd);
+    m_logger.Debug(wxT("BreakpointAddAction::m_initial_cmd = ") + m_initial_cmd.ToString());
 }
 
-void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
+void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
-    DebugLog(wxString::Format(wxT("BreakpointAddAction::OnCommandResult: %d"), cmd_id));
+    m_logger.Debug(wxT("BreakpointAddAction::OnCommandResult: ") + id.ToString());
 
-    if(m_initial_cmd == cmd_id)
+    if(m_initial_cmd == id)
     {
-        ResultParser *result = GetCommandResult(cmd_id);
-        assert(result);
-        const ResultValue &value = result->GetResultValue();
+        const ResultValue &value = result.GetResultValue();
         const ResultValue *number = value.GetTupleValue(wxT("bkpt.number"));
         if(number)
         {
@@ -40,50 +38,34 @@ void BreakpointAddAction::OnCommandResult(int32_t cmd_id)
             long n;
             if(number_value.ToLong(&n, 10))
             {
-                DebugLog(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
+                m_logger.Debug(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
                 m_breakpoint->SetIndex(n);
 
                 if(!m_breakpoint->Get().IsEnabled())
-                    QueueCommand(wxString::Format(wxT("-break-disable %d"), n));
+                    m_disable_cmd = Execute(wxString::Format(wxT("-break-disable %d"), n));
+                else
+                {
+                    m_logger.Debug(wxT("BreakpointAddAction::Finishing1"));
+                    Finish();
+                }
             }
             else
-                DebugLog(wxT("BreakpointAddAction::error getting the index :( "));
+                m_logger.Debug(wxT("BreakpointAddAction::error getting the index :( "));
         }
         else
         {
-            DebugLog(wxT("BreakpointAddAction::error getting number value:( "));
-            DebugLog(value.MakeDebugString());
+            m_logger.Debug(wxT("BreakpointAddAction::error getting number value:( "));
+            m_logger.Debug(value.MakeDebugString());
         }
     }
-    else
+    else if(m_disable_cmd == id)
     {
-
+        m_logger.Debug(wxT("BreakpointAddAction::Finishing2"));
+        Finish();
     }
 }
 
-RunAction::RunAction(cbDebuggerPlugin *plugin, const wxString &command, bool &is_stopped) :
-    m_plugin(plugin),
-    m_command(command),
-    m_is_stopped(is_stopped)
-{
-}
-
-void RunAction::Start()
-{
-    QueueCommand(m_command);
-}
-void RunAction::OnCommandResult(int32_t cmd_id)
-{
-    ResultParser *result = GetCommandResult(cmd_id);
-    assert(result);
-    if(result->GetResultClass() == ResultParser::ClassRunning)
-    {
-        DebugLog(wxT("RunAction success, the debugger is !stopped!"));
-        m_is_stopped = false;
-        m_plugin->ClearActiveMarkFromAllEditors();
-    }
-}
-
+/*
 WatchAction::WatchAction(wxString const &variable_name) :
     m_variable_name(variable_name)
 {

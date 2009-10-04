@@ -119,6 +119,18 @@ TEST(ExecuteGetResult)
     delete result;
 }
 
+TEST(ExecuteClear)
+{
+    MockCommandExecutor exec;
+
+    exec.Execute(wxT("-exec-run"));
+    exec.Clear();
+
+    CHECK(!exec.HasOutput());
+    CHECK_EQUAL(0, exec.GetLastID());
+    CHECK(exec.HasBeenCleared());
+}
+
 TEST(TestParseDebuggerOutputLine)
 {
     wxString line = wxT("10000000005^running");
@@ -406,6 +418,13 @@ TEST_FIXTURE(ActionsMapFixture, FindAction)
     CHECK_EQUAL(action, found_action);
 }
 
+TEST_FIXTURE(ActionsMapFixture, Clear)
+{
+    actions_map.Clear();
+    CHECK(actions_map.Empty());
+    CHECK_EQUAL(1, actions_map.GetLastID());
+}
+
 struct DispatchedAction : public dbg_mi::Action
 {
 public:
@@ -579,6 +598,13 @@ struct LoggingFixture
     DummyLogger logger;
     MockCommandExecutor exec;
 };
+
+TEST_FIXTURE(LoggingFixture, GetLogger)
+{
+    dbg_mi::Logger *l = exec.GetLogger();
+
+    CHECK(l == &logger);
+}
 
 TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorExecute)
 {

@@ -7,37 +7,74 @@ class cbDebuggerPlugin;
 
 namespace dbg_mi
 {
-/*
+
 class Breakpoint;
 
 class BreakpointAddAction : public Action
 {
 public:
-    BreakpointAddAction(Breakpoint *breakpoint) :
-        m_breakpoint(breakpoint)
+    BreakpointAddAction(Breakpoint *breakpoint, Logger &logger) :
+        m_breakpoint(breakpoint),
+        m_logger(logger)
     {
     }
-    virtual void Start();
-    virtual void OnCommandResult(int32_t cmd_id);
+    virtual ~BreakpointAddAction()
+    {
+        m_logger.Debug(wxT("BreakpointAddAction::destructor"));
+    }
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
 
 private:
     Breakpoint *m_breakpoint;
-    int m_initial_cmd;
+    CommandID m_initial_cmd, m_disable_cmd;
+
+    Logger &m_logger;
 };
 
+template<typename StopNotification>
 class RunAction : public Action
 {
 public:
-    RunAction(cbDebuggerPlugin *plugin, const wxString &command, bool &is_stopped);
+    RunAction(cbDebuggerPlugin *plugin, const wxString &command,
+              StopNotification notification, Logger &logger) :
+        m_plugin(plugin),
+        m_command(command),
+        m_notification(notification),
+        m_logger(logger)
+    {
+        SetWaitPrevious(true);
+    }
+    virtual ~RunAction()
+    {
+        m_logger.Debug(wxT("RunAction::destructor"));
+    }
 
-    virtual void Start();
-    virtual void OnCommandResult(int32_t cmd_id);
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    {
+        if(result.GetResultClass() == ResultParser::ClassRunning)
+        {
+            m_logger.Debug(wxT("RunAction success, the debugger is !stopped!"));
+            m_notification(false);
+            Finish();
+    //        m_plugin->ClearActiveMarkFromAllEditors();
+        }
+    }
+protected:
+    virtual void OnStart()
+    {
+        Execute(m_command);
+        m_logger.Debug(wxT("RunAction::OnStart -> ") + m_command);
+    }
+
 private:
     cbDebuggerPlugin *m_plugin;
     wxString m_command;
-    bool &m_is_stopped;
+    StopNotification m_notification;
+    Logger &m_logger;
 };
-
+/*
 class WatchAction : public Action
 {
 public:
