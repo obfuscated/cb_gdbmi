@@ -40,13 +40,11 @@ int const id_gdb_poll_timer = wxNewId();
 BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
 
     EVT_PIPEDPROCESS_STDOUT(id_gdb_process, Debugger_GDB_MI::OnGDBOutput)
-    EVT_PIPEDPROCESS_STDERR(id_gdb_process, Debugger_GDB_MI::OnGDBError)
+    EVT_PIPEDPROCESS_STDERR(id_gdb_process, Debugger_GDB_MI::OnGDBOutput)
     EVT_PIPEDPROCESS_TERMINATED(id_gdb_process, Debugger_GDB_MI::OnGDBTerminated)
 
     EVT_IDLE(Debugger_GDB_MI::OnIdle)
     EVT_TIMER(id_gdb_poll_timer, Debugger_GDB_MI::OnTimer)
-
-    EVT_DBGMI_NOTIFICATION(Debugger_GDB_MI::OnGDBNotification)
 
 END_EVENT_TABLE()
 
@@ -129,6 +127,7 @@ int Debugger_GDB_MI::Configure()
 
 void Debugger_GDB_MI::ShowLog()
 {
+    // TODO (obfuscated#): if the "Debugger (debug)" log pane is active don't activate the "Debugger"
     CodeBlocksLogEvent event_switch_log(cbEVT_SWITCH_TO_LOG_WINDOW, m_log);
     CodeBlocksLogEvent event_show_log(cbEVT_SHOW_LOG_MANAGER);
     Manager::Get()->ProcessEvent(event_switch_log);
@@ -281,20 +280,7 @@ void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
 {
     wxString const &msg = event.GetString();
     if (!msg.IsEmpty())
-    {
-//        Manager::Get()->GetLogManager()->Log(m_PageIndex, _T("O>>> %s"), msg.c_str());
         ParseOutput(msg);
-    }
-}
-
-void Debugger_GDB_MI::OnGDBError(wxCommandEvent& event)
-{
-    wxString const &msg = event.GetString();
-    if (!msg.IsEmpty())
-    {
-//        Manager::Get()->GetLogManager()->Log(m_PageIndex, _T("E>>> %s"), msg.c_str());
-        ParseOutput(msg);
-    }
 }
 
 void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
@@ -304,6 +290,13 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
     m_timer_poll_debugger.Stop();
     m_actions.Clear();
     m_executor.Clear();
+
+    // Notify debugger plugins for end of debug session
+    PluginManager *plm = Manager::Get()->GetPluginManager();
+    CodeBlocksEvent evt(cbEVT_DEBUGGER_FINISHED);
+    plm->NotifyPlugins(evt);
+
+    // TODO (obfuscated#): switch to the previous layout/perspective
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
@@ -322,55 +315,6 @@ void Debugger_GDB_MI::OnTimer(wxTimerEvent& event)
 {
     RunQueue();
     wxWakeUpIdle();
-}
-
-void Debugger_GDB_MI::OnGDBNotification(dbg_mi::NotificationEvent &event)
-{
-//    wxString const &log_str = event.GetResultParser()->MakeDebugString();
-//    Manager::Get()->GetLogManager()->Log(log_str, m_page_index);
-//
-//    Manager::Get()->GetLogManager()->Log(_T("notification event recieved!"), m_page_index);
-//
-//    dbg_mi::ResultParser const *parser = event.GetResultParser();
-//
-//    if(!parser)
-//        return;
-//
-//    if(parser->GetResultClass() == dbg_mi::ResultParser::ClassStopped)
-//    {
-//        dbg_mi::ResultValue const *frame_value = parser->GetResultValue().GetTupleValue(_T("frame"));
-//        if(!frame_value)
-//        {
-//            Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find frame value:("),
-//                                                 m_page_index);
-//            return;
-//        }
-//
-//        if(!m_forced_break)
-//        {
-//            dbg_mi::Frame frame;
-//
-//            if(!frame.Parse(*frame_value))
-//            {
-//                Manager::Get()->GetLogManager()->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't parse frame value:("),
-//                                                     m_page_index);
-//            }
-//            else
-//            {
-//                Manager::Get()->GetDebuggerManager()->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
-//            }
-//        }
-//        m_is_stopped = true;
-//        m_forced_break = false;
-//    }
-//
-////    if(emit_watch)
-////    {
-////        emit_watch = false;
-////
-////        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("v"), m_page_index));
-////        m_command_queue.AddAction(new dbg_mi::WatchAction(_T("fill_vector"), m_page_index));
-////    }
 }
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)
@@ -427,6 +371,11 @@ struct Notifications
                     }
                 }
                 m_executor.Stopped(true);
+
+                // Notify debugger plugins for end of debug session
+                PluginManager *plm = Manager::Get()->GetPluginManager();
+                CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
+                plm->NotifyPlugins(evt);
             }
         }
     }
@@ -472,7 +421,9 @@ struct StopNotification
     {
         m_executor.Stopped(stopped);
         if(!stopped)
+        {
             m_plugin->ClearActiveMarkFromAllEditors();
+        }
     }
 
     dbg_mi::GDBExecutor &m_executor;
@@ -662,12 +613,6 @@ void Debugger_GDB_MI::StepOut()
 void Debugger_GDB_MI::Break()
 {
     m_executor.Interupt(false);
-//-    m_forced_break = false;
-// FIXME (obfuscated#): move this in a notification handler
-    // Notify debugger plugins for end of debug session
-    PluginManager *plm = Manager::Get()->GetPluginManager();
-    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
-    plm->NotifyPlugins(evt);
 }
 
 void Debugger_GDB_MI::Stop()

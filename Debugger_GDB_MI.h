@@ -148,13 +148,10 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         DECLARE_EVENT_TABLE();
 
         void OnGDBOutput(wxCommandEvent& event);
-        void OnGDBError(wxCommandEvent& event);
         void OnGDBTerminated(wxCommandEvent& event);
 
         void OnTimer(wxTimerEvent& event);
         void OnIdle(wxIdleEvent& event);
-
-        void OnGDBNotification(dbg_mi::NotificationEvent &event);
 
         void AddStringCommand(wxString const &command);
         void RunQueue();

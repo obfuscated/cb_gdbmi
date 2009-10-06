@@ -9,7 +9,7 @@ namespace dbg_mi
 extern const wxEventType NotificationEventType;
 
 class ResultParser;
-
+// TODO (obfusacted#): remove this class, not needed
 class NotificationEvent : public wxEvent
 {
 public:

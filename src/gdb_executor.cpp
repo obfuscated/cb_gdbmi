@@ -12,7 +12,6 @@
 namespace
 {
 
-// FIXME (obfuscated#): move somewhere else
 void GetChildPIDs(int parent, std::vector<int> &childs)
 {
 #ifndef __WX_MSW__
@@ -206,7 +205,6 @@ void GDBExecutor::Interupt(bool temporary)
         wxKillError error;
         GetChildPID();
         wxKill(m_child_pid, wxSIGINT, &error);
-//        m_forced_break = true;
         return;
     }
 }
@@ -226,7 +224,6 @@ void GDBExecutor::ForceStop()
     {
         wxKillError error;
         wxKill(m_pid, wxSIGINT, &error);
-//        m_forced_break = true;
 
         Execute(wxT("-gdb-exit"));
         return;
