@@ -484,6 +484,31 @@ TEST_FIXTURE(TestListWithTuples, ListValue3)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct TestListEmpty
+{
+    TestListEmpty()
+    {
+        status = dbg_mi::ParseValue(_T("a = []"), result);
+
+        a = result.GetTupleValue(_T("a"));
+    }
+
+    dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *a;
+    bool status;
+};
+
+TEST_FIXTURE(TestListEmpty, Status)
+{
+    CHECK(status);
+}
+
+TEST_FIXTURE(TestListEmpty, DebugString)
+{
+    CHECK(result.MakeDebugString() == wxT("{a=[]}"));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TEST(ParserFail1)
 {
     dbg_mi::ResultValue r;

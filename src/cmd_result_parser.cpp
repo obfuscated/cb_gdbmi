@@ -196,8 +196,8 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
             return true;
 
         case Token::ListEnd:
-            if(!curr_value)
-                return false;
+//            if(!curr_value)
+//                return false;
             if(tuple.GetType() != ResultValue::Array || !want_closing_brace)
             {
                 delete curr_value;
@@ -209,15 +209,19 @@ bool ParseTuple(wxString const &str, int &start, ResultValue &tuple, bool want_c
                 curr_value->SetType(ResultValue::Simple);
                 curr_value->SetSimpleValue(curr_value->GetName());
                 curr_value->SetName(_T(""));
+                tuple.SetTupleValue(curr_value);
             }
-            else if(step != Value)
+            else if(step == Value)
+            {
+                tuple.SetTupleValue(curr_value);
+            }
+            else if(step != Nothing || curr_value)
             {
                 delete curr_value;
                 return false;
             }
 
             start = pos + 1;
-            tuple.SetTupleValue(curr_value);
             return true;
         default:
             assert(false);
