@@ -406,7 +406,7 @@ struct Notifications
             }
             else
             {
-    //            if(!m_forced_break)
+                if(!m_executor.IsTemporaryInterupt())
                 {
                     dbg_mi::Frame frame;
                     if(!frame.Parse(result_value))
@@ -424,14 +424,9 @@ struct Notifications
                             DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
                             dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
                         }
-                        else
-                        {
-                        }
                     }
                 }
                 m_executor.Stopped(true);
-    //            m_is_stopped = true;
-    //            m_forced_break = false;
             }
         }
     }
@@ -467,16 +462,21 @@ void Debugger_GDB_MI::ParseOutput(wxString const &str)
 
 struct StopNotification
 {
-    StopNotification(dbg_mi::GDBExecutor &executor) : m_executor(executor)
+    StopNotification(cbDebuggerPlugin *plugin, dbg_mi::GDBExecutor &executor) :
+        m_plugin(plugin),
+        m_executor(executor)
     {
     }
 
     void operator()(bool stopped)
     {
         m_executor.Stopped(stopped);
+        if(!stopped)
+            m_plugin->ClearActiveMarkFromAllEditors();
     }
 
     dbg_mi::GDBExecutor &m_executor;
+    cbDebuggerPlugin *m_plugin;
 };
 
 int Debugger_GDB_MI::Debug(bool breakOnEntry)
@@ -577,7 +577,8 @@ void Debugger_GDB_MI::CommitBreakpoints(bool force)
 void Debugger_GDB_MI::CommitRunCommand(wxString const &command)
 {
     m_actions.Add(new dbg_mi::RunAction<StopNotification>(this, command,
-                                                          StopNotification(m_executor), m_execution_logger)
+                                                          StopNotification(this, m_executor),
+                                                          m_execution_logger)
                   );
 }
 
@@ -599,8 +600,14 @@ void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
 
 void Debugger_GDB_MI::Continue()
 {
-    if(!IsStopped())
+    if(!IsStopped() && !m_executor.Interupting())
+    {
+        dbg_mi::Logger *log = m_executor.GetLogger();
+        if(log)
+            log->Debug(wxT("Continue failed -> debugger is not interupted!"));
+
         return;
+    }
     CommitRunCommand(wxT("-exec-continue"));
 }
 
@@ -654,7 +661,7 @@ void Debugger_GDB_MI::StepOut()
 
 void Debugger_GDB_MI::Break()
 {
-    m_executor.Interupt();
+    m_executor.Interupt(false);
 //-    m_forced_break = false;
 // FIXME (obfuscated#): move this in a notification handler
     // Notify debugger plugins for end of debug session

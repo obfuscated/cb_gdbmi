@@ -32,9 +32,11 @@ public:
     bool ProcessHasInput();
     bool IsRunning() const;
     bool IsStopped() const { return m_stopped; }
+    bool Interupting() const { return m_interupting; }
+    bool IsTemporaryInterupt() const { return m_temporary_interupt; }
 
     void Stopped(bool flag);
-    void Interupt();
+    void Interupt(bool temporary = true);
     void ForceStop();
 
     virtual wxString GetOutput();
@@ -51,6 +53,8 @@ private:
     long m_pid, m_child_pid;
 
     bool m_stopped;
+    bool m_interupting;
+    bool m_temporary_interupt;
 };
 
 } // namespace dbg_mi

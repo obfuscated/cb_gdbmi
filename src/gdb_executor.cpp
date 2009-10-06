@@ -78,7 +78,9 @@ GDBExecutor::GDBExecutor() :
     m_debug_page(-1),
     m_pid(-1),
     m_child_pid(-1),
-    m_stopped(false)
+    m_stopped(false),
+    m_interupting(false),
+    m_temporary_interupt(false)
 {
 }
 
@@ -176,9 +178,13 @@ void GDBExecutor::Stopped(bool flag)
             m_logger->Debug(wxT("Executor started"));
     }
     m_stopped = flag;
+    if(flag)
+        m_interupting = false;
+    else
+        m_temporary_interupt = false;
 }
 
-void GDBExecutor::Interupt()
+void GDBExecutor::Interupt(bool temporary)
 {
     if(!IsRunning() || IsStopped())
         return;
@@ -195,6 +201,8 @@ void GDBExecutor::Interupt()
     }
     else
     {
+        m_temporary_interupt = temporary;
+        m_interupting = true;
         wxKillError error;
         GetChildPID();
         wxKill(m_child_pid, wxSIGINT, &error);
