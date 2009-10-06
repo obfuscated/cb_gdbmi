@@ -1,6 +1,7 @@
 #ifndef _DEBUGGER_GDB_MI_DEFINITIONS_H_
 #define _DEBUGGER_GDB_MI_DEFINITIONS_H_
 
+#include <tr1/memory>
 #include <debuggermanager.h>
 
 namespace dbg_mi
@@ -8,6 +9,8 @@ namespace dbg_mi
 
 class Breakpoint
 {
+public:
+    typedef std::tr1::shared_ptr<Breakpoint> Pointer;
 public:
     Breakpoint() :
         m_index(-1)

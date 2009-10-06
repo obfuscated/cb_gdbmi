@@ -323,7 +323,8 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 //-    dbg_mi::Command *cmd = new dbg_mi::Command();
 //-    cmd->SetString(command);
 //-    m_command_queue.AddCommand(cmd, true);
-    m_executor.Execute(command);
+//    m_executor.Execute(command);
+    m_actions.Add(new dbg_mi::SimpleAction(command));
 }
 
 struct Notifications
@@ -426,8 +427,8 @@ struct StopNotification
         }
     }
 
-    dbg_mi::GDBExecutor &m_executor;
     cbDebuggerPlugin *m_plugin;
+    dbg_mi::GDBExecutor &m_executor;
 };
 
 int Debugger_GDB_MI::Debug(bool breakOnEntry)
@@ -508,19 +509,20 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
 
 void Debugger_GDB_MI::CommitBreakpoints(bool force)
 {
+    Manager::Get()->GetLogManager()->Log(wxT("Debugger_GDB_MI::CommitBreakpoints"), m_dbg_page_index);
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
         // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
-        if(it->GetIndex() == -1 || force)
+        if((*it)->GetIndex() == -1 || force)
         {
-            m_actions.Add(new dbg_mi::BreakpointAddAction(&*it, m_execution_logger));
+            m_actions.Add(new dbg_mi::BreakpointAddAction(*it, m_execution_logger));
         }
     }
 
     for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
     {
-        AddStringCommand(wxString::Format(_T("-break-insert -t %s:%d"), it->Get().GetFilename().c_str(),
-                                          it->Get().GetLine()));
+        AddStringCommand(wxString::Format(_T("-break-insert -t %s:%d"), (*it)->Get().GetFilename().c_str(),
+                                          (*it)->Get().GetLine()));
     }
     m_temporary_breakpoints.clear();
 }
@@ -544,7 +546,8 @@ void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
     }
     else
     {
-        m_temporary_breakpoints.push_back(cbBreakpoint(filename, line));
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+        m_temporary_breakpoints.push_back(ptr);
         Debug(false);
     }
 }
@@ -559,6 +562,7 @@ void Debugger_GDB_MI::Continue()
 
         return;
     }
+    Manager::Get()->GetLogManager()->Log(wxT("Debugger_GDB_MI::Continue"), m_dbg_page_index);
     CommitRunCommand(wxT("-exec-continue"));
 }
 
@@ -581,34 +585,6 @@ void Debugger_GDB_MI::StepOut()
 {
     CommitRunCommand(wxT("-exec-finish"));
 }
-
-//bool Debugger_GDB_MI::DoBreak(bool child)
-//{
-//    if(!IsRunning() || IsStopped())
-//        return true;
-//    cbAssert(false);
-//    return false;
-////    // FIXME (obfuscated#): do something similar for the windows platform
-////    // non-windows gdb can interrupt the running process. yay!
-////    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
-////    {
-////        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
-////        return false;
-////    }
-////    else
-////    {
-////        wxKillError error;
-////        if(child)
-////        {
-////            GetChildPID();
-////            wxKill(m_child_pid, wxSIGINT, &error);
-////        }
-////        else
-////            wxKill(m_pid, wxSIGINT, &error);
-////        m_forced_break = true;
-////        return error == wxKILL_OK;
-////    }
-//}
 
 void Debugger_GDB_MI::Break()
 {
@@ -658,19 +634,25 @@ cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
 {
     if(!IsStopped())
     {
+        Manager::Get()->GetLogManager()->Log(wxString::Format(wxT("Debugger_GDB_MI::Addbreakpoint: %s:%d"),
+                                                              filename.c_str(), line),
+                                             m_dbg_page_index);
         m_executor.Interupt();
-        m_breakpoints.push_back(cbBreakpoint(filename, line));
+
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+        m_breakpoints.push_back(ptr);
         CommitBreakpoints(false);
         Continue();
     }
     else
     {
-        m_breakpoints.push_back(cbBreakpoint(filename, line));
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+        m_breakpoints.push_back(ptr);
         if(IsRunning())
             CommitBreakpoints(false);
     }
 
-    return &m_breakpoints.back().Get();
+    return &m_breakpoints.back()->Get();
 }
 
 cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& dataExpression)
@@ -686,19 +668,20 @@ int Debugger_GDB_MI::GetBreakpointsCount() const
 
 cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index)
 {
-    return &m_breakpoints[index].Get();
+    return &m_breakpoints[index]->Get();
 }
 
 const cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index) const
 {
-    return &m_breakpoints[index].Get();
+    return &m_breakpoints[index]->Get();
 }
 
 void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
 {
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
-        if(&(it->Get()) != breakpoint)
+        dbg_mi::Breakpoint &current = **it;
+        if(&current.Get() != breakpoint)
             continue;
 
         switch(breakpoint->GetType())
@@ -711,10 +694,10 @@ void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
                 if(dialog.ShowModal() == wxID_OK)
                 {
                     // if the breakpoint is not sent to debugger, just copy
-                    if(it->GetIndex() != -1 || !IsRunning())
+                    if(current.GetIndex() != -1 || !IsRunning())
                     {
-                        it->Get() = temp;
-                        it->SetIndex(-1);
+                        current.Get() = temp;
+                        current.SetIndex(-1);
                     }
                     else
                     {
@@ -723,12 +706,10 @@ void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
                         if(breakpoint->IsEnabled() == temp.IsEnabled())
                         {
                             if(breakpoint->IsEnabled())
-                                AddStringCommand(wxString::Format(wxT("-break-enable %d"), it->GetIndex()));
+                                AddStringCommand(wxString::Format(wxT("-break-enable %d"), current.GetIndex()));
                             else
-                                AddStringCommand(wxString::Format(wxT("-break-disable %d"), it->GetIndex()));
+                                AddStringCommand(wxString::Format(wxT("-break-disable %d"), current.GetIndex()));
                         }
-
-//                        if(breakpoint->
                     }
 
                 }
@@ -745,10 +726,24 @@ void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint *breakpoint)
 {
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
-        if(&(it->Get()) == breakpoint)
+        dbg_mi::Breakpoint &current = **it;
+        if(&current.Get() == breakpoint)
         {
-            if(it->GetIndex() != -1)
-                AddStringCommand(wxString::Format(wxT("-break-delete %d"), it->GetIndex()));
+            Manager::Get()->GetLogManager()->Log(wxString::Format(wxT("Debugger_GDB_MI::DeleteBreakpoint: %s:%d"),
+                                                                  breakpoint->GetFilename().c_str(),
+                                                                  breakpoint->GetLine()),
+                                                 m_dbg_page_index);
+            if(current.GetIndex() != -1)
+            {
+                if(!IsStopped())
+                {
+                    m_executor.Interupt();
+                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
+                    Continue();
+                }
+                else
+                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
+            }
             m_breakpoints.erase(it);
             return;
         }
@@ -762,8 +757,9 @@ void Debugger_GDB_MI::DeleteAllBreakpoints()
         wxString breaklist;
         for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
         {
-            if(it->GetIndex() != -1)
-                breaklist += wxString::Format(wxT(" %d"), it->GetIndex());
+            dbg_mi::Breakpoint &current = **it;
+            if(current.GetIndex() != -1)
+                breaklist += wxString::Format(wxT(" %d"), current.GetIndex());
         }
 
         if(!breaklist.empty())
@@ -834,7 +830,23 @@ bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
 
 void Debugger_GDB_MI::SendCommand(const wxString& cmd)
 {
-    #warning "not implemented"
+    LogManager *log = Manager::Get()->GetLogManager();
+    if(!IsRunning())
+    {
+        wxString message(wxT("Command will not be executed because the debugger is not running!"));
+        log->Log(message, m_page_index);
+        log->Log(message, m_dbg_page_index);
+        return;
+    }
+    if(!IsStopped())
+    {
+        wxString message(wxT("Command will not be executed because the debugger/debuggee is not paused/interupted!"));
+        log->Log(message, m_page_index);
+        log->Log(message, m_dbg_page_index);
+        return;
+    }
+
+    m_executor.Execute(cmd);
 }
 
 void Debugger_GDB_MI::AttachToProcess(const wxString& pid)

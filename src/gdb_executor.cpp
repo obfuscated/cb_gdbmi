@@ -240,6 +240,15 @@ bool GDBExecutor::DoExecute(dbg_mi::CommandID const &id, wxString const &cmd)
 {
     if(m_process)
     {
+        if(!m_stopped)
+        {
+            if(m_logger)
+            {
+                m_logger->Debug(wxString::Format(wxT("GDBExecutor is not stopped, but command (%s) was executed!"),
+                                                 cmd.c_str())
+                                );
+            }
+        }
         m_process->SendString(id.ToString() + cmd);
         return true;
     }

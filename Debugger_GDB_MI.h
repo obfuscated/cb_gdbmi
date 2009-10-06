@@ -17,6 +17,7 @@
     #include <wx/wx.h>
 #endif
 
+#include <tr1/memory>
 #include <cbplugin.h> // for "class cbPlugin"
 
 #include "cmd_queue.h"
@@ -178,7 +179,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::ActionsMap  m_actions;
         dbg_mi::LogPaneLogger m_execution_logger;
 
-        typedef std::vector<dbg_mi::Breakpoint> Breakpoints;
+        typedef std::vector<dbg_mi::Breakpoint::Pointer> Breakpoints;
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
 };

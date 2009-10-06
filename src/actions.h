@@ -1,6 +1,7 @@
 #ifndef _DEBUGGER_GDB_MI_ACTIONS_H_
 #define _DEBUGGER_GDB_MI_ACTIONS_H_
 
+#include <tr1/memory>
 #include "cmd_queue.h"
 
 class cbDebuggerPlugin;
@@ -8,12 +9,33 @@ class cbDebuggerPlugin;
 namespace dbg_mi
 {
 
+class SimpleAction : public Action
+{
+public:
+    SimpleAction(wxString const &cmd) :
+        m_command(cmd)
+    {
+    }
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    {
+        Finish();
+    }
+protected:
+    virtual void OnStart()
+    {
+        Execute(m_command);
+    }
+private:
+    wxString m_command;
+};
+
 class Breakpoint;
 
 class BreakpointAddAction : public Action
 {
 public:
-    BreakpointAddAction(Breakpoint *breakpoint, Logger &logger) :
+    BreakpointAddAction(std::tr1::shared_ptr<Breakpoint> const &breakpoint, Logger &logger) :
         m_breakpoint(breakpoint),
         m_logger(logger)
     {
@@ -27,7 +49,7 @@ protected:
     virtual void OnStart();
 
 private:
-    Breakpoint *m_breakpoint;
+    std::tr1::shared_ptr<Breakpoint> m_breakpoint;
     CommandID m_initial_cmd, m_disable_cmd;
 
     Logger &m_logger;
