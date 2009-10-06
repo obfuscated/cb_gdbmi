@@ -160,21 +160,19 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void RunQueue();
         void ParseOutput(wxString const &str);
 
-//        int LaunchProcess(const wxString& cmd, const wxString& cwd);
         void ShowLog();
         bool SelectCompiler(cbProject &project, Compiler *&compiler,
                             ProjectBuildTarget *&target, long pid_to_attach);
         wxString FindDebuggerExecutable(Compiler* compiler);
         wxString GetDebuggee(ProjectBuildTarget* target);
 
-        bool DoBreak(bool child = true);
+//        bool DoBreak(bool child = true);
         void CommitBreakpoints();
+        void CommitRunCommand(wxString const &command);
 
         long GetChildPID();
     private:
         wxMenu *m_menu;
-//        PipedProcess *m_process;
-//        long    m_pid, m_child_pid;
         int m_page_index, m_dbg_page_index;
         TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
@@ -186,9 +184,5 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         typedef std::vector<dbg_mi::Breakpoint> Breakpoints;
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
-
-        bool emit_watch;
-//        bool m_is_stopped;
-//        bool m_forced_break;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

@@ -9,6 +9,58 @@
 #include <debuggermanager.h>
 #include <pipedprocess.h>
 
+namespace
+{
+
+// FIXME (obfuscated#): move somewhere else
+void GetChildPIDs(int parent, std::vector<int> &childs)
+{
+#ifndef __WX_MSW__
+    const char *c_proc_base = "/proc";
+
+    DIR *dir = opendir(c_proc_base);
+    if(!dir)
+        return;
+
+    struct dirent *entry;
+    do
+    {
+        entry = readdir(dir);
+        if(entry)
+        {
+            int pid = atoi(entry->d_name);
+            if(pid != 0)
+            {
+                char filestr[PATH_MAX + 1];
+                snprintf(filestr, PATH_MAX, "%s/%d/stat", c_proc_base, pid);
+
+                FILE *file = fopen(filestr, "r");
+                if(file)
+                {
+                    char line[101];
+                    fgets(line, 100, file);
+                    fclose(file);
+                    int dummy;
+                    char comm[100];
+                    int ppid;
+                    int count = sscanf(line, "%d %s %c %d", &dummy, comm, (char *) &dummy, &ppid);
+                    if(count == 4)
+                    {
+                        if(ppid == parent)
+                        {
+                            childs.push_back(pid);
+                        }
+                    }
+                }
+            }
+        }
+    } while(entry);
+
+    closedir(dir);
+#endif
+}
+}
+
 namespace dbg_mi
 {
 
@@ -83,6 +135,27 @@ int GDBExecutor::LaunchProcess(wxString const &cmd, wxString const& cwd, int id_
     return 0;
 }
 
+long GDBExecutor::GetChildPID()
+{
+    if(m_pid <= 0)
+        m_child_pid = -1;
+    else if(m_child_pid <= 0)
+    {
+        std::vector<int> children;
+        GetChildPIDs(m_pid, children);
+
+        if(children.size() != 0)
+        {
+            if(children.size() > 1)
+                Manager::Get()->GetLogManager()->Log(wxT("the debugger has more that one child"));
+            m_child_pid = children.front();
+        }
+    }
+
+    return m_child_pid;
+}
+
+
 bool GDBExecutor::ProcessHasInput()
 {
     return m_process && m_process->HasInput();
@@ -103,6 +176,53 @@ void GDBExecutor::Stopped(bool flag)
             m_logger->Debug(wxT("Executor started"));
     }
     m_stopped = flag;
+}
+
+void GDBExecutor::Interupt()
+{
+    if(!IsRunning() || IsStopped())
+        return;
+
+    if(m_logger)
+        m_logger->Debug(wxT("Interupting debugger"));
+
+    // FIXME (obfuscated#): do something similar for the windows platform
+    // non-windows gdb can interrupt the running process. yay!
+    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
+    {
+        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
+        return;
+    }
+    else
+    {
+        wxKillError error;
+        GetChildPID();
+        wxKill(m_child_pid, wxSIGINT, &error);
+//        m_forced_break = true;
+        return;
+    }
+}
+
+void GDBExecutor::ForceStop()
+{
+    if(!IsRunning())
+        return;
+    // FIXME (obfuscated#): do something similar for the windows platform
+    // non-windows gdb can interrupt the running process. yay!
+    if(m_pid <= 0) // look out for the "fake" PIDs (killall)
+    {
+        cbMessageBox(_("Unable to stop the debug process!"), _("Error"), wxOK | wxICON_WARNING);
+        return;
+    }
+    else
+    {
+        wxKillError error;
+        wxKill(m_pid, wxSIGINT, &error);
+//        m_forced_break = true;
+
+        Execute(wxT("-gdb-exit"));
+        return;
+    }
 }
 
 wxString GDBExecutor::GetOutput()

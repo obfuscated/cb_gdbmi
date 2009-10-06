@@ -34,12 +34,16 @@ public:
     bool IsStopped() const { return m_stopped; }
 
     void Stopped(bool flag);
+    void Interupt();
+    void ForceStop();
 
     virtual wxString GetOutput();
 
 protected:
     virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd);
     virtual void DoClear();
+private:
+    long GetChildPID();
 private:
     PipedProcess *m_process;
     int m_log_page;

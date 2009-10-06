@@ -5,14 +5,24 @@
 namespace dbg_mi
 {
 
-bool Frame::Parse(ResultValue const &frame_tuple)
+bool Frame::Parse(ResultValue const &output_value)
 {
-    if(frame_tuple.GetType() != ResultValue::Tuple)
+    if(output_value.GetType() != ResultValue::Tuple)
         return false;
 
-    ResultValue const *line = frame_tuple.GetTupleValue(_T("line"));
-    ResultValue const *filename = frame_tuple.GetTupleValue(_T("file"));
-    ResultValue const *full_filename = frame_tuple.GetTupleValue(_T("fullname"));
+    dbg_mi::ResultValue const *frame_value = output_value.GetTupleValue(wxT("frame"));
+    if(!frame_value)
+        return false;
+
+    ResultValue const *line = frame_value->GetTupleValue(_T("line"));
+    ResultValue const *filename = frame_value->GetTupleValue(_T("file"));
+    ResultValue const *full_filename = frame_value->GetTupleValue(_T("fullname"));
+
+    if(!line && !filename && !full_filename)
+    {
+        m_has_valid_source = false;
+        return true;
+    }
     if((!line || line->GetType() != ResultValue::Simple)
        || (!filename || filename->GetType() != ResultValue::Simple)
        || (!full_filename || full_filename->GetType() != ResultValue::Simple))
@@ -27,6 +37,7 @@ bool Frame::Parse(ResultValue const &frame_tuple)
         return false;
 
     m_line = long_line;
+    m_has_valid_source = true;
 
     return true;
 }

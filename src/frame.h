@@ -12,20 +12,24 @@ class Frame
 {
 public:
     Frame() :
-        m_line(-1)
+        m_line(-1),
+        m_has_valid_source(false)
     {
     }
 
-    bool Parse(ResultValue const &frame_tuple);
+    bool Parse(ResultValue const &output_value);
 
     int GetLine() const { return m_line; }
     wxString const & GetFilename() const { return m_filename; }
     wxString const & GetFullFilename() const { return m_full_filename; }
 
+    bool HasValidSource() const { return m_has_valid_source; }
+
 private:
     wxString m_filename;
     wxString m_full_filename;
     int m_line;
+    bool m_has_valid_source;
 };
 
 struct StoppedReason
