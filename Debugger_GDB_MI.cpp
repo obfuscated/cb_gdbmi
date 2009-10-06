@@ -546,7 +546,7 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
 
     m_executor.Stopped(true);
     m_executor.Execute(_T("-enable-timings"));
-    CommitBreakpoints();
+    CommitBreakpoints(true);
 
     CommitRunCommand(wxT("-exec-run"));
     m_actions.Run(m_executor);
@@ -555,14 +555,15 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     return 0;
 }
 
-void Debugger_GDB_MI::CommitBreakpoints()
+void Debugger_GDB_MI::CommitBreakpoints(bool force)
 {
     for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
     {
         // FIXME (obfuscated#): pointers inside the vector can be dangerous!!!
-        if(it->GetIndex() == -1)
+        if(it->GetIndex() == -1 || force)
+        {
             m_actions.Add(new dbg_mi::BreakpointAddAction(&*it, m_execution_logger));
-//-            m_command_queue.AddAction(new dbg_mi::BreakpointAddAction(&*it), dbg_mi::CommandQueue::Asynchronous);
+        }
     }
 
     for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
@@ -707,14 +708,14 @@ cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
     {
         m_executor.Interupt();
         m_breakpoints.push_back(cbBreakpoint(filename, line));
-        CommitBreakpoints();
+        CommitBreakpoints(false);
         Continue();
     }
     else
     {
         m_breakpoints.push_back(cbBreakpoint(filename, line));
         if(IsRunning())
-            CommitBreakpoints();
+            CommitBreakpoints(false);
     }
 
     return &m_breakpoints.back().Get();

@@ -167,7 +167,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         wxString GetDebuggee(ProjectBuildTarget* target);
 
 //        bool DoBreak(bool child = true);
-        void CommitBreakpoints();
+        void CommitBreakpoints(bool force);
         void CommitRunCommand(wxString const &command);
 
         long GetChildPID();
