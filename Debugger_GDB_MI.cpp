@@ -701,14 +701,24 @@ void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
                     }
                     else
                     {
-                        m_executor.Interupt();
-
+//                        bool resume = !m_executor.IsStopped();
+//                        if(resume)
+//                            m_executor.Interupt();
+#warning "not implemented"
+                        bool changed = false;
                         if(breakpoint->IsEnabled() == temp.IsEnabled())
                         {
                             if(breakpoint->IsEnabled())
                                 AddStringCommand(wxString::Format(wxT("-break-enable %d"), current.GetIndex()));
                             else
                                 AddStringCommand(wxString::Format(wxT("-break-disable %d"), current.GetIndex()));
+                            changed = true;
+                        }
+
+                        if(changed)
+                        {
+                            m_executor.Interupt();
+                            Continue();
                         }
                     }
 
@@ -716,7 +726,7 @@ void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
             }
             break;
         case cbBreakpoint::Data:
-            #warning "not implemented"
+#warning "not implemented"
             break;
         }
     }
