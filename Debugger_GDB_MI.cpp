@@ -396,7 +396,7 @@ void Debugger_GDB_MI::UpdateWhenStopped()
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
     if(IsWindowReallyShown(dbg_manager->GetBacktraceDialog()))
     {
-        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+        RequestUpdate(Backtrace);
     }
 }
 
@@ -882,7 +882,13 @@ void Debugger_GDB_MI::DetachFromProcess()
 
 void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
 {
-    #warning "not implemented"
+    switch(window)
+    {
+    case Backtrace:
+        if(IsStopped())
+            m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+        break;
+    }
 }
 
 void Debugger_GDB_MI::GetCurrentPosition(wxString &filename, int &line)
