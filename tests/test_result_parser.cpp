@@ -509,6 +509,34 @@ TEST_FIXTURE(TestListEmpty, DebugString)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct TestListDuplicate
+{
+    TestListDuplicate()
+    {
+        status = dbg_mi::ParseValue(wxT("a=[a={b=5},a={b=6}]"), result);
+        a = result.GetTupleValue(wxT("a"));
+    }
+    dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *a;
+    bool status;
+};
+
+TEST_FIXTURE(TestListDuplicate, Status)
+{
+    CHECK(status);
+}
+
+TEST_FIXTURE(TestListDuplicate, Stack)
+{
+    CHECK(a);
+}
+
+TEST_FIXTURE(TestListDuplicate, Size)
+{
+    CHECK(a && a->GetTupleSize() == 2);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TEST(ParserFail1)
 {
     dbg_mi::ResultValue r;

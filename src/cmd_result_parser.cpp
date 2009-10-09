@@ -266,7 +266,7 @@ void ResultValue::SetType(Type type)
 void ResultValue::SetTupleValue(ResultValue *value)
 {
     assert(value);
-    if(value->GetName().empty())
+    if(m_type == Array || value->GetName().empty())
     {
         m_value.tuple.push_back(value);
     }
