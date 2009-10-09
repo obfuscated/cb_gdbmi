@@ -13,22 +13,28 @@ class Frame
 public:
     Frame() :
         m_line(-1),
+        m_address(0),
         m_has_valid_source(false)
     {
     }
 
-    bool Parse(ResultValue const &output_value);
+    bool ParseOutput(ResultValue const &output_value);
+    bool ParseFrame(ResultValue const &output_value);
 
     int GetLine() const { return m_line; }
     wxString const & GetFilename() const { return m_filename; }
     wxString const & GetFullFilename() const { return m_full_filename; }
+    wxString const & GetFunction() const { return m_function; }
+    unsigned long int GetAddress() const { return m_address; }
 
     bool HasValidSource() const { return m_has_valid_source; }
 
 private:
     wxString m_filename;
     wxString m_full_filename;
+    wxString m_function;
     int m_line;
+    unsigned long int m_address;
     bool m_has_valid_source;
 };
 

@@ -32,6 +32,9 @@ private:
     int m_index;
 };
 
+
+typedef std::deque<cbStackFrame> BacktraceContainer;
+
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_DEFINITIONS_H_

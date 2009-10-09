@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <wx/xrc/xmlres.h>
 
+#include <backtracedlg.h>
 #include <cbproject.h>
 #include <compilerfactory.h>
 #include <configurationpanel.h>
@@ -329,7 +330,8 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 
 struct Notifications
 {
-    Notifications(dbg_mi::GDBExecutor &executor, int page_index) :
+    Notifications(Debugger_GDB_MI *plugin, dbg_mi::GDBExecutor &executor, int page_index) :
+        m_plugin(plugin),
         m_page_index(page_index),
         m_executor(executor)
     {
@@ -354,7 +356,7 @@ struct Notifications
                 if(!m_executor.IsTemporaryInterupt())
                 {
                     dbg_mi::Frame frame;
-                    if(!frame.Parse(result_value))
+                    if(!frame.ParseOutput(result_value))
                     {
                         log->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find/parse frame value:("),
                                                              m_page_index);
@@ -377,21 +379,32 @@ struct Notifications
                 PluginManager *plm = Manager::Get()->GetPluginManager();
                 CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
                 plm->NotifyPlugins(evt);
+
+                m_plugin->UpdateWhenStopped();
             }
         }
     }
+
 private:
+    Debugger_GDB_MI *m_plugin;
     int m_page_index;
     dbg_mi::GDBExecutor &m_executor;
 };
 
+void Debugger_GDB_MI::UpdateWhenStopped()
+{
+    DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
+    if(IsWindowReallyShown(dbg_manager->GetBacktraceDialog()))
+    {
+        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+    }
+}
+
 void Debugger_GDB_MI::RunQueue()
 {
-//-    if(m_process && IsStopped())
-//-        m_command_queue.RunQueue(m_process);
     if(m_executor.IsRunning())
     {
-        Notifications notifications(m_executor, m_page_index);
+        Notifications notifications(this, m_executor, m_page_index);
         dbg_mi::DispatchResults(m_executor, m_actions, notifications);
 
         if(m_executor.IsStopped())
@@ -615,14 +628,12 @@ int Debugger_GDB_MI::GetExitCode() const
 
 int Debugger_GDB_MI::GetStackFrameCount() const
 {
-    #warning "not implemented"
-    return 0;
+    return m_backtrace.size();
 }
 
 const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
 {
-    #warning "not implemented"
-    return cbStackFrame();
+    return m_backtrace[index];
 }
 
 void Debugger_GDB_MI::SwitchToFrame(int number)

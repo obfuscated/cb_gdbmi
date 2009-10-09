@@ -145,6 +145,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           */
         virtual void OnRelease(bool appShutDown);
 
+    public:
+        void UpdateWhenStopped();
     private:
         DECLARE_EVENT_TABLE();
 
@@ -182,5 +184,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         typedef std::vector<dbg_mi::Breakpoint::Pointer> Breakpoints;
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
+        dbg_mi::BacktraceContainer m_backtrace;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

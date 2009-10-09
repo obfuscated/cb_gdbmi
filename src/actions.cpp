@@ -3,8 +3,9 @@
 #include <cbplugin.h>
 #include <logmanager.h>
 
+#include <backtracedlg.h>
 #include "cmd_result_parser.h"
-#include "definitions.h"
+#include "frame.h"
 
 namespace dbg_mi
 {
@@ -63,6 +64,53 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
         m_logger.Debug(wxT("BreakpointAddAction::Finishing2"));
         Finish();
     }
+}
+
+GenerateBacktrace::GenerateBacktrace(BacktraceContainer &backtrace, Logger &logger) :
+    m_backtrace(backtrace),
+    m_logger(logger)
+{
+}
+void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    ResultValue const *stack = result.GetResultValue().GetTupleValue(wxT("stack"));
+    if(!stack)
+        m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput: no stack tuple in the output"));
+    else
+    {
+        int size = stack->GetTupleSize();
+        m_logger.Debug(wxString::Format(wxT("GenerateBacktrace::OnCommandOutput: tuple size %d %s"),
+                                        size, stack->MakeDebugString().c_str()));
+
+        m_backtrace.clear();
+
+        for(int ii = 0; ii < size; ++ii)
+        {
+            ResultValue const *frame_value = stack->GetTupleValueByIndex(ii);
+            assert(frame_value);
+            Frame frame;
+            if(frame.ParseFrame(*frame_value))
+            {
+                cbStackFrame s;
+                s.SetFile(frame.GetFilename(), wxString::Format(wxT("%d"), frame.GetLine()));
+                s.SetSymbol(frame.GetFunction());
+                s.SetNumber(ii);
+                s.SetAddress(frame.GetAddress());
+                s.MakeValid(frame.HasValidSource());
+                m_backtrace.push_back(s);
+            }
+            else
+                m_logger.Debug(wxT("can't parse frame: ") + frame_value->MakeDebugString());
+        }
+
+        Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
+    }
+
+    Finish();
+}
+void GenerateBacktrace::OnStart()
+{
+    Execute(wxT("-stack-list-frames 0 30"));
 }
 
 /*

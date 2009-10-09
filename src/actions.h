@@ -3,6 +3,7 @@
 
 #include <tr1/memory>
 #include "cmd_queue.h"
+#include "definitions.h"
 
 class cbDebuggerPlugin;
 
@@ -80,7 +81,6 @@ public:
             m_logger.Debug(wxT("RunAction success, the debugger is !stopped!"));
             m_notification(false);
             Finish();
-    //        m_plugin->ClearActiveMarkFromAllEditors();
         }
     }
 protected:
@@ -94,6 +94,18 @@ private:
     cbDebuggerPlugin *m_plugin;
     wxString m_command;
     StopNotification m_notification;
+    Logger &m_logger;
+};
+
+class GenerateBacktrace : public Action
+{
+public:
+    GenerateBacktrace(BacktraceContainer &backtrace, Logger &logger);
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+private:
+    BacktraceContainer &m_backtrace;
     Logger &m_logger;
 };
 /*

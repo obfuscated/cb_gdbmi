@@ -30,7 +30,7 @@ struct FrameStoppedFixture
         dbg_mi::ResultValue output_value;
         if(dbg_mi::ParseValue(output, output_value, 0))
         {
-            status = frame.Parse(output_value);
+            status = frame.ParseOutput(output_value);
             if(!status)
                 printf(">>> %s\n", output_value.MakeDebugString().utf8_str().data());
         }
@@ -38,6 +38,19 @@ struct FrameStoppedFixture
     bool status;
     dbg_mi::Frame frame;
 };
+
+TEST(FrameStoppedFixture_Valid_GetFunction)
+{
+    FrameStoppedFixture f(c_frame_output_valid);
+    CHECK(f.frame.GetFunction() == wxT("main"));
+}
+
+TEST(FrameStoppedFixture_Valid_GetAddress)
+{
+    FrameStoppedFixture f(c_frame_output_valid);
+    CHECK_EQUAL(0x00000000004019ebul, f.frame.GetAddress());
+}
+
 TEST(FrameStoppedFixture_Valid_HasValidSource)
 {
     FrameStoppedFixture f(c_frame_output_valid);
