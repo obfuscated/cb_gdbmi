@@ -68,49 +68,90 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
 
 GenerateBacktrace::GenerateBacktrace(BacktraceContainer &backtrace, Logger &logger) :
     m_backtrace(backtrace),
-    m_logger(logger)
+    m_logger(logger),
+    m_parsed_backtrace(false),
+    m_parsed_args(false)
 {
 }
 void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
-    ResultValue const *stack = result.GetResultValue().GetTupleValue(wxT("stack"));
-    if(!stack)
-        m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput: no stack tuple in the output"));
-    else
+    if(id == m_backtrace_id)
     {
-        int size = stack->GetTupleSize();
-        m_logger.Debug(wxString::Format(wxT("GenerateBacktrace::OnCommandOutput: tuple size %d %s"),
-                                        size, stack->MakeDebugString().c_str()));
-
-        m_backtrace.clear();
-
-        for(int ii = 0; ii < size; ++ii)
+        ResultValue const *stack = result.GetResultValue().GetTupleValue(wxT("stack"));
+        if(!stack)
+            m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput: no stack tuple in the output"));
+        else
         {
-            ResultValue const *frame_value = stack->GetTupleValueByIndex(ii);
-            assert(frame_value);
-            Frame frame;
-            if(frame.ParseFrame(*frame_value))
-            {
-                cbStackFrame s;
-                s.SetFile(frame.GetFilename(), wxString::Format(wxT("%d"), frame.GetLine()));
-                s.SetSymbol(frame.GetFunction());
-                s.SetNumber(ii);
-                s.SetAddress(frame.GetAddress());
-                s.MakeValid(frame.HasValidSource());
-                m_backtrace.push_back(s);
-            }
-            else
-                m_logger.Debug(wxT("can't parse frame: ") + frame_value->MakeDebugString());
-        }
+            int size = stack->GetTupleSize();
+            m_logger.Debug(wxString::Format(wxT("GenerateBacktrace::OnCommandOutput: tuple size %d %s"),
+                                            size, stack->MakeDebugString().c_str()));
 
-        Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
+            m_backtrace.clear();
+
+            for(int ii = 0; ii < size; ++ii)
+            {
+                ResultValue const *frame_value = stack->GetTupleValueByIndex(ii);
+                assert(frame_value);
+                Frame frame;
+                if(frame.ParseFrame(*frame_value))
+                {
+                    cbStackFrame s;
+                    s.SetFile(frame.GetFilename(), wxString::Format(wxT("%d"), frame.GetLine()));
+                    s.SetSymbol(frame.GetFunction());
+                    s.SetNumber(ii);
+                    s.SetAddress(frame.GetAddress());
+                    s.MakeValid(frame.HasValidSource());
+                    m_backtrace.push_back(s);
+                }
+                else
+                    m_logger.Debug(wxT("can't parse frame: ") + frame_value->MakeDebugString());
+            }
+        }
+        m_parsed_backtrace = true;
+    }
+    else if(id == m_args_id)
+    {
+        m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput arguments"));
+        dbg_mi::FrameArguments arguments;
+
+        if(!arguments.Attach(result.GetResultValue()))
+        {
+            m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput: can't attach to output of command: ")
+                           + id.ToString());
+        }
+        else if(arguments.GetCount() != static_cast<int>(m_backtrace.size()))
+        {
+            m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput: stack arg count differ from the number of frames"));
+        }
+        else
+        {
+            int size = arguments.GetCount();
+            for(int ii = 0; ii < size; ++ii)
+            {
+                wxString args;
+                if(arguments.GetFrame(ii, args))
+                    m_backtrace[ii].SetSymbol(m_backtrace[ii].GetSymbol() + wxT("(") + args + wxT(")"));
+                else
+                {
+                    m_logger.Debug(wxString::Format(wxT("GenerateBacktrace::OnCommandOutput: ")
+                                                    wxT("can't get args for frame %d"),
+                                                    ii));
+                }
+            }
+        }
+        m_parsed_args = true;
     }
 
-    Finish();
+    if(m_parsed_backtrace && m_parsed_args)
+    {
+        Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
+        Finish();
+    }
 }
 void GenerateBacktrace::OnStart()
 {
-    Execute(wxT("-stack-list-frames 0 30"));
+    m_backtrace_id = Execute(wxT("-stack-list-frames 0 30"));
+    m_args_id = Execute(wxT("-stack-list-arguments 1 0 30"));
 }
 
 /*

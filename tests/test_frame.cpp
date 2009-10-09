@@ -86,3 +86,54 @@ TEST(StoppedReasonParse_ExitedNormally)
 {
     CHECK(TestReason(wxT("reason=\"exited-normally\"")) == dbg_mi::StoppedReason::ExitedNormally);
 }
+
+
+
+wxString const c_stack_args_output(
+                wxT("stack-args=[")
+                    wxT("frame={level=\"0\",args=[]},")
+                    wxT("frame={level=\"1\",args=[")
+                        wxT("{name=\"argc\",value=\"1\"},")
+                        wxT("{name=\"argv\",value=\"0x7fffe8c04558 \\\"test.t\\\"\"}")
+                    wxT("]}")
+                wxT("]"));
+
+
+struct FrameArgsFixture
+{
+    FrameArgsFixture()
+    {
+        status = dbg_mi::ParseValue(c_stack_args_output, r);
+        if(status)
+            status = args.Attach(r);
+    }
+
+    dbg_mi::ResultValue r;
+    dbg_mi::FrameArguments args;
+    bool status;
+};
+
+TEST_FIXTURE(FrameArgsFixture, Status)
+{
+    CHECK(status);
+}
+
+TEST_FIXTURE(FrameArgsFixture, Size)
+{
+    CHECK_EQUAL(2, args.GetCount());
+}
+
+TEST_FIXTURE(FrameArgsFixture, Frame0)
+{
+    wxString a;
+    CHECK(args.GetFrame(0, a));
+    CHECK(a == wxEmptyString);
+}
+
+TEST_FIXTURE(FrameArgsFixture, Frame1)
+{
+    wxString a;
+    CHECK(args.GetFrame(1, a));
+    CHECK(a == wxT("argc=1, argv=0x7fffe8c04558 \"test.t\""));
+}
+

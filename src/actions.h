@@ -107,6 +107,8 @@ protected:
 private:
     BacktraceContainer &m_backtrace;
     Logger &m_logger;
+    CommandID m_backtrace_id, m_args_id;
+    bool m_parsed_backtrace, m_parsed_args;
 };
 /*
 class WatchAction : public Action

@@ -57,6 +57,59 @@ bool Frame::ParseFrame(ResultValue const &frame_value)
     return true;
 }
 
+FrameArguments::FrameArguments() :
+    m_stack_args(NULL)
+{
+}
+
+bool FrameArguments::Attach(ResultValue const &output)
+{
+    if(output.GetType() != ResultValue::Tuple)
+        return false;
+
+    m_stack_args = output.GetTupleValue(wxT("stack-args"));
+    return m_stack_args;
+}
+
+int FrameArguments::GetCount() const
+{
+    return m_stack_args->GetTupleSize();
+}
+
+bool FrameArguments::GetFrame(int index, wxString &args) const
+{
+    ResultValue const *frame = m_stack_args->GetTupleValueByIndex(index);
+    if(!frame || frame->GetName() != wxT("frame"))
+        return false;
+    args = wxEmptyString;
+
+    ResultValue const *args_tuple = frame->GetTupleValue(wxT("args"));
+    if(!args_tuple || args_tuple->GetType() != ResultValue::Array)
+        return false;
+
+    for(int ii = 0; ii < args_tuple->GetTupleSize(); ++ii)
+    {
+        ResultValue const *arg = args_tuple->GetTupleValueByIndex(ii);
+        assert(arg);
+
+        ResultValue const *name = arg->GetTupleValue(wxT("name"));
+        ResultValue const *value = arg->GetTupleValue(wxT("value"));
+
+        if(name && name->GetType() == ResultValue::Simple
+           && value && value->GetType() == ResultValue::Simple)
+        {
+            if(!args.empty())
+                args += wxT(", ");
+            args += name->GetSimpleValue() + wxT("=") + value->GetSimpleValue();
+        }
+        else
+            return false;
+    }
+
+    return true;
+}
+
+
 StoppedReason StoppedReason::Parse(ResultValue const &value)
 {
     ResultValue const *reason = value.GetTupleValue(wxT("reason"));

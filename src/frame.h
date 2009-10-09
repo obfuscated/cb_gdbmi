@@ -38,6 +38,18 @@ private:
     bool m_has_valid_source;
 };
 
+class FrameArguments
+{
+public:
+    FrameArguments();
+    bool Attach(ResultValue const &output);
+
+    int GetCount() const;
+    bool GetFrame(int index, wxString &args) const;
+private:
+    ResultValue const *m_stack_args;
+};
+
 struct StoppedReason
 {
     enum Type
