@@ -110,6 +110,19 @@ private:
     CommandID m_backtrace_id, m_args_id;
     bool m_parsed_backtrace, m_parsed_args;
 };
+
+class GenerateThreadsList : public Action
+{
+public:
+    GenerateThreadsList(ThreadsContainer &threads, int current_thread_id, Logger &logger);
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+private:
+    ThreadsContainer &m_threads;
+    Logger &m_logger;
+    int m_current_thread_id;
+};
 /*
 class WatchAction : public Action
 {

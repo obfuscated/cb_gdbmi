@@ -16,6 +16,7 @@
 #include <macrosmanager.h>
 #include <pipedprocess.h>
 #include <projectmanager.h>
+#include <threadsdlg.h>
 
 #include "actions.h"
 #include "cmd_result_parser.h"
@@ -53,7 +54,8 @@ END_EVENT_TABLE()
 Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_log(NULL),
-    m_debug_log(NULL)
+    m_debug_log(NULL),
+    m_current_thread(-1)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -366,6 +368,20 @@ struct Notifications
                     }
                     else
                     {
+                        dbg_mi::ResultValue const *thread_id_value = result_value.GetTupleValue(wxT("thread-id"));
+                        if(thread_id_value)
+                        {
+                            long id;
+                            if(!thread_id_value->GetSimpleValue().ToLong(&id, 10))
+                            {
+                                log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification ")
+                                                          wxT(" thread_id parsing failed (%s)"),
+                                                          result_value.MakeDebugString().c_str()),
+                                         m_page_index);
+                            }
+
+                            m_plugin->SetCurrentThread(id);
+                        }
                         if(frame.HasValidSource())
                         {
                             DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
@@ -398,6 +414,16 @@ void Debugger_GDB_MI::UpdateWhenStopped()
     {
         RequestUpdate(Backtrace);
     }
+
+    if(IsWindowReallyShown(dbg_manager->GetThreadsDialog()))
+    {
+        RequestUpdate(Threads);
+    }
+}
+
+void Debugger_GDB_MI::SetCurrentThread(int thread_id)
+{
+    m_current_thread = thread_id;
 }
 
 void Debugger_GDB_MI::RunQueue()
@@ -638,6 +664,14 @@ const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
 
 void Debugger_GDB_MI::SwitchToFrame(int number)
 {
+//    if(IsRunning() && IsStopped())
+//    {
+//        if(number < static_cast<int>(m_backtrace.size()))
+//        {
+//            int frame = m_backtrace[number].GetNumber();
+//            AddStringCommand(wxString::Format(wxT("-stack-select-frame %d"), frame));
+//        }
+//    }
     #warning "not implemented"
 }
 
@@ -805,14 +839,12 @@ void Debugger_GDB_MI::ShiftBreakpoint(int index, int lines_to_shift)
 
 int Debugger_GDB_MI::GetThreadsCount() const
 {
-    #warning "not implemented"
-    return 0;
+    return m_threads.size();
 }
 
 const cbThread& Debugger_GDB_MI::GetThread(int index) const
 {
-    #warning "not implemented"
-    return cbThread();
+    return m_threads[index];
 }
 
 bool Debugger_GDB_MI::SwitchToThread(int thread_number)
@@ -887,6 +919,11 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
     case Backtrace:
         if(IsStopped())
             m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+        break;
+
+    case Threads:
+        if(IsStopped())
+            m_actions.Add(new dbg_mi::GenerateThreadsList(m_threads, m_current_thread, m_execution_logger));
         break;
     }
 }

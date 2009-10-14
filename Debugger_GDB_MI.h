@@ -147,6 +147,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     public:
         void UpdateWhenStopped();
+        void SetCurrentThread(int thread_id);
     private:
         DECLARE_EVENT_TABLE();
 
@@ -185,5 +186,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
         dbg_mi::BacktraceContainer m_backtrace;
+        dbg_mi::ThreadsContainer m_threads;
+        int m_current_thread;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

@@ -1,9 +1,10 @@
 #include "actions.h"
 
+#include <backtracedlg.h>
 #include <cbplugin.h>
 #include <logmanager.h>
+#include <threadsdlg.h>
 
-#include <backtracedlg.h>
 #include "cmd_result_parser.h"
 #include "frame.h"
 
@@ -152,6 +153,54 @@ void GenerateBacktrace::OnStart()
 {
     m_backtrace_id = Execute(wxT("-stack-list-frames 0 30"));
     m_args_id = Execute(wxT("-stack-list-arguments 1 0 30"));
+}
+
+GenerateThreadsList::GenerateThreadsList(ThreadsContainer &threads, int current_thread_id, Logger &logger) :
+    m_threads(threads),
+    m_logger(logger),
+    m_current_thread_id(current_thread_id)
+{
+}
+
+void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    Finish();
+    dbg_mi::ResultValue const *threads = result.GetResultValue().GetTupleValue(wxT("thread-ids"));
+    if(!threads)
+    {
+        m_logger.Debug(wxT("GenerateThreadsList::OnCommandOutput - wrong command output"));
+        return;
+    }
+    m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - parsed %s"),
+                                    threads->MakeDebugString().c_str()));
+
+    int count = threads->GetTupleSize();
+    m_threads.clear();
+    for(int ii = 0; ii < count; ++ii)
+    {
+        dbg_mi::ResultValue const &thread_value = *threads->GetTupleValueByIndex(ii);
+
+        int number;
+
+        if(dbg_mi::ToInt(thread_value, number))
+        {
+            m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - parsed %s %d"),
+                                            thread_value.MakeDebugString().c_str(), number));
+            m_threads.push_back(cbThread(m_current_thread_id == number, number, wxEmptyString));
+        }
+        else
+        {
+            m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - can't parse %s"),
+                                            thread_value.MakeDebugString().c_str()));
+        }
+    }
+
+    Manager::Get()->GetDebuggerManager()->GetThreadsDialog()->Reload();
+}
+
+void GenerateThreadsList::OnStart()
+{
+    Execute(wxT("-thread-list-ids"));
 }
 
 /*

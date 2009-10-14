@@ -34,6 +34,7 @@ private:
 
 
 typedef std::deque<cbStackFrame> BacktraceContainer;
+typedef std::deque<cbThread> ThreadsContainer;
 
 } // namespace dbg_mi
 
