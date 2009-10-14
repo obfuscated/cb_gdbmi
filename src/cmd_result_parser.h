@@ -177,6 +177,31 @@ private:
     ResultValue m_value;
 };
 
+inline bool ToInt(ResultValue const &value, int &result_value)
+{
+    assert(value.GetType() == ResultValue::Simple);
+
+    long l;
+    if(value.GetSimpleValue().ToLong(&l, 10))
+    {
+        result_value = l;
+        return true;
+    }
+    else
+        return false;
+}
+
+inline bool Lookup(ResultValue const &value, wxString const &name, int &result_value)
+{
+    assert(value.GetType() != ResultValue::Simple);
+    ResultValue const *v = value.GetTupleValue(name);
+    if(!v)
+        return false;
+
+    return ToInt(*v, result_value);
+}
+
+
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_MI_GDB_CMD_RESULT_PARSER_H_

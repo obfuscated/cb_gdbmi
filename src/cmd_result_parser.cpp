@@ -266,21 +266,9 @@ void ResultValue::SetType(Type type)
 void ResultValue::SetTupleValue(ResultValue *value)
 {
     assert(value);
-    if(m_type == Array || value->GetName().empty())
-    {
-        m_value.tuple.push_back(value);
-    }
-    else
-    {
-        Container::iterator it = FindTupleValue(value->GetName());
-        if(it != m_value.tuple.end())
-        {
-            delete *it;
-            m_value.tuple.erase(it);
-        }
-        m_value.tuple.push_back(value);
-    }
+    m_value.tuple.push_back(value);
 }
+
 ResultValue const * ResultValue::GetTupleValue(wxString const &key) const
 {
     assert(m_type == Tuple);
@@ -300,6 +288,7 @@ ResultValue const * ResultValue::GetTupleValue(wxString const &key) const
     }
     return NULL;
 }
+
 ResultValue const* ResultValue::GetTupleValueByIndex(int index) const
 {
     Container::const_iterator it = m_value.tuple.begin();

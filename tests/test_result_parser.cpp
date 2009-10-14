@@ -526,12 +526,40 @@ TEST_FIXTURE(TestListDuplicate, Status)
     CHECK(status);
 }
 
-TEST_FIXTURE(TestListDuplicate, Stack)
+TEST_FIXTURE(TestListDuplicate, A)
 {
     CHECK(a);
 }
 
 TEST_FIXTURE(TestListDuplicate, Size)
+{
+    CHECK(a && a->GetTupleSize() == 2);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct TestTupleDuplicate
+{
+    TestTupleDuplicate()
+    {
+        status = dbg_mi::ParseValue(wxT("a={a={b=5},a={b=6}}"), result);
+        a = result.GetTupleValue(wxT("a"));
+    }
+    dbg_mi::ResultValue result;
+    dbg_mi::ResultValue const *a;
+    bool status;
+};
+
+TEST_FIXTURE(TestTupleDuplicate, Status)
+{
+    CHECK(status);
+}
+
+TEST_FIXTURE(TestTupleDuplicate, A)
+{
+    CHECK(a);
+}
+
+TEST_FIXTURE(TestTupleDuplicate, Size)
 {
     CHECK(a && a->GetTupleSize() == 2);
 }
@@ -828,4 +856,20 @@ TEST(ResultParserInequallityOperator)
     CHECK(r1 && r2);
     CHECK(p1 != p2);
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST(LookupInt)
+{
+    dbg_mi::ResultValue result_value;
+    dbg_mi::ParseValue(wxT("a = 5, b = 6"), result_value, 0);
+    int value = 0;
+    CHECK(dbg_mi::Lookup(result_value, wxT("a"), value) && value == 5);
+}
 
+TEST(ToInt)
+{
+    dbg_mi::ResultValue result_value;
+    dbg_mi::ParseValue(wxT("a = 5, b = 6"), result_value, 0);
+    int value = 0;
+    dbg_mi::ResultValue const *b = result_value.GetTupleValue(wxT("b"));
+    CHECK(b && dbg_mi::ToInt(*b, value) && value == 6);
+}
