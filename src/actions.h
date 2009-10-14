@@ -123,6 +123,36 @@ private:
     Logger &m_logger;
     int m_current_thread_id;
 };
+
+
+template<typename Notification>
+class SwitchToThread : public Action
+{
+public:
+    SwitchToThread(int thread_id, Logger &logger, Notification const &notification) :
+        m_thread_id(thread_id),
+        m_logger(logger),
+        m_notification(notification)
+    {
+    }
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    {
+        m_notification(result);
+        Finish();
+    }
+protected:
+    virtual void OnStart()
+    {
+        Execute(wxString::Format(wxT("-thread-select %d"), m_thread_id));
+    }
+
+private:
+    int m_thread_id;
+    Logger &m_logger;
+    Notification m_notification;
+};
+
 /*
 class WatchAction : public Action
 {

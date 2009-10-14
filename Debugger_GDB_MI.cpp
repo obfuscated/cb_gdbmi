@@ -332,71 +332,87 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 
 struct Notifications
 {
-    Notifications(Debugger_GDB_MI *plugin, dbg_mi::GDBExecutor &executor, int page_index) :
+    Notifications(Debugger_GDB_MI *plugin, dbg_mi::GDBExecutor &executor, int page_index, bool simple_mode) :
         m_plugin(plugin),
         m_page_index(page_index),
-        m_executor(executor)
+        m_executor(executor),
+        m_simple_mode(simple_mode)
     {
     }
 
     void operator()(dbg_mi::ResultParser const &parser)
     {
-        LogManager *log = Manager::Get()->GetLogManager();
-        log->Log(_T("notification event recieved!"), m_page_index);
-
-        if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+        dbg_mi::ResultValue const &result_value = parser.GetResultValue();
+        if(m_simple_mode)
         {
-            dbg_mi::ResultValue const &result_value = parser.GetResultValue();
-            dbg_mi::StoppedReason reason = dbg_mi::StoppedReason::Parse(result_value);
+            ParseStateInfo(result_value);
+            m_plugin->UpdateWhenStopped();
+        }
+        else
+        {
+            LogManager *log = Manager::Get()->GetLogManager();
+            log->Log(_T("notification event recieved!"), m_page_index);
 
-            if(reason == dbg_mi::StoppedReason::ExitedNormally)
+            if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
             {
-                m_executor.Execute(wxT("-gdb-exit"));
-            }
-            else
-            {
-                if(!m_executor.IsTemporaryInterupt())
+                dbg_mi::StoppedReason reason = dbg_mi::StoppedReason::Parse(result_value);
+
+                if(reason == dbg_mi::StoppedReason::ExitedNormally)
                 {
-                    dbg_mi::Frame frame;
-                    if(!frame.ParseOutput(result_value))
-                    {
-                        log->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find/parse frame value:("),
-                                                             m_page_index);
-                        log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification: %s"),
-                                                  result_value.MakeDebugString().c_str()),
-                                 m_page_index);
-                    }
-                    else
-                    {
-                        dbg_mi::ResultValue const *thread_id_value = result_value.GetTupleValue(wxT("thread-id"));
-                        if(thread_id_value)
-                        {
-                            long id;
-                            if(!thread_id_value->GetSimpleValue().ToLong(&id, 10))
-                            {
-                                log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification ")
-                                                          wxT(" thread_id parsing failed (%s)"),
-                                                          result_value.MakeDebugString().c_str()),
-                                         m_page_index);
-                            }
-
-                            m_plugin->SetCurrentThread(id);
-                        }
-                        if(frame.HasValidSource())
-                        {
-                            DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
-                            dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
-                        }
-                    }
+                    m_executor.Execute(wxT("-gdb-exit"));
                 }
-                m_executor.Stopped(true);
+                else
+                {
+                    if(!m_executor.IsTemporaryInterupt())
+                        ParseStateInfo(result_value);
 
-                // Notify debugger plugins for end of debug session
-                PluginManager *plm = Manager::Get()->GetPluginManager();
-                CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
-                plm->NotifyPlugins(evt);
+                    m_executor.Stopped(true);
 
-                m_plugin->UpdateWhenStopped();
+                    // Notify debugger plugins for end of debug session
+                    PluginManager *plm = Manager::Get()->GetPluginManager();
+                    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
+                    plm->NotifyPlugins(evt);
+
+                    m_plugin->UpdateWhenStopped();
+                }
+            }
+        }
+    }
+
+private:
+    void ParseStateInfo(dbg_mi::ResultValue const &result_value)
+    {
+        LogManager *log = Manager::Get()->GetLogManager();
+        dbg_mi::Frame frame;
+        if(!frame.ParseOutput(result_value))
+        {
+            log->Log(_T("Debugger_GDB_MI::OnGDBNotification: can't find/parse frame value:("),
+                                                 m_page_index);
+            log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification: %s"),
+                                      result_value.MakeDebugString().c_str()),
+                     m_page_index);
+        }
+        else
+        {
+            dbg_mi::ResultValue const *thread_id_value;
+            thread_id_value = result_value.GetTupleValue(m_simple_mode ? wxT("new-thread-id") : wxT("thread-id"));
+            if(thread_id_value)
+            {
+                long id;
+                if(!thread_id_value->GetSimpleValue().ToLong(&id, 10))
+                {
+                    log->Log(wxString::Format(wxT("Debugger_GDB_MI::OnGDBNotification ")
+                                              wxT(" thread_id parsing failed (%s)"),
+                                              result_value.MakeDebugString().c_str()),
+                             m_page_index);
+                }
+                else
+                    m_plugin->SetCurrentThread(id);
+            }
+            if(frame.HasValidSource())
+            {
+                DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
+                dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
             }
         }
     }
@@ -405,6 +421,7 @@ private:
     Debugger_GDB_MI *m_plugin;
     int m_page_index;
     dbg_mi::GDBExecutor &m_executor;
+    bool m_simple_mode;
 };
 
 void Debugger_GDB_MI::UpdateWhenStopped()
@@ -430,7 +447,7 @@ void Debugger_GDB_MI::RunQueue()
 {
     if(m_executor.IsRunning())
     {
-        Notifications notifications(this, m_executor, m_page_index);
+        Notifications notifications(this, m_executor, m_page_index, false);
         dbg_mi::DispatchResults(m_executor, m_actions, notifications);
 
         if(m_executor.IsStopped())
@@ -849,8 +866,19 @@ const cbThread& Debugger_GDB_MI::GetThread(int index) const
 
 bool Debugger_GDB_MI::SwitchToThread(int thread_number)
 {
-    #warning "not implemented"
-    return false;
+    if(IsStopped())
+    {
+        dbg_mi::SwitchToThread<Notifications> *a;
+        a = new dbg_mi::SwitchToThread<Notifications>(thread_number, m_execution_logger,
+                                                      Notifications(this, m_executor,
+                                                                    m_dbg_page_index,
+                                                                    true)
+                                                      );
+        m_actions.Add(a);
+        return true;
+    }
+    else
+        return false;
 }
 
 cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
