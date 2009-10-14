@@ -26,6 +26,7 @@ public:
     wxString const & GetFullFilename() const { return m_full_filename; }
     wxString const & GetFunction() const { return m_function; }
     unsigned long int GetAddress() const { return m_address; }
+    wxString const & GetFrom() const { return m_from; }
 
     bool HasValidSource() const { return m_has_valid_source; }
 
@@ -33,6 +34,7 @@ private:
     wxString m_filename;
     wxString m_full_filename;
     wxString m_function;
+    wxString m_from;
     int m_line;
     unsigned long int m_address;
     bool m_has_valid_source;

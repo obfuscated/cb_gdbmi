@@ -69,6 +69,12 @@ TEST(FrameStoppedFixture_NoSource_HasValidSource)
     CHECK(!f.frame.HasValidSource());
 }
 
+TEST(FrameStoppedFixture_NoSource_From)
+{
+    FrameStoppedFixture f(c_frame_output_no_source);
+    CHECK(f.frame.GetFrom() == wxT("/lib/libc.so.6"));
+}
+
 dbg_mi::StoppedReason TestReason(wxString const &gdb_output)
 {
     dbg_mi::ResultValue value;

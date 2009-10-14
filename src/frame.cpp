@@ -18,6 +18,21 @@ bool Frame::ParseOutput(ResultValue const &output_value)
 
 bool Frame::ParseFrame(ResultValue const &frame_value)
 {
+    ResultValue const *function = frame_value.GetTupleValue(wxT("func"));
+    if(function)
+        m_function = function->GetSimpleValue();
+    ResultValue const *address = frame_value.GetTupleValue(wxT("addr"));
+    if(address)
+    {
+        wxString const &str = address->GetSimpleValue();
+        if(!str.ToULong(&m_address, 16))
+            return false;
+    }
+
+    ResultValue const *from = frame_value.GetTupleValue(wxT("from"));
+    if(from)
+        m_from = from->GetSimpleValue();
+
     ResultValue const *line = frame_value.GetTupleValue(_T("line"));
     ResultValue const *filename = frame_value.GetTupleValue(_T("file"));
     ResultValue const *full_filename = frame_value.GetTupleValue(_T("fullname"));
@@ -42,17 +57,6 @@ bool Frame::ParseFrame(ResultValue const &frame_value)
 
     m_line = long_line;
     m_has_valid_source = true;
-
-    ResultValue const *function = frame_value.GetTupleValue(wxT("func"));
-    if(function)
-        m_function = function->GetSimpleValue();
-    ResultValue const *address = frame_value.GetTupleValue(wxT("addr"));
-    if(address)
-    {
-        wxString const &str = address->GetSimpleValue();
-        if(!str.ToULong(&m_address, 16))
-            return false;
-    }
 
     return true;
 }

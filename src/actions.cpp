@@ -97,7 +97,10 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                 if(frame.ParseFrame(*frame_value))
                 {
                     cbStackFrame s;
-                    s.SetFile(frame.GetFilename(), wxString::Format(wxT("%d"), frame.GetLine()));
+                    if(frame.HasValidSource())
+                        s.SetFile(frame.GetFilename(), wxString::Format(wxT("%d"), frame.GetLine()));
+                    else
+                        s.SetFile(frame.GetFrom(), wxEmptyString);
                     s.SetSymbol(frame.GetFunction());
                     s.SetNumber(ii);
                     s.SetAddress(frame.GetAddress());
