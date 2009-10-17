@@ -427,12 +427,12 @@ private:
 void Debugger_GDB_MI::UpdateWhenStopped()
 {
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
-    if(IsWindowReallyShown(dbg_manager->GetBacktraceDialog()))
+    if(dbg_manager->UpdateBacktrace())
     {
         RequestUpdate(Backtrace);
     }
 
-    if(IsWindowReallyShown(dbg_manager->GetThreadsDialog()))
+    if(dbg_manager->UpdateThreads())
     {
         RequestUpdate(Threads);
     }
