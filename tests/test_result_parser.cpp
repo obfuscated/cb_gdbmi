@@ -865,6 +865,22 @@ TEST(LookupInt)
     CHECK(dbg_mi::Lookup(result_value, wxT("a"), value) && value == 5);
 }
 
+TEST(LookupString)
+{
+    dbg_mi::ResultValue result_value;
+    dbg_mi::ParseValue(wxT("a = 5, b = 6"), result_value, 0);
+    wxString value;
+    CHECK(dbg_mi::Lookup(result_value, wxT("a"), value) && value == wxT("5"));
+}
+
+TEST(LookupStringFail)
+{
+    dbg_mi::ResultValue result_value;
+    dbg_mi::ParseValue(wxT("a = 5, b = 6"), result_value, 0);
+    wxString value;
+    CHECK(!dbg_mi::Lookup(result_value, wxT("c"), value));
+}
+
 TEST(ToInt)
 {
     dbg_mi::ResultValue result_value;

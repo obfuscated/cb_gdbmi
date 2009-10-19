@@ -201,6 +201,18 @@ inline bool Lookup(ResultValue const &value, wxString const &name, int &result_v
     return ToInt(*v, result_value);
 }
 
+inline bool Lookup(ResultValue const &value, wxString const &name, wxString &result_value)
+{
+    assert(value.GetType() != ResultValue::Simple);
+    ResultValue const *v = value.GetTupleValue(name);
+    if(!v)
+        return false;
+
+    assert(v->GetType() == ResultValue::Simple);
+    result_value = v->GetSimpleValue();
+    return true;
+}
+
 
 } // namespace dbg_mi
 
