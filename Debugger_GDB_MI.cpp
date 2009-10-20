@@ -17,6 +17,7 @@
 #include <pipedprocess.h>
 #include <projectmanager.h>
 #include <threadsdlg.h>
+#include <watchesdlg.h>
 
 #include "actions.h"
 #include "cmd_result_parser.h"
@@ -436,6 +437,8 @@ void Debugger_GDB_MI::UpdateWhenStopped()
     {
         RequestUpdate(Threads);
     }
+
+    dbg_manager->GetWatchesDialog()->UpdateWatches();
 }
 
 void Debugger_GDB_MI::SetCurrentThread(int thread_id)
@@ -691,27 +694,39 @@ void Debugger_GDB_MI::SwitchToFrame(int number)
 //    }
     #warning "not implemented"
 }
+int Debugger_GDB_MI::GetActiveStackFrame() const
+{
+    #warning "not implemented"
+    return -1;
+}
 
 cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
 {
-    if(!IsStopped())
+    if(IsRunning())
     {
-        Manager::Get()->GetLogManager()->Log(wxString::Format(wxT("Debugger_GDB_MI::Addbreakpoint: %s:%d"),
-                                                              filename.c_str(), line),
-                                             m_dbg_page_index);
-        m_executor.Interupt();
+        if(!IsStopped())
+        {
+            Manager::Get()->GetLogManager()->Log(wxString::Format(wxT("Debugger_GDB_MI::Addbreakpoint: %s:%d"),
+                                                                  filename.c_str(), line),
+                                                 m_dbg_page_index);
+            m_executor.Interupt();
 
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
-        m_breakpoints.push_back(ptr);
-        CommitBreakpoints(false);
-        Continue();
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+            m_breakpoints.push_back(ptr);
+            CommitBreakpoints(false);
+            Continue();
+        }
+        else
+        {
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+            m_breakpoints.push_back(ptr);
+            CommitBreakpoints(false);
+        }
     }
     else
     {
         dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
         m_breakpoints.push_back(ptr);
-        if(IsRunning())
-            CommitBreakpoints(false);
     }
 
     return &m_breakpoints.back()->Get();
@@ -883,8 +898,11 @@ bool Debugger_GDB_MI::SwitchToThread(int thread_number)
 
 cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
 {
-    #warning "not implemented"
-    return NULL;
+    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol));
+    m_watches.push_back(w);
+
+    m_actions.Add(new dbg_mi::WatchCreateAction(w, m_execution_logger));
+    return w.get();
 }
 
 void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
@@ -894,7 +912,11 @@ void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
 
 bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
 {
-    #warning "not implemented"
+    for(Watches::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
+    {
+        if(it->get() == watch)
+            return true;
+    }
     return false;
 }
 
@@ -942,16 +964,17 @@ void Debugger_GDB_MI::DetachFromProcess()
 
 void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
 {
+    if(!IsStopped())
+        return;
+
     switch(window)
     {
     case Backtrace:
-        if(IsStopped())
-            m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
         break;
 
     case Threads:
-        if(IsStopped())
-            m_actions.Add(new dbg_mi::GenerateThreadsList(m_threads, m_current_thread, m_execution_logger));
+        m_actions.Add(new dbg_mi::GenerateThreadsList(m_threads, m_current_thread, m_execution_logger));
         break;
     }
 }

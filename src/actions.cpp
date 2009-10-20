@@ -4,6 +4,7 @@
 #include <cbplugin.h>
 #include <logmanager.h>
 #include <threadsdlg.h>
+#include <watchesdlg.h>
 
 #include "cmd_result_parser.h"
 #include "frame.h"
@@ -206,35 +207,172 @@ void GenerateThreadsList::OnStart()
     Execute(wxT("-thread-list-ids"));
 }
 
-
-
-/*
-WatchAction::WatchAction(wxString const &variable_name) :
-    m_variable_name(variable_name)
+WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
+    m_watch(watch),
+    m_step(StepCreate),
+    m_logger(logger)
 {
 }
 
-void WatchAction::Start()
+WatchCreateAction::~WatchCreateAction()
 {
-    QueueCommand(wxT("-var-create ") + m_variable_name + wxT("_gdb_var * ") + m_variable_name);
+    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
 }
 
-void WatchAction::OnCommandResult(int32_t cmd_id)
+int WatchCreateAction::ParseSingle(Watch &watch, ResultValue const &value, bool &has_type)
 {
-    DebugLog(wxString::Format(wxT("WatchAction::OnCommandResult: %d"), cmd_id));
+    int children = -1;
+    wxString s;
 
-    ResultParser *result = GetCommandResult(cmd_id);
-    assert(result);
-
-    DebugLog(result->MakeDebugString());
-
-    if(cmd_id == 0)
-        QueueCommand(wxT("-var-info-type ") + m_variable_name + wxT("_gdb_var"));
-    else if(cmd_id == 1)
+    if(Lookup(value, wxT("type"), s))
     {
+        has_type = true;
+        watch.SetType(s);
+    }
+    else
+        has_type = false;
+
+    if(Lookup(value, wxT("name"), s))
+        watch.SetID(s);
+
+    if(Lookup(value, wxT("numchild"), children))
+    {
+//        if(children == 0)
+        {
+            if(Lookup(value, wxT("value"), s))
+                watch.SetValue(s);
+        }
+        return children;
+    }
+
+    return -1;
+}
+
+void WatchCreateAction::ExecuteListCommand(Watch &watch, Watch *parent)
+{
+    CommandID const &id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch.GetID().c_str()));
+
+    m_parent_map[id] = parent ? parent : &watch;
+}
+
+void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - processing command ") + id.ToString());
+    bool error = false;
+    if(result.GetResultClass() == ResultParser::ClassDone)
+    {
+        ResultValue const &value = result.GetResultValue();
+        switch(m_step)
+        {
+        case StepCreate:
+            {
+                bool has_type;
+                int children = ParseSingle(*m_watch, value, has_type);
+                if(children > 0)
+                {
+                    ExecuteListCommand(*m_watch, NULL);
+                    m_step = StepListChildren;
+                }
+                else
+                    Finish();
+            }
+            break;
+        case StepListChildren:
+            {
+                m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - steplistchildren for id: ")
+                               + id.ToString() + wxT(" -> ") + result.MakeDebugString());
+                bool finish = true;
+                ListCommandParentMap::iterator it = m_parent_map.find(id);
+                Watch *parent_watch;
+                if(it == m_parent_map.end() || !it->second)
+                {
+                    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - no parent for id: ") + id.ToString());
+                    error = true;
+                    break;
+                }
+
+                parent_watch = it->second;
+
+                ResultValue const *children = value.GetTupleValue(wxT("children"));
+                if(children)
+                {
+                    int count = children->GetTupleSize();
+
+                    m_logger.Debug(wxString::Format(wxT("WatchCreateAction::OnCommandOutput - children %d"), count));
+                    for(int ii = 0; ii < count; ++ii)
+                    {
+                        ResultValue const *child_value;
+                        child_value = children->GetTupleValueByIndex(ii);
+
+                        if(child_value->GetName() == wxT("child"))
+                        {
+                            wxString name;
+                            if(!Lookup(*child_value, wxT("exp"), name))
+                                name = wxT("--unknown--");
+
+                            Watch *child = new Watch(name);
+                            bool has_type;
+
+                            int child_count = ParseSingle(*child, *child_value, has_type);
+                            switch(child_count)
+                            {
+                            case -1:
+                                error = true;
+                                break;
+                            case 0:
+                                parent_watch->AddChild(child);
+                                child = NULL;
+                                break;
+                            default:
+                                if(has_type)
+                                {
+                                    ExecuteListCommand(*child, NULL);
+                                    parent_watch->AddChild(child);
+
+                                    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - adding child ")
+                                                   + child->GetDebugString()
+                                                   + wxT(" to ") + parent_watch->GetDebugString());
+                                    child = NULL;
+                                }
+                                else
+                                    ExecuteListCommand(*child, parent_watch);
+
+                                finish = false;
+                            }
+
+                            child->Destroy();
+                        }
+                        else
+                        {
+                            m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - can't find child in ")
+                                           + children->GetTupleValueByIndex(ii)->MakeDebugString());
+                        }
+                    }
+
+                    if(finish)
+                        Finish();
+                }
+                else
+                    error = true;
+            }
+            break;
+        }
+    }
+    else
+        error = true;
+
+    if(error)
+    {
+        m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - error in command: ") + id.ToString());
         Finish();
-        return;
     }
 }
-*/
+
+void WatchCreateAction::OnStart()
+{
+    wxString symbol;
+    m_watch->GetSymbol(symbol);
+    Execute(wxString::Format(wxT("-var-create - * %s"), symbol.c_str()));
+}
+
 } // namespace dbg_mi

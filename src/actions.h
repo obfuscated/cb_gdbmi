@@ -2,6 +2,7 @@
 #define _DEBUGGER_GDB_MI_ACTIONS_H_
 
 #include <tr1/memory>
+#include <tr1/unordered_map>
 #include "cmd_queue.h"
 #include "definitions.h"
 
@@ -153,18 +154,32 @@ private:
     Notification m_notification;
 };
 
-/*
-class WatchAction : public Action
+class WatchCreateAction : public Action
 {
+    enum Step
+    {
+        StepCreate = 0,
+        StepListChildren
+    };
 public:
-    WatchAction(wxString const &variable_name);
+    WatchCreateAction(Watch::Pointer const &watch, Logger &logger);
+    ~WatchCreateAction();
 
-    virtual void Start();
-    virtual void OnCommandResult(int32_t cmd_id);
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+
 private:
-    wxString m_variable_name;
+    int ParseSingle(Watch &watch, ResultValue const &value, bool &has_type);
+    void ExecuteListCommand(Watch &watch, Watch *parent);
+private:
+    typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
+private:
+    Watch::Pointer m_watch;
+    ListCommandParentMap m_parent_map;
+    Step m_step;
+    Logger &m_logger;
 };
-*/
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_ACTIONS_H_

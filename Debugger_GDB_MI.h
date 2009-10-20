@@ -90,6 +90,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 		virtual int GetStackFrameCount() const;
 		virtual const cbStackFrame& GetStackFrame(int index) const;
 		virtual void SwitchToFrame(int number);
+		virtual int GetActiveStackFrame() const;
 
         // breakpoints calls
         virtual cbBreakpoint* AddBreakpoint(const wxString& filename, int line);
@@ -183,10 +184,13 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::LogPaneLogger m_execution_logger;
 
         typedef std::vector<dbg_mi::Breakpoint::Pointer> Breakpoints;
+        typedef std::vector<dbg_mi::Watch::Pointer> Watches;
+
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
         dbg_mi::BacktraceContainer m_backtrace;
         dbg_mi::ThreadsContainer m_threads;
+        Watches m_watches;
         int m_current_thread;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED
