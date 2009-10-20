@@ -4,6 +4,7 @@
 
 #include <deque>
 #include <ostream>
+#include <tr1/unordered_map>
 
 #include <wx/string.h>
 
@@ -63,6 +64,11 @@ public:
     int32_t GetCommandID() const
     {
         return m_command_in_action;
+    }
+
+    int64_t GetFullID() const
+    {
+        return (static_cast<int64_t>(m_action) >> 32) + m_command_in_action;
     }
 
 private:
@@ -278,5 +284,20 @@ public:
 
 } // namespace dbg_mi
 
+namespace std
+{
+namespace tr1
+{
+template <>
+struct hash<dbg_mi::CommandID> : public unary_function<dbg_mi::CommandID, size_t>
+{
+   size_t operator()(dbg_mi::CommandID const& v) const
+   {
+       return std::tr1::hash<int64_t>()(v.GetFullID());
+   }
+};
+
+}
+}
 
 #endif // _DEBUGGER_MI_GDB_CMD_QUEUE_H_

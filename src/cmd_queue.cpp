@@ -1,16 +1,5 @@
 #include "cmd_queue.h"
 
-/*
-#include <algorithm>
-#ifndef TEST_PROJECT
-#   include <logmanager.h>
-#   include <pipedprocess.h>
-#endif
-
-#include "cmd_result_parser.h"
-#include "events.h"
-*/
-
 namespace dbg_mi
 {
 
@@ -135,8 +124,7 @@ void ActionsMap::Run(CommandExecutor &executor)
         return;
 
     Logger *logger = executor.GetLogger();
-    if(logger)
-        logger->Debug(wxString::Format(wxT("ActionsMap::Run -> actions to run: %u"), m_actions.size()));
+
     bool first = true;
     for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
     {
@@ -144,14 +132,7 @@ void ActionsMap::Run(CommandExecutor &executor)
 
         // test if we have a barrier action
         if(action.GetWaitPrevious() && !first)
-        {
-            if(logger)
-            {
-                logger->Debug(wxString::Format(wxT("ActionsMap::Run -> skipping barrier action: %p id: %d"),
-                                               &action, action.GetID()));
-            }
             continue;
-        }
 
         if(!action.Started())
         {

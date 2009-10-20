@@ -18,7 +18,7 @@
 // map CommandID <-> output from the command
 // the output should be parsed in a ResultParser
 // test the CommandResultMap interface [not needed]
-// hash function for CommandID [not needed]
+/// hash function for CommandID
 // CommandID operator <<
 // refactor the CommnandResultMap
 // replace CommnandResultMap with some kind of CommandResultDispatcher
@@ -89,6 +89,15 @@ TEST(CommandIDGetCommandID)
 {
     dbg_mi::CommandID id(125, 23);
     CHECK_EQUAL(23, id.GetCommandID());
+}
+
+TEST(CommandIDGetFullID)
+{
+    dbg_mi::CommandID  id(12, 345);
+    int64_t r = (static_cast<int64_t>(id.GetActionID()) >> 32) + id.GetCommandID();
+
+    CHECK_EQUAL(r, id.GetFullID());
+    CHECK_EQUAL(wxT("120000000345"), id.ToString());
 }
 
 TEST(ExecuteCommand)
