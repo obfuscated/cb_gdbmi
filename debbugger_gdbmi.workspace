@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_workspace_file>
 	<Workspace title="Workspace">
-		<Project filename="debbugger_gdbmi.cbp" active="1">
+		<Project filename="debbugger_gdbmi.cbp">
 			<Depends filename="test.cbp" />
 		</Project>
-		<Project filename="test.cbp" />
+		<Project filename="test.cbp" active="1" />
 	</Workspace>
 </CodeBlocks_workspace_file>

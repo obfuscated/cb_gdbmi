@@ -163,7 +163,7 @@ class WatchCreateAction : public Action
     };
 public:
     WatchCreateAction(Watch::Pointer const &watch, Logger &logger);
-    ~WatchCreateAction();
+    virtual ~WatchCreateAction();
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
@@ -180,6 +180,22 @@ private:
     Step m_step;
     Logger &m_logger;
 };
+
+class WatchesUpdateAction : public Action
+{
+public:
+    WatchesUpdateAction(WatchesContainer &watches, Logger &logger);
+    virtual ~WatchesUpdateAction();
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+
+private:
+    WatchesContainer &m_watches;
+    Logger &m_logger;
+};
+
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_ACTIONS_H_

@@ -438,7 +438,11 @@ void Debugger_GDB_MI::UpdateWhenStopped()
         RequestUpdate(Threads);
     }
 
-    dbg_manager->GetWatchesDialog()->UpdateWatches();
+//    dbg_manager->GetWatchesDialog()->UpdateWatches();
+    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()))
+    {
+        m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
+    }
 }
 
 void Debugger_GDB_MI::SetCurrentThread(int thread_id)
@@ -912,7 +916,7 @@ void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
 
 bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
 {
-    for(Watches::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
+    for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
     {
         if(it->get() == watch)
             return true;

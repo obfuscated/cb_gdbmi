@@ -48,6 +48,7 @@
 		<Unit filename="src/cmd_result_parser.h" />
 		<Unit filename="src/cmd_result_tokens.cpp" />
 		<Unit filename="src/cmd_result_tokens.h" />
+		<Unit filename="src/definitions.cpp" />
 		<Unit filename="src/definitions.h" />
 		<Unit filename="src/events.cpp" />
 		<Unit filename="src/events.h" />

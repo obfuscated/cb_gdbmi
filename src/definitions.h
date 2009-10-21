@@ -1,6 +1,7 @@
 #ifndef _DEBUGGER_GDB_MI_DEFINITIONS_H_
 #define _DEBUGGER_GDB_MI_DEFINITIONS_H_
 
+#include <deque>
 #include <tr1/memory>
 #include <debuggermanager.h>
 
@@ -71,6 +72,10 @@ private:
 
     mutable wxString m_debug_string;
 };
+
+typedef std::vector<dbg_mi::Watch::Pointer> WatchesContainer;
+
+Watch* FindWatch(wxString const &expression, WatchesContainer &watches);
 
 } // namespace dbg_mi
 

@@ -375,4 +375,42 @@ void WatchCreateAction::OnStart()
     Execute(wxString::Format(wxT("-var-create - * %s"), symbol.c_str()));
 }
 
+WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logger) :
+    m_watches(watches),
+    m_logger(logger)
+{
+}
+
+WatchesUpdateAction::~WatchesUpdateAction()
+{
+    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
+}
+
+void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    if(result.GetResultClass() == ResultParser::ClassError)
+    {
+        Finish();
+        return;
+    }
+    ResultValue const *list = result.GetResultValue().GetTupleValue(wxT("changelist"));
+    if(list)
+    {
+        int count = list->GetTupleSize();
+        for(int ii = 0; ii < count; ++ii)
+        {
+            ResultValue const *value = list->GetTupleValueByIndex(ii);
+
+        }
+    }
+
+    m_logger.Debug(wxT("WatchesUpdateAction::Output - ") + result.MakeDebugString());
+    Finish();
+}
+
+void WatchesUpdateAction::OnStart()
+{
+    Execute(wxT("-var-update 2 *"));
+}
+
 } // namespace dbg_mi
