@@ -114,6 +114,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual bool HasWatch(cbWatch *watch);
         virtual void ShowWatchProperties(cbWatch *watch);
         virtual bool SetWatchValue(cbWatch *watch, const wxString &value);
+        virtual void ExpandWatch(cbWatch *watch);
 
         virtual void SendCommand(const wxString& cmd);
 

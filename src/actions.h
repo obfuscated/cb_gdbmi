@@ -179,6 +179,7 @@ private:
     ListCommandParentMap m_parent_map;
     Step m_step;
     Logger &m_logger;
+    int m_sub_commands_left;
 };
 
 class WatchesUpdateAction : public Action

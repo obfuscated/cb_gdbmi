@@ -210,7 +210,8 @@ void GenerateThreadsList::OnStart()
 WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
     m_watch(watch),
     m_step(StepCreate),
-    m_logger(logger)
+    m_logger(logger),
+    m_sub_commands_left(0)
 {
 }
 
@@ -253,10 +254,12 @@ void WatchCreateAction::ExecuteListCommand(Watch &watch, Watch *parent)
     CommandID const &id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch.GetID().c_str()));
 
     m_parent_map[id] = parent ? parent : &watch;
+    ++m_sub_commands_left;
 }
 
 void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
+    --m_sub_commands_left;
     m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - processing command ") + id.ToString());
     bool error = false;
     if(result.GetResultClass() == ResultParser::ClassDone)
@@ -348,9 +351,6 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
                                            + children->GetTupleValueByIndex(ii)->MakeDebugString());
                         }
                     }
-
-                    if(finish)
-                        Finish();
                 }
                 else
                     error = true;
@@ -366,6 +366,11 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
         m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - error in command: ") + id.ToString());
         Finish();
     }
+    else if(m_sub_commands_left == 0)
+    {
+        m_logger.Debug(wxT("WatchCreateAction::Output - finishing at") + id.ToString());
+        Finish();
+    }
 }
 
 void WatchCreateAction::OnStart()
@@ -373,6 +378,7 @@ void WatchCreateAction::OnStart()
     wxString symbol;
     m_watch->GetSymbol(symbol);
     Execute(wxString::Format(wxT("-var-create - * %s"), symbol.c_str()));
+    m_sub_commands_left = 1;
 }
 
 WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logger) :
@@ -401,10 +407,30 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
         {
             ResultValue const *value = list->GetTupleValueByIndex(ii);
 
+            wxString expression;
+            if(!Lookup(*value, wxT("name"), expression))
+            {
+                m_logger.Debug(wxT("WatchesUpdateAction::Output - no name in ") + value->MakeDebugString());
+                continue;
+            }
+
+            Watch *watch = FindWatch(expression, m_watches);
+            if(!watch)
+            {
+                m_logger.Debug(wxT("WatchesUpdateAction::Output - can't find watch ") + expression);
+                continue;
+            }
+
+            wxString str;
+            if(Lookup(*value, wxT("value"), str))
+            {
+                watch->SetValue(str);
+                watch->MarkAsChanged(true);
+                m_logger.Debug(wxT("WatchesUpdateAction::Output - ") + expression + wxT(" = ") + str);
+            }
         }
     }
 
-    m_logger.Debug(wxT("WatchesUpdateAction::Output - ") + result.MakeDebugString());
     Finish();
 }
 

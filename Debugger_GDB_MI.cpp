@@ -914,14 +914,23 @@ void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
     #warning "not implemented"
 }
 
+struct CompareWatchPtr
+{
+    CompareWatchPtr(cbWatch *watch_) : watch(watch_)
+    {
+    }
+    bool operator()(dbg_mi::WatchesContainer::reference r)
+    {
+        return watch == r.get();
+    }
+
+    cbWatch *watch;
+};
+
 bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
 {
-    for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
-    {
-        if(it->get() == watch)
-            return true;
-    }
-    return false;
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(), CompareWatchPtr(watch));
+    return it != m_watches.end();
 }
 
 void Debugger_GDB_MI::ShowWatchProperties(cbWatch *watch)
@@ -933,6 +942,17 @@ bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
 {
     #warning "not implemented"
     return false;
+}
+
+void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
+{
+    if(!IsStopped())
+        return;
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(), CompareWatchPtr(watch));
+    if(it != m_watches.end())
+    {
+//        m_actions.Add(new dbg_mi::WatchUpdate
+    }
 }
 
 void Debugger_GDB_MI::SendCommand(const wxString& cmd)
