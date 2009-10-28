@@ -488,4 +488,20 @@ void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser cons
     }
 }
 
+void WatchCollapseAction::OnStart()
+{
+    Execute(wxT("-var-delete -c ") + m_collapsed_watch->GetID());
+}
+
+void WatchCollapseAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    if(result.GetResultClass() == ResultParser::ClassDone)
+    {
+        m_collapsed_watch->SetHasBeenExpanded(false);
+        m_collapsed_watch->RemoveChildren();
+        AppendNullChild(*m_collapsed_watch);
+    }
+    Finish();
+}
+
 } // namespace dbg_mi

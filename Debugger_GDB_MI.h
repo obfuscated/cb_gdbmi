@@ -115,6 +115,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ShowWatchProperties(cbWatch *watch);
         virtual bool SetWatchValue(cbWatch *watch, const wxString &value);
         virtual void ExpandWatch(cbWatch *watch);
+        virtual void CollapseWatch(cbWatch *watch);
 
         virtual void SendCommand(const wxString& cmd);
 
@@ -169,9 +170,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         wxString FindDebuggerExecutable(Compiler* compiler);
         wxString GetDebuggee(ProjectBuildTarget* target);
 
-//        bool DoBreak(bool child = true);
         void CommitBreakpoints(bool force);
         void CommitRunCommand(wxString const &command);
+        void CommitWatches();
 
         long GetChildPID();
     private:

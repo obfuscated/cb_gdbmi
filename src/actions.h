@@ -80,6 +80,7 @@ public:
         if(result.GetResultClass() == ResultParser::ClassRunning)
         {
             m_logger.Debug(wxT("RunAction success, the debugger is !stopped!"));
+            m_logger.Debug(wxT("RunAction::Output - ") + result.MakeDebugString());
             m_notification(false);
             Finish();
         }
@@ -221,6 +222,23 @@ protected:
 
 private:
     Watch *m_expanded_watch;
+};
+
+class WatchCollapseAction : public WatchBaseAction
+{
+public:
+    WatchCollapseAction(Watch::Pointer parent_watch, Watch *collapsed_watch, Logger &logger) :
+        WatchBaseAction(parent_watch, logger),
+        m_collapsed_watch(collapsed_watch)
+    {
+    }
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+
+private:
+    Watch *m_collapsed_watch;
 };
 
 } // namespace dbg_mi

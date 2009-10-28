@@ -590,6 +590,14 @@ void Debugger_GDB_MI::CommitBreakpoints(bool force)
     m_temporary_breakpoints.clear();
 }
 
+void Debugger_GDB_MI::CommitWatches()
+{
+    for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
+    {
+        m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
+    }
+}
+
 void Debugger_GDB_MI::CommitRunCommand(wxString const &command)
 {
     m_actions.Add(new dbg_mi::RunAction<StopNotification>(this, command,
@@ -900,20 +908,6 @@ bool Debugger_GDB_MI::SwitchToThread(int thread_number)
         return false;
 }
 
-cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
-{
-    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol));
-    m_watches.push_back(w);
-
-    m_actions.Add(new dbg_mi::WatchCreateAction(w, m_execution_logger));
-    return w.get();
-}
-
-void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
-{
-    #warning "not implemented"
-}
-
 struct CompareWatchPtr
 {
     CompareWatchPtr(cbWatch *watch_) : watch(watch_)
@@ -926,6 +920,39 @@ struct CompareWatchPtr
 
     cbWatch *watch;
 };
+
+cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
+{
+    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol));
+    m_watches.push_back(w);
+
+    if(IsRunning())
+        m_actions.Add(new dbg_mi::WatchCreateAction(w, m_execution_logger));
+    return w.get();
+}
+
+void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
+{
+    cbWatch *root_watch = GetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
+                                                         CompareWatchPtr(root_watch));
+
+    if(it == m_watches.end())
+        return;
+
+    if(IsRunning())
+    {
+        if(IsStopped())
+            AddStringCommand(wxT("-var-delete ") + (*it)->GetID());
+        else
+        {
+            m_executor.Interupt();
+            AddStringCommand(wxT("-var-delete ") + (*it)->GetID());
+            Continue();
+        }
+    }
+    m_watches.erase(it);
+}
 
 bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
 {
@@ -946,7 +973,7 @@ bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
 
 void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
 {
-    if(!IsStopped())
+    if(!IsStopped() || !IsRunning())
         return;
     cbWatch *root_watch = GetRootWatch(watch);
     dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
@@ -956,6 +983,22 @@ void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
         dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
         if(!real_watch->HasBeenExpanded())
             m_actions.Add(new dbg_mi::WatchExpandedAction(*it, real_watch, m_execution_logger));
+    }
+}
+
+void Debugger_GDB_MI::CollapseWatch(cbWatch *watch)
+{
+    if(!IsStopped() || !IsRunning())
+        return;
+
+    cbWatch *root_watch = GetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
+                                                         CompareWatchPtr(root_watch));
+    if(it != m_watches.end())
+    {
+        dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+        if(real_watch->HasBeenExpanded())
+            m_actions.Add(new dbg_mi::WatchCollapseAction(*it, real_watch, m_execution_logger));
     }
 }
 
