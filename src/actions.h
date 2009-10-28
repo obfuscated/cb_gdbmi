@@ -154,7 +154,26 @@ private:
     Notification m_notification;
 };
 
-class WatchCreateAction : public Action
+class WatchBaseAction : public Action
+{
+public:
+    WatchBaseAction(Watch::Pointer const &watch, Logger &logger);
+    virtual ~WatchBaseAction();
+
+protected:
+    void ExecuteListCommand(Watch &watch, Watch *parent);
+    bool ParseListCommand(CommandID const &id, ResultValue const &value);
+    void AppendNullChild(Watch &watch);
+protected:
+    typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
+protected:
+    Watch::Pointer m_watch;
+    ListCommandParentMap m_parent_map;
+    Logger &m_logger;
+    int m_sub_commands_left;
+};
+
+class WatchCreateAction : public WatchBaseAction
 {
     enum Step
     {
@@ -163,23 +182,13 @@ class WatchCreateAction : public Action
     };
 public:
     WatchCreateAction(Watch::Pointer const &watch, Logger &logger);
-    virtual ~WatchCreateAction();
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
     virtual void OnStart();
 
 private:
-    int ParseSingle(Watch &watch, ResultValue const &value, bool &has_type);
-    void ExecuteListCommand(Watch &watch, Watch *parent);
-private:
-    typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
-private:
-    Watch::Pointer m_watch;
-    ListCommandParentMap m_parent_map;
     Step m_step;
-    Logger &m_logger;
-    int m_sub_commands_left;
 };
 
 class WatchesUpdateAction : public Action
@@ -195,6 +204,23 @@ protected:
 private:
     WatchesContainer &m_watches;
     Logger &m_logger;
+};
+
+class WatchExpandedAction : public WatchBaseAction
+{
+public:
+    WatchExpandedAction(Watch::Pointer parent_watch, Watch *expanded_watch, Logger &logger) :
+        WatchBaseAction(parent_watch, logger),
+        m_expanded_watch(expanded_watch)
+    {
+    }
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
+protected:
+    virtual void OnStart();
+
+private:
+    Watch *m_expanded_watch;
 };
 
 } // namespace dbg_mi

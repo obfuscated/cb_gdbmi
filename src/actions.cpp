@@ -207,20 +207,7 @@ void GenerateThreadsList::OnStart()
     Execute(wxT("-thread-list-ids"));
 }
 
-WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
-    m_watch(watch),
-    m_step(StepCreate),
-    m_logger(logger),
-    m_sub_commands_left(0)
-{
-}
-
-WatchCreateAction::~WatchCreateAction()
-{
-    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
-}
-
-int WatchCreateAction::ParseSingle(Watch &watch, ResultValue const &value, bool &has_type)
+int ParseWatchSingle(Watch &watch, ResultValue const &value, bool &has_type)
 {
     int children = -1;
     wxString s;
@@ -249,13 +236,126 @@ int WatchCreateAction::ParseSingle(Watch &watch, ResultValue const &value, bool 
     return -1;
 }
 
-void WatchCreateAction::ExecuteListCommand(Watch &watch, Watch *parent)
+WatchBaseAction::WatchBaseAction(Watch::Pointer const &watch, Logger &logger) :
+    m_watch(watch),
+    m_logger(logger),
+    m_sub_commands_left(0)
+{
+}
+
+WatchBaseAction::~WatchBaseAction()
+{
+    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
+}
+
+bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &value)
+{
+    bool error = false;
+    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - steplistchildren for id: ")
+                   + id.ToString() + wxT(" -> ") + value.MakeDebugString());
+
+    ListCommandParentMap::iterator it = m_parent_map.find(id);
+    Watch *parent_watch;
+    if(it == m_parent_map.end() || !it->second)
+    {
+        m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - no parent for id: ") + id.ToString());
+        return false;
+    }
+
+    parent_watch = it->second;
+
+    ResultValue const *children = value.GetTupleValue(wxT("children"));
+    if(children)
+    {
+        int count = children->GetTupleSize();
+
+        m_logger.Debug(wxString::Format(wxT("WatchCreateAction::OnCommandOutput - children %d"), count));
+        for(int ii = 0; ii < count; ++ii)
+        {
+            ResultValue const *child_value;
+            child_value = children->GetTupleValueByIndex(ii);
+
+            if(child_value->GetName() == wxT("child"))
+            {
+                wxString name;
+                if(!Lookup(*child_value, wxT("exp"), name))
+                    name = wxT("--unknown--");
+
+                Watch *child = new Watch(name);
+                bool has_type;
+
+                int child_count = ParseWatchSingle(*child, *child_value, has_type);
+                switch(child_count)
+                {
+                case -1:
+                    error = true;
+                    break;
+                case 0:
+                    if(!parent_watch->HasBeenExpanded())
+                    {
+                        parent_watch->SetHasBeenExpanded(true);
+                        parent_watch->RemoveChildren();
+                    }
+                    parent_watch->AddChild(child);
+                    child = NULL;
+                    break;
+                default:
+                    if(has_type)
+                    {
+                    //    ExecuteListCommand(*child, NULL);
+                        if(!parent_watch->HasBeenExpanded())
+                        {
+                            parent_watch->SetHasBeenExpanded(true);
+                            parent_watch->RemoveChildren();
+                        }
+                        parent_watch->AddChild(child);
+                        AppendNullChild(*child);
+
+                        m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - adding child ")
+                                       + child->GetDebugString()
+                                       + wxT(" to ") + parent_watch->GetDebugString());
+                        child = NULL;
+                    }
+                    else
+                        ExecuteListCommand(*child, parent_watch);
+
+                }
+
+                child->Destroy();
+            }
+            else
+            {
+                m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - can't find child in ")
+                               + children->GetTupleValueByIndex(ii)->MakeDebugString());
+            }
+        }
+    }
+    else
+        error = true;
+    return !error;
+}
+
+void WatchBaseAction::ExecuteListCommand(Watch &watch, Watch *parent)
 {
     CommandID const &id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch.GetID().c_str()));
 
     m_parent_map[id] = parent ? parent : &watch;
     ++m_sub_commands_left;
 }
+
+void WatchBaseAction::AppendNullChild(Watch &watch)
+{
+    watch.AddChild(new Watch(wxT("updating...")));
+}
+
+
+WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
+    WatchBaseAction(watch, logger),
+    m_step(StepCreate)
+{
+}
+
+
 
 void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
@@ -270,91 +370,19 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
         case StepCreate:
             {
                 bool has_type;
-                int children = ParseSingle(*m_watch, value, has_type);
+                int children = ParseWatchSingle(*m_watch, value, has_type);
                 if(children > 0)
                 {
-                    ExecuteListCommand(*m_watch, NULL);
+//                    ExecuteListCommand(*m_watch, NULL);
                     m_step = StepListChildren;
+                    AppendNullChild(*m_watch);
                 }
                 else
                     Finish();
             }
             break;
         case StepListChildren:
-            {
-                m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - steplistchildren for id: ")
-                               + id.ToString() + wxT(" -> ") + result.MakeDebugString());
-                bool finish = true;
-                ListCommandParentMap::iterator it = m_parent_map.find(id);
-                Watch *parent_watch;
-                if(it == m_parent_map.end() || !it->second)
-                {
-                    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - no parent for id: ") + id.ToString());
-                    error = true;
-                    break;
-                }
-
-                parent_watch = it->second;
-
-                ResultValue const *children = value.GetTupleValue(wxT("children"));
-                if(children)
-                {
-                    int count = children->GetTupleSize();
-
-                    m_logger.Debug(wxString::Format(wxT("WatchCreateAction::OnCommandOutput - children %d"), count));
-                    for(int ii = 0; ii < count; ++ii)
-                    {
-                        ResultValue const *child_value;
-                        child_value = children->GetTupleValueByIndex(ii);
-
-                        if(child_value->GetName() == wxT("child"))
-                        {
-                            wxString name;
-                            if(!Lookup(*child_value, wxT("exp"), name))
-                                name = wxT("--unknown--");
-
-                            Watch *child = new Watch(name);
-                            bool has_type;
-
-                            int child_count = ParseSingle(*child, *child_value, has_type);
-                            switch(child_count)
-                            {
-                            case -1:
-                                error = true;
-                                break;
-                            case 0:
-                                parent_watch->AddChild(child);
-                                child = NULL;
-                                break;
-                            default:
-                                if(has_type)
-                                {
-                                    ExecuteListCommand(*child, NULL);
-                                    parent_watch->AddChild(child);
-
-                                    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - adding child ")
-                                                   + child->GetDebugString()
-                                                   + wxT(" to ") + parent_watch->GetDebugString());
-                                    child = NULL;
-                                }
-                                else
-                                    ExecuteListCommand(*child, parent_watch);
-
-                                finish = false;
-                            }
-
-                            child->Destroy();
-                        }
-                        else
-                        {
-                            m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - can't find child in ")
-                                           + children->GetTupleValueByIndex(ii)->MakeDebugString());
-                        }
-                    }
-                }
-                else
-                    error = true;
-            }
+            error = !ParseListCommand(id, value);
             break;
         }
     }
@@ -437,6 +465,27 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 void WatchesUpdateAction::OnStart()
 {
     Execute(wxT("-var-update 2 *"));
+}
+
+void WatchExpandedAction::OnStart()
+{
+    ExecuteListCommand(*m_expanded_watch, NULL);
+}
+
+void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    --m_sub_commands_left;
+    m_logger.Debug(wxT("WatchExpandedAction::Output - ") + result.GetResultValue().MakeDebugString());
+    if(!ParseListCommand(id, result.GetResultValue()))
+    {
+        m_logger.Debug(wxT("WatchExpandedAction::Output - error in command") + id.ToString());
+        Finish();
+    }
+    else if(m_sub_commands_left == 0)
+    {
+        m_logger.Debug(wxT("WatchExpandedAction::Output - done"));
+        Finish();
+    }
 }
 
 } // namespace dbg_mi

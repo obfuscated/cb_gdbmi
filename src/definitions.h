@@ -43,12 +43,16 @@ public:
     typedef std::tr1::shared_ptr<Watch> Pointer;
 public:
     Watch(wxString const &symbol) :
-        m_symbol(symbol)
+        m_symbol(symbol),
+        m_has_been_expanded(false)
     {
     }
 
     wxString const & GetID() const { return m_id; }
     void SetID(wxString const &id) { m_id = id; }
+
+    bool HasBeenExpanded() const { return m_has_been_expanded; }
+    void SetHasBeenExpanded(bool expanded) { m_has_been_expanded = expanded; }
 public:
     virtual void GetSymbol(wxString &symbol) const { symbol = m_symbol; }
     virtual void GetValue(wxString &value) const { value = m_value; }
@@ -71,6 +75,7 @@ private:
     wxString m_type;
 
     mutable wxString m_debug_string;
+    bool m_has_been_expanded;
 };
 
 typedef std::vector<dbg_mi::Watch::Pointer> WatchesContainer;

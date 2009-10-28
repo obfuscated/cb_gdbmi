@@ -948,10 +948,14 @@ void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
 {
     if(!IsStopped())
         return;
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(), CompareWatchPtr(watch));
+    cbWatch *root_watch = GetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
+                                                         CompareWatchPtr(root_watch));
     if(it != m_watches.end())
     {
-//        m_actions.Add(new dbg_mi::WatchUpdate
+        dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+        if(!real_watch->HasBeenExpanded())
+            m_actions.Add(new dbg_mi::WatchExpandedAction(*it, real_watch, m_execution_logger));
     }
 }
 
