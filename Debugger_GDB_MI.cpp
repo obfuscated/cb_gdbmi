@@ -438,9 +438,13 @@ void Debugger_GDB_MI::UpdateWhenStopped()
         RequestUpdate(Threads);
     }
 
-//    dbg_manager->GetWatchesDialog()->UpdateWatches();
     if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()))
     {
+        for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
+        {
+            if((*it)->GetID().empty())
+                m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
+        }
         m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
     }
 }
@@ -595,8 +599,10 @@ void Debugger_GDB_MI::CommitWatches()
 {
     for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
     {
-        m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
+        (*it)->Reset();
     }
+    if(!m_watches.empty())
+        Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
 }
 
 void Debugger_GDB_MI::CommitRunCommand(wxString const &command)

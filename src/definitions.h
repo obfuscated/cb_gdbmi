@@ -48,6 +48,15 @@ public:
     {
     }
 
+    void Reset()
+    {
+        m_id = m_type = m_value = wxEmptyString;
+        m_has_been_expanded = false;
+
+        RemoveChildren();
+        Expand(false);
+    }
+
     wxString const & GetID() const { return m_id; }
     void SetID(wxString const &id) { m_id = id; }
 
