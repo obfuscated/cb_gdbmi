@@ -881,6 +881,16 @@ TEST(LookupStringFail)
     CHECK(!dbg_mi::Lookup(result_value, wxT("c"), value));
 }
 
+TEST(LookupBool)
+{
+    dbg_mi::ResultValue result_value;
+    dbg_mi::ParseValue(wxT("a=\"true\", b = 6, c=\"false\""), result_value, 0);
+    bool value;
+    CHECK(dbg_mi::Lookup(result_value, wxT("a"), value) && value);
+    CHECK(!dbg_mi::Lookup(result_value, wxT("b"), value));
+    CHECK(dbg_mi::Lookup(result_value, wxT("c"), value) && !value);
+}
+
 TEST(ToInt)
 {
     dbg_mi::ResultValue result_value;

@@ -201,6 +201,24 @@ inline bool Lookup(ResultValue const &value, wxString const &name, int &result_v
     return ToInt(*v, result_value);
 }
 
+inline bool Lookup(ResultValue const &value, wxString const &name, bool &result_value)
+{
+    assert(value.GetType() != ResultValue::Simple);
+    ResultValue const *v = value.GetTupleValue(name);
+    if(!v || v->GetType() != ResultValue::Simple)
+        return false;
+
+    wxString const &s = v->GetSimpleValue();
+
+    if(s == wxT("true"))
+        result_value = true;
+    else if(s == wxT("false"))
+        result_value = false;
+    else
+        return false;
+    return true;
+}
+
 inline bool Lookup(ResultValue const &value, wxString const &name, wxString &result_value)
 {
     assert(value.GetType() != ResultValue::Simple);
