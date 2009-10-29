@@ -152,6 +152,18 @@ TEST(TestParseDebuggerOutputLine)
     CHECK(wxT("^running") == result_str);
 }
 
+TEST(TestParseDebuggerOutputLineNoID)
+{
+    wxString line = wxT("*stopped");
+
+    dbg_mi::CommandID id;
+    wxString result_str;
+
+    CHECK(dbg_mi::ParseGDBOutputLine(line, id, result_str));
+    CHECK_EQUAL(dbg_mi::CommandID(), id);
+    CHECK(wxT("*stopped") == result_str);
+}
+
 bool ProcessOutputTestHelper(dbg_mi::CommandExecutor &exec, dbg_mi::CommandID const &id, wxString const &command)
 {
     if(!exec.ProcessOutput(id.ToString() + command))

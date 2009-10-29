@@ -9,18 +9,32 @@ bool ParseGDBOutputLine(wxString const &line, CommandID &id, wxString &result_st
     while(pos < line.length() && wxIsdigit(line[pos]))
         ++pos;
     if(pos <= 10)
-        return false;
-    long action_id, cmd_id;
+    {
+        if(pos != 0)
+            return false;
+        if(line[0] == wxT('*') || line[0] == wxT('^') || line[0] == wxT('+') || line[0] == wxT('='))
+        {
+            id = CommandID();
+            result_str = line;
+            return true;
+        }
+        else
+            return false;
+    }
+    else
+    {
+        long action_id, cmd_id;
 
-    wxString const &str_action = line.substr(0, pos - 10);
-    str_action.ToLong(&action_id, 10);
+        wxString const &str_action = line.substr(0, pos - 10);
+        str_action.ToLong(&action_id, 10);
 
-    wxString const &str_cmd = line.substr(pos - 10, 10);
-    str_cmd.ToLong(&cmd_id, 10);
+        wxString const &str_cmd = line.substr(pos - 10, 10);
+        str_cmd.ToLong(&cmd_id, 10);
 
-    id = dbg_mi::CommandID(action_id, cmd_id);
-    result_str = line.substr(pos, line.length() - pos);
-    return true;
+        id = dbg_mi::CommandID(action_id, cmd_id);
+        result_str = line.substr(pos, line.length() - pos);
+        return true;
+    }
 }
 
 CommandID CommandExecutor::Execute(wxString const &cmd)
