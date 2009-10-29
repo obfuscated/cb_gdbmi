@@ -64,11 +64,14 @@
 		<Unit filename="src/events.h" />
 		<Unit filename="src/frame.cpp" />
 		<Unit filename="src/frame.h" />
+		<Unit filename="src/updated_variable.cpp" />
+		<Unit filename="src/updated_variable.h" />
 		<Unit filename="tests/main.cpp" />
 		<Unit filename="tests/mock_command_executor.h" />
 		<Unit filename="tests/test_cmd_queue.cpp" />
 		<Unit filename="tests/test_frame.cpp" />
 		<Unit filename="tests/test_result_parser.cpp" />
+		<Unit filename="tests/test_updated_variable.cpp" />
 		<Unit filename="tests/test_watches.cpp" />
 		<Extensions>
 			<envvars />
