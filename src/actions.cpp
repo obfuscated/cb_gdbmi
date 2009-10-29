@@ -386,7 +386,11 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
         }
     }
     else
+    {
+        if(result.GetResultClass() == ResultParser::ClassError)
+            m_watch->SetValue(wxT("the expression can't be evaluated"));
         error = true;
+    }
 
     if(error)
     {
@@ -416,7 +420,7 @@ WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logg
 
 void WatchesUpdateAction::OnStart()
 {
-    m_update_command = Execute(wxT("-var-update 2 *"));
+    m_update_command = Execute(wxT("-var-update 1 *"));
     m_sub_commands_left = 1;
 }
 
@@ -455,10 +459,12 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                 switch(updated_var.GetInScope())
                 {
                 case UpdatedVariable::InScope_No:
+                    watch->Expand(false);
                     watch->RemoveChildren();
                     watch->SetValue(wxT("-- not in scope --"));
                     break;
                 case UpdatedVariable::InScope_Invalid:
+                    watch->Expand(false);
                     watch->RemoveChildren();
                     watch->SetValue(wxT("-- invalid -- "));
                     break;
