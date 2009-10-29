@@ -158,7 +158,7 @@ private:
 class WatchBaseAction : public Action
 {
 public:
-    WatchBaseAction(Watch::Pointer const &watch, Logger &logger);
+    WatchBaseAction(Logger &logger);
     virtual ~WatchBaseAction();
 
 protected:
@@ -168,7 +168,6 @@ protected:
 protected:
     typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
 protected:
-    Watch::Pointer m_watch;
     ListCommandParentMap m_parent_map;
     Logger &m_logger;
     int m_sub_commands_left;
@@ -189,29 +188,32 @@ protected:
     virtual void OnStart();
 
 private:
+    Watch::Pointer m_watch;
     Step m_step;
 };
 
-class WatchesUpdateAction : public Action
+class WatchesUpdateAction : public WatchBaseAction
 {
 public:
     WatchesUpdateAction(WatchesContainer &watches, Logger &logger);
-    virtual ~WatchesUpdateAction();
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
     virtual void OnStart();
 
 private:
+    bool ParseUpdate(ResultParser const &result);
+private:
     WatchesContainer &m_watches;
-    Logger &m_logger;
+    CommandID   m_update_command;
 };
 
 class WatchExpandedAction : public WatchBaseAction
 {
 public:
     WatchExpandedAction(Watch::Pointer parent_watch, Watch *expanded_watch, Logger &logger) :
-        WatchBaseAction(parent_watch, logger),
+        WatchBaseAction(logger),
+        m_watch(parent_watch),
         m_expanded_watch(expanded_watch)
     {
     }
@@ -221,6 +223,7 @@ protected:
     virtual void OnStart();
 
 private:
+    Watch::Pointer m_watch;
     Watch *m_expanded_watch;
 };
 
@@ -228,7 +231,8 @@ class WatchCollapseAction : public WatchBaseAction
 {
 public:
     WatchCollapseAction(Watch::Pointer parent_watch, Watch *collapsed_watch, Logger &logger) :
-        WatchBaseAction(parent_watch, logger),
+        WatchBaseAction(logger),
+        m_watch(parent_watch),
         m_collapsed_watch(collapsed_watch)
     {
     }
@@ -238,6 +242,7 @@ protected:
     virtual void OnStart();
 
 private:
+    Watch::Pointer m_watch;
     Watch *m_collapsed_watch;
 };
 

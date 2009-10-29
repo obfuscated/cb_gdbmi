@@ -97,6 +97,7 @@ TEST(UpdatedVar_NewTypeInt_NewNumChildren)
 {
     Fixture f(c_new_type_int);
     CHECK_EQUAL(0, f.var.GetNewNumberOfChildren());
+    CHECK(f.var.HasNewNumberOfChildren());
 }
 
 } // nameless namespace

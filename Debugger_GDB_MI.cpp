@@ -560,8 +560,9 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     int ret = m_executor.LaunchProcess(cmd, working_dir, id_gdb_process, this);
 
     m_executor.Stopped(true);
-    m_executor.Execute(_T("-enable-timings"));
+//    m_executor.Execute(_T("-enable-timings"));
     CommitBreakpoints(true);
+    CommitWatches();
 
     CommitRunCommand(wxT("-exec-run"));
     m_actions.Run(m_executor);

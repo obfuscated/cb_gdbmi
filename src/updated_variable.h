@@ -33,6 +33,7 @@ public:
     bool TypeChanged() const { return m_type_changed; }
     bool HasValue() const { return m_has_value; }
     int GetNewNumberOfChildren() const { return m_new_num_children; }
+    bool HasNewNumberOfChildren() const { return m_new_num_children != -1; }
 
     bool Parse(ResultValue const &output);
 

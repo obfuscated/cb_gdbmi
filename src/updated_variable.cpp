@@ -6,6 +6,7 @@ namespace dbg_mi
 
 bool UpdatedVariable::Parse(ResultValue const &output)
 {
+    m_new_num_children = -1;
     wxString str;
     if(Lookup(output, wxT("in_scope"), str))
     {

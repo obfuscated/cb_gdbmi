@@ -56,6 +56,8 @@
 		<Unit filename="src/frame.h" />
 		<Unit filename="src/gdb_executor.cpp" />
 		<Unit filename="src/gdb_executor.h" />
+		<Unit filename="src/updated_variable.cpp" />
+		<Unit filename="src/updated_variable.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

@@ -8,6 +8,7 @@
 
 #include "cmd_result_parser.h"
 #include "frame.h"
+#include "updated_variable.h"
 
 namespace dbg_mi
 {
@@ -236,8 +237,7 @@ int ParseWatchSingle(Watch &watch, ResultValue const &value, bool &has_type)
     return -1;
 }
 
-WatchBaseAction::WatchBaseAction(Watch::Pointer const &watch, Logger &logger) :
-    m_watch(watch),
+WatchBaseAction::WatchBaseAction(Logger &logger) :
     m_logger(logger),
     m_sub_commands_left(0)
 {
@@ -350,12 +350,11 @@ void WatchBaseAction::AppendNullChild(Watch &watch)
 
 
 WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
-    WatchBaseAction(watch, logger),
+    WatchBaseAction(logger),
+    m_watch(watch),
     m_step(StepCreate)
 {
 }
-
-
 
 void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
@@ -405,27 +404,28 @@ void WatchCreateAction::OnStart()
 {
     wxString symbol;
     m_watch->GetSymbol(symbol);
-    Execute(wxString::Format(wxT("-var-create - * %s"), symbol.c_str()));
+    Execute(wxString::Format(wxT("-var-create - @ %s"), symbol.c_str()));
     m_sub_commands_left = 1;
 }
 
 WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logger) :
-    m_watches(watches),
-    m_logger(logger)
+    WatchBaseAction(logger),
+    m_watches(watches)
 {
 }
 
-WatchesUpdateAction::~WatchesUpdateAction()
+void WatchesUpdateAction::OnStart()
 {
-    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
+    m_update_command = Execute(wxT("-var-update 2 *"));
+    m_sub_commands_left = 1;
 }
 
-void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
 {
     if(result.GetResultClass() == ResultParser::ClassError)
     {
         Finish();
-        return;
+        return false;
     }
     ResultValue const *list = result.GetResultValue().GetTupleValue(wxT("changelist"));
     if(list)
@@ -449,22 +449,75 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
                 continue;
             }
 
-            wxString str;
-            if(Lookup(*value, wxT("value"), str))
+            UpdatedVariable updated_var;
+            if(updated_var.Parse(*value))
             {
-                watch->SetValue(str);
-                watch->MarkAsChanged(true);
-                m_logger.Debug(wxT("WatchesUpdateAction::Output - ") + expression + wxT(" = ") + str);
+                switch(updated_var.GetInScope())
+                {
+                case UpdatedVariable::InScope_No:
+                    watch->RemoveChildren();
+                    watch->SetValue(wxT("-- not in scope --"));
+                    break;
+                case UpdatedVariable::InScope_Invalid:
+                    watch->RemoveChildren();
+                    watch->SetValue(wxT("-- invalid -- "));
+                    break;
+                case UpdatedVariable::InScope_Yes:
+                    {
+                        if(updated_var.HasNewNumberOfChildren())
+                        {
+                            watch->RemoveChildren();
+                            ExecuteListCommand(*watch, NULL);
+                        }
+                        if(updated_var.HasValue())
+                        {
+                            watch->SetValue(updated_var.GetValue());
+                            watch->MarkAsChanged(true);
+                            m_logger.Debug(wxT("WatchesUpdateAction::Output - ")
+                                           + expression + wxT(" = ") + updated_var.GetValue());
+                        }
+                        else
+                        {
+                            watch->SetValue(wxEmptyString);
+                        }
+                    }
+                    break;
+                }
             }
+
+        }
+    }
+    return true;
+}
+
+void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
+{
+    --m_sub_commands_left;
+
+    if(id == m_update_command)
+    {
+        if(!ParseUpdate(result))
+        {
+            Finish();
+            return;
+        }
+    }
+    else
+    {
+        ResultValue const &value = result.GetResultValue();
+        if(!ParseListCommand(id, value))
+        {
+            m_logger.Debug(wxT("WatchUpdateAction::Output - ParseListCommand failed ") + id.ToString());
+            Finish();
+            return;
         }
     }
 
-    Finish();
-}
-
-void WatchesUpdateAction::OnStart()
-{
-    Execute(wxT("-var-update 2 *"));
+    if(m_sub_commands_left == 0)
+    {
+        m_logger.Debug(wxT("WatchUpdateAction::Output - finishing at") + id.ToString());
+        Finish();
+    }
 }
 
 void WatchExpandedAction::OnStart()
