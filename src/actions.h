@@ -82,8 +82,8 @@ public:
             m_logger.Debug(wxT("RunAction success, the debugger is !stopped!"));
             m_logger.Debug(wxT("RunAction::Output - ") + result.MakeDebugString());
             m_notification(false);
-            Finish();
         }
+        Finish();
     }
 protected:
     virtual void OnStart()
