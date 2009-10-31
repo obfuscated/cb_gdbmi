@@ -151,6 +151,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
     public:
         void UpdateWhenStopped();
         void SetCurrentThread(int thread_id);
+        void SetCurrentPosition(wxString const &filename, int line);
     private:
         DECLARE_EVENT_TABLE();
 
@@ -175,6 +176,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void CommitWatches();
 
         long GetChildPID();
+
     private:
         wxMenu *m_menu;
         int m_page_index, m_dbg_page_index;
@@ -193,5 +195,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::ThreadsContainer m_threads;
         dbg_mi::WatchesContainer m_watches;
         int m_current_thread;
+
+        wxString m_current_filename;
+        int m_current_line;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

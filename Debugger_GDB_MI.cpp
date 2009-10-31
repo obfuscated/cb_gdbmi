@@ -56,7 +56,8 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_log(NULL),
     m_debug_log(NULL),
-    m_current_thread(-1)
+    m_current_thread(-1),
+    m_current_line(-1)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -414,6 +415,7 @@ private:
             {
                 DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
                 dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
+                m_plugin->SetCurrentPosition(frame.GetFilename(), frame.GetLine());
             }
         }
     }
@@ -1077,7 +1079,13 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
 
 void Debugger_GDB_MI::GetCurrentPosition(wxString &filename, int &line)
 {
-    #warning "not implemented"
+    filename = m_current_filename;
+    line = m_current_line;
 }
 
+void Debugger_GDB_MI::SetCurrentPosition(wxString const &filename, int line)
+{
+    m_current_filename = filename;
+    m_current_line = line;
+}
 
