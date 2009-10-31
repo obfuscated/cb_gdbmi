@@ -974,8 +974,26 @@ void Debugger_GDB_MI::ShowWatchProperties(cbWatch *watch)
 
 bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
 {
-    #warning "not implemented"
-    return false;
+    if(!IsStopped() || !IsRunning())
+        return false;
+
+    cbWatch *root_watch = GetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
+                                                         CompareWatchPtr(root_watch));
+
+    if(it == m_watches.end())
+        return false;
+
+    dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+
+    AddStringCommand(wxT("-var-assign ") + real_watch->GetID() + wxT(" ") + value);
+
+//    m_actions.Add(new dbg_mi::WatchSetValueAction(*it, static_cast<dbg_mi::Watch*>(watch), value, m_execution_logger));
+    dbg_mi::Action *update_action = new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger);
+    update_action->SetWaitPrevious(true);
+    m_actions.Add(update_action);
+
+    return true;
 }
 
 void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
