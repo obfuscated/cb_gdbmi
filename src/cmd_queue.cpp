@@ -146,7 +146,7 @@ void ActionsMap::Run(CommandExecutor &executor)
 
         // test if we have a barrier action
         if(action.GetWaitPrevious() && !first)
-            continue;
+            break;
 
         if(!action.Started())
         {
