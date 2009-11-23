@@ -122,6 +122,8 @@ StoppedReason StoppedReason::Parse(ResultValue const &value)
     wxString const &str = reason->GetSimpleValue();
     if(str == wxT("breakpoint-hit"))
         return BreakpointHit;
+    else if(str == wxT("exited"))
+        return Exited;
     else if(str == wxT("exited-normally"))
         return ExitedNormally;
     else

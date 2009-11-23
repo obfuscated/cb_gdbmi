@@ -32,6 +32,21 @@ private:
     wxString m_command;
 };
 
+class BarrierAction : public Action
+{
+public:
+    BarrierAction()
+    {
+        SetWaitPrevious(true);
+    }
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result) {}
+protected:
+    virtual void OnStart()
+    {
+        Finish();
+    }
+};
+
 class Breakpoint;
 
 class BreakpointAddAction : public Action
@@ -102,14 +117,15 @@ private:
 class GenerateBacktrace : public Action
 {
 public:
-    GenerateBacktrace(BacktraceContainer &backtrace, Logger &logger);
+    GenerateBacktrace(BacktraceContainer &backtrace, int &current_frame, Logger &logger);
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
     virtual void OnStart();
 private:
+    CommandID m_backtrace_id, m_args_id;
     BacktraceContainer &m_backtrace;
     Logger &m_logger;
-    CommandID m_backtrace_id, m_args_id;
+    int &m_current_frame;
     bool m_parsed_backtrace, m_parsed_args;
 };
 

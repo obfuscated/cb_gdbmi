@@ -69,9 +69,10 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
     }
 }
 
-GenerateBacktrace::GenerateBacktrace(BacktraceContainer &backtrace, Logger &logger) :
+GenerateBacktrace::GenerateBacktrace(BacktraceContainer &backtrace, int &current_frame, Logger &logger) :
     m_backtrace(backtrace),
     m_logger(logger),
+    m_current_frame(current_frame),
     m_parsed_backtrace(false),
     m_parsed_args(false)
 {
@@ -91,6 +92,8 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
 
             m_backtrace.clear();
 
+            int first_valid = -1;
+
             for(int ii = 0; ii < size; ++ii)
             {
                 ResultValue const *frame_value = stack->GetTupleValueByIndex(ii);
@@ -107,6 +110,9 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                     s.SetNumber(ii);
                     s.SetAddress(frame.GetAddress());
                     s.MakeValid(frame.HasValidSource());
+                    if(s.IsValid() && first_valid == -1)
+                        first_valid = ii;
+
                     m_backtrace.push_back(s);
                 }
                 else
@@ -150,6 +156,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
 
     if(m_parsed_backtrace && m_parsed_args)
     {
+        m_current_frame = 0;
         Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
         Finish();
     }

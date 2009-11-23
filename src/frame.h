@@ -66,7 +66,7 @@ struct StoppedReason
 //        WatchpointScope, // A watchpoint has gone out of scope.
 //        EndSteppingRange, // An -exec-next, -exec-next-instruction, -exec-step, -exec-step-instruction or similar CLI command was accomplished.
 //        ExitedSignalled, // The inferior exited because of a signal.
-//        Exited, // The inferior exited.
+        Exited, // The inferior exited.
         ExitedNormally, // The inferior exited normally.
 //        SignalReceived // A signal was received by the inferior.
     };

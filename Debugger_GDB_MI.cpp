@@ -57,7 +57,8 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_log(NULL),
     m_debug_log(NULL),
     m_current_thread(-1),
-    m_current_line(-1)
+    m_current_line(-1),
+    m_current_stack_frame(-1)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -363,6 +364,15 @@ struct Notifications
                 {
                     m_executor.Execute(wxT("-gdb-exit"));
                 }
+                else if(reason == dbg_mi::StoppedReason::Exited)
+                {
+                    int code = -1;
+                    if(!dbg_mi::Lookup(result_value, wxT("exit-code"), code))
+                        code = -1;
+                    m_plugin->SetExitCode(code);
+
+                    m_executor.Execute(wxT("-gdb-exit"));
+                }
                 else
                 {
                     if(!m_executor.IsTemporaryInterupt())
@@ -427,6 +437,23 @@ private:
     bool m_simple_mode;
 };
 
+void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
+{
+    if(wait)
+        m_actions.Add(new dbg_mi::BarrierAction());
+    DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
+
+    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()))
+    {
+        for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
+        {
+            if((*it)->GetID().empty())
+                m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
+        }
+        m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
+    }
+}
+
 void Debugger_GDB_MI::UpdateWhenStopped()
 {
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
@@ -439,16 +466,7 @@ void Debugger_GDB_MI::UpdateWhenStopped()
     {
         RequestUpdate(Threads);
     }
-
-    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()))
-    {
-        for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
-        {
-            if((*it)->GetID().empty())
-                m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
-        }
-        m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
-    }
+    UpdateOnFrameChanged(false);
 }
 
 void Debugger_GDB_MI::SetCurrentThread(int thread_id)
@@ -689,8 +707,7 @@ bool Debugger_GDB_MI::IsStopped() const
 }
 int Debugger_GDB_MI::GetExitCode() const
 {
-    #warning "not implemented"
-    return 0;
+    return m_exit_code;
 }
 
 int Debugger_GDB_MI::GetStackFrameCount() const
@@ -705,20 +722,23 @@ const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
 
 void Debugger_GDB_MI::SwitchToFrame(int number)
 {
-//    if(IsRunning() && IsStopped())
-//    {
-//        if(number < static_cast<int>(m_backtrace.size()))
-//        {
-//            int frame = m_backtrace[number].GetNumber();
-//            AddStringCommand(wxString::Format(wxT("-stack-select-frame %d"), frame));
-//        }
-//    }
-    #warning "not implemented"
+    m_execution_logger.Debug(wxT("Debugger_GDB_MI::SwitchToFrame"));
+    if(IsRunning() && IsStopped())
+    {
+        if(number < static_cast<int>(m_backtrace.size()))
+        {
+            m_execution_logger.Debug(wxT("Debugger_GDB_MI::SwitchToFrame - adding commnad"));
+
+            int frame = m_backtrace[number].GetNumber();
+            AddStringCommand(wxString::Format(wxT("-stack-select-frame %d"), frame));
+            m_current_stack_frame = number;
+            UpdateOnFrameChanged(true);
+        }
+    }
 }
 int Debugger_GDB_MI::GetActiveStackFrame() const
 {
-    #warning "not implemented"
-    return -1;
+    return m_current_stack_frame;
 }
 
 cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
@@ -1068,7 +1088,7 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
     switch(window)
     {
     case Backtrace:
-        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_execution_logger));
+        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_current_stack_frame, m_execution_logger));
         break;
 
     case Threads:

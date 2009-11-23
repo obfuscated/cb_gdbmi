@@ -84,7 +84,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual bool IsRunning() const;
         virtual bool IsStopped() const;
         virtual int GetExitCode() const;
-
+        void SetExitCode(int code) { m_exit_code = code; }
 
 		// stack frame calls;
 		virtual int GetStackFrameCount() const;
@@ -150,6 +150,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     public:
         void UpdateWhenStopped();
+        void UpdateOnFrameChanged(bool wait);
         void SetCurrentThread(int thread_id);
         void SetCurrentPosition(wxString const &filename, int line);
     private:
@@ -198,5 +199,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         wxString m_current_filename;
         int m_current_line;
+        int m_current_stack_frame;
+        int m_exit_code;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED
