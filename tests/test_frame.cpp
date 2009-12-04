@@ -88,9 +88,24 @@ TEST(StoppedReasonParse_BreakpointHit)
     CHECK(TestReason(wxT("reason=\"breakpoint-hit\"")) == dbg_mi::StoppedReason::BreakpointHit);
 }
 
+TEST(StoppedReasonParse_Exited)
+{
+    CHECK(TestReason(wxT("reason=\"exited\"")) == dbg_mi::StoppedReason::Exited);
+}
+
 TEST(StoppedReasonParse_ExitedNormally)
 {
     CHECK(TestReason(wxT("reason=\"exited-normally\"")) == dbg_mi::StoppedReason::ExitedNormally);
+}
+
+TEST(StoppedReasonParse_ExitedSignalled)
+{
+    CHECK(TestReason(wxT("reason=\"exited-signalled\"")) == dbg_mi::StoppedReason::ExitedSignalled);
+}
+
+TEST(StoppedReasonParse_SignalReceived)
+{
+    CHECK(TestReason(wxT("reason=\"signal-received\"")) == dbg_mi::StoppedReason::SignalReceived);
 }
 
 
