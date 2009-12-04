@@ -11,6 +11,7 @@
 #include <configurationpanel.h>
 #include <configmanager.h>
 #include <editbreakpointdlg.h>
+#include <infowindow.h>
 #include <loggers.h>
 #include <logmanager.h>
 #include <macrosmanager.h>
@@ -346,6 +347,8 @@ struct Notifications
     void operator()(dbg_mi::ResultParser const &parser)
     {
         dbg_mi::ResultValue const &result_value = parser.GetResultValue();
+        LogManager *log = Manager::Get()->GetLogManager();
+        log->Log(_T("notification event recieved!"), m_page_index);
         if(m_simple_mode)
         {
             ParseStateInfo(result_value);
@@ -353,45 +356,64 @@ struct Notifications
         }
         else
         {
-            LogManager *log = Manager::Get()->GetLogManager();
-            log->Log(_T("notification event recieved!"), m_page_index);
-
             if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
             {
                 dbg_mi::StoppedReason reason = dbg_mi::StoppedReason::Parse(result_value);
 
-                if(reason == dbg_mi::StoppedReason::ExitedNormally)
+                switch(reason.GetType())
                 {
+                case dbg_mi::StoppedReason::SignalReceived:
+                    {
+                        wxString signal_name, signal_meaning;
+
+                        dbg_mi::Lookup(result_value, wxT("signal-name"), signal_name);
+                        dbg_mi::Lookup(result_value, wxT("signal-meaning"), signal_meaning);
+
+                        InfoWindow::Display(_("Signal received"),
+                                            wxString(_("\n\n")) + signal_name
+                                            + _T("\n") + signal_meaning + _T("\n\n"));
+
+                        Manager::Get()->GetDebuggerManager()->ShowBacktraceDialog();
+                        UpdateCursor(result_value, true);
+                    }
+                    break;
+                case dbg_mi::StoppedReason::ExitedNormally:
+                case dbg_mi::StoppedReason::ExitedSignalled:
                     m_executor.Execute(wxT("-gdb-exit"));
-                }
-                else if(reason == dbg_mi::StoppedReason::Exited)
-                {
-                    int code = -1;
-                    if(!dbg_mi::Lookup(result_value, wxT("exit-code"), code))
-                        code = -1;
-                    m_plugin->SetExitCode(code);
+                    break;
 
-                    m_executor.Execute(wxT("-gdb-exit"));
-                }
-                else
-                {
-                    if(!m_executor.IsTemporaryInterupt())
-                        ParseStateInfo(result_value);
+                case dbg_mi::StoppedReason::Exited:
+                    {
+                        int code = -1;
+                        if(!dbg_mi::Lookup(result_value, wxT("exit-code"), code))
+                            code = -1;
+                        m_plugin->SetExitCode(code);
 
-                    m_executor.Stopped(true);
-
-                    // Notify debugger plugins for end of debug session
-                    PluginManager *plm = Manager::Get()->GetPluginManager();
-                    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
-                    plm->NotifyPlugins(evt);
-
-                    m_plugin->UpdateWhenStopped();
+                        m_executor.Execute(wxT("-gdb-exit"));
+                    }
+                    break;
+                default:
+                    UpdateCursor(result_value, !m_executor.IsTemporaryInterupt());
                 }
             }
         }
     }
 
 private:
+    void UpdateCursor(dbg_mi::ResultValue const &result_value, bool parse_state_info)
+    {
+        if(parse_state_info)
+            ParseStateInfo(result_value);
+
+        m_executor.Stopped(true);
+
+        // Notify debugger plugins for end of debug session
+        PluginManager *plm = Manager::Get()->GetPluginManager();
+        CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
+        plm->NotifyPlugins(evt);
+
+        m_plugin->UpdateWhenStopped();
+    }
     void ParseStateInfo(dbg_mi::ResultValue const &result_value)
     {
         LogManager *log = Manager::Get()->GetLogManager();
