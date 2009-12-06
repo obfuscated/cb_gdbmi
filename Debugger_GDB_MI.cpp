@@ -303,7 +303,7 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
     CodeBlocksEvent evt(cbEVT_DEBUGGER_FINISHED);
     plm->NotifyPlugins(evt);
 
-    // TODO (obfuscated#): switch to the previous layout/perspective
+    SwitchToPreviousLayout();
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
@@ -615,6 +615,8 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     m_actions.Run(m_executor);
 
     m_timer_poll_debugger.Start(20);
+
+    SwitchToDebuggingLayout();
     return 0;
 }
 
