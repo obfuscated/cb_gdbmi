@@ -370,8 +370,9 @@ struct Notifications
                         dbg_mi::Lookup(result_value, wxT("signal-meaning"), signal_meaning);
 
                         InfoWindow::Display(_("Signal received"),
-                                            wxString(_("\n\n")) + signal_name
-                                            + _T("\n") + signal_meaning + _T("\n\n"));
+                                            wxString::Format(_("\nProgram received signal: %s (%s)\n\n"),
+                                                             signal_meaning.c_str(),
+                                                             signal_name.c_str()));
 
                         Manager::Get()->GetDebuggerManager()->ShowBacktraceDialog();
                         UpdateCursor(result_value, true);
