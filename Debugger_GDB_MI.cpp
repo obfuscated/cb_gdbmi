@@ -593,7 +593,7 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
 
     wxString cmd;
     cmd << debugger;
-    cmd << _T(" -nx");          // don't run .gdbinit
+//    cmd << _T(" -nx");          // don't run .gdbinit
     cmd << _T(" -fullname ");   // report full-path filenames when breaking
     cmd << _T(" -quiet");       // don't display version on startup
     cmd << _T(" --interpreter=mi");
@@ -611,6 +611,7 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     CommitBreakpoints(true);
     CommitWatches();
 
+    m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
     CommitRunCommand(wxT("-exec-run"));
     m_actions.Run(m_executor);
 

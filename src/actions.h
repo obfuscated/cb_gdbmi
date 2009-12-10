@@ -178,7 +178,7 @@ public:
     virtual ~WatchBaseAction();
 
 protected:
-    void ExecuteListCommand(Watch &watch, Watch *parent);
+    void ExecuteListCommand(Watch &watch, Watch *parent, int start = -1, int end = -1);
     bool ParseListCommand(CommandID const &id, ResultValue const &value);
     void AppendNullChild(Watch &watch);
 protected:
@@ -194,7 +194,8 @@ class WatchCreateAction : public WatchBaseAction
     enum Step
     {
         StepCreate = 0,
-        StepListChildren
+        StepListChildren,
+        StepSetRange
     };
 public:
     WatchCreateAction(Watch::Pointer const &watch, Logger &logger);
