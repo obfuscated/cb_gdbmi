@@ -22,7 +22,9 @@ public:
         m_inscope(InScope_Invalid),
         m_new_num_children(-1),
         m_type_changed(false),
-        m_has_value(false)
+        m_has_value(false),
+        m_has_more(false),
+        m_dynamic(false)
     {
     }
 
@@ -34,9 +36,12 @@ public:
     bool HasValue() const { return m_has_value; }
     int GetNewNumberOfChildren() const { return m_new_num_children; }
     bool HasNewNumberOfChildren() const { return m_new_num_children != -1; }
+    bool HasMore() const { return m_has_more; }
+    bool IsDynamic() const { return m_dynamic; }
 
     bool Parse(ResultValue const &output);
 
+    wxString MakeDebugString() const;
 private:
     wxString m_name;
     wxString m_value;
@@ -45,6 +50,8 @@ private:
     int m_new_num_children;
     bool m_type_changed;
     bool m_has_value;
+    bool m_has_more;
+    bool m_dynamic;
 };
 
 

@@ -26,7 +26,10 @@ wxString const c_simple(wxT("s = {name=\"var1.private.c\",value=\"5\",")
                         wxT("in_scope=\"true\",type_changed=\"false\",has_more=\"0\"}"));
 
 wxString const c_new_type_int(wxT("s={name=\"var1\",value=\"0\",in_scope=\"true\",")
-                              wxT("type_changed=\"true\",new_type=\"int\",new_num_children=\"0\",has_more=\"0\"}"));
+                              wxT("type_changed=\"true\",new_type=\"int\",new_num_children=\"0\",")
+                              wxT("has_more=\"1\",dynamic=\"1\"}"));
+wxString const c_pretty_printed(wxT("s={name=\"var1\",value=\"{...}\",in_scope=\"true\",type_changed=\"false\",")
+                                wxT("new_num_children=\"0\",displayhint=\"array\",dynamic=\"1\",has_more=\"0\"}"));
 struct Fixture
 {
     Fixture(wxString const &s)
@@ -74,6 +77,17 @@ TEST(UpdatedVar_Simple_Value)
     CHECK_EQUAL(wxT("5"), f.var.GetValue());
 }
 
+TEST(UpdateVar_Simple_HasMore)
+{
+    Fixture f(c_simple);
+    CHECK(!f.var.HasMore());
+}
+
+TEST(UpdateVar_Simple_IsDynamic)
+{
+    Fixture f(c_simple);
+    CHECK(!f.var.IsDynamic());
+}
 ///////////////////////////////////////////////////////////////////////////////////////
 TEST(UpdatedVar_NewTypeInt_Status)
 {
@@ -96,6 +110,34 @@ TEST(UpdatedVar_NewTypeInt_NewType)
 TEST(UpdatedVar_NewTypeInt_NewNumChildren)
 {
     Fixture f(c_new_type_int);
+    CHECK_EQUAL(0, f.var.GetNewNumberOfChildren());
+    CHECK(f.var.HasNewNumberOfChildren());
+}
+
+TEST(UpdateVar_NewTypeInt_HasMore)
+{
+    Fixture f(c_new_type_int);
+    CHECK(f.var.HasMore());
+}
+
+TEST(UpdateVar_NewTypeInt_IsDynamic)
+{
+    Fixture f(c_new_type_int);
+    CHECK(f.var.IsDynamic());
+}
+
+TEST(UpdateVar_NewTypeInt_MakeDebugString)
+{
+    Fixture f(c_new_type_int);
+
+    printf("%s", f.var.MakeDebugString().utf8_str().data());
+    CHECK(f.var.MakeDebugString() == wxT("name=var1; value=0; new_type=int; in_scope=InScope_Yes; new_num_children=0;")
+                                     wxT(" type_changed=1; has_value=1; has_more=1; dynamic=1;"));
+}
+///////////////////////////////////////////////////////////////////////////////////////
+TEST(UpdateVar_Pretty_Printed_NewNumChildren)
+{
+    Fixture f(c_pretty_printed);
     CHECK_EQUAL(0, f.var.GetNewNumberOfChildren());
     CHECK(f.var.HasNewNumberOfChildren());
 }
