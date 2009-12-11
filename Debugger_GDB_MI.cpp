@@ -37,8 +37,12 @@ namespace
     PluginRegistrant<Debugger_GDB_MI> reg(_T("debugger_gdbmi"));
 }
 
-int const id_gdb_process = wxNewId();
-int const id_gdb_poll_timer = wxNewId();
+namespace
+{
+    int const id_gdb_process = wxNewId();
+    int const id_gdb_poll_timer = wxNewId();
+    int const id_menu_info_command_stream = wxNewId();
+}
 
 // events handling
 BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
@@ -50,6 +54,7 @@ BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
     EVT_IDLE(Debugger_GDB_MI::OnIdle)
     EVT_TIMER(id_gdb_poll_timer, Debugger_GDB_MI::OnTimer)
 
+    EVT_MENU(id_menu_info_command_stream, Debugger_GDB_MI::OnMenuInfoCommandStream)
 END_EVENT_TABLE()
 
 // constructor
@@ -115,7 +120,9 @@ void Debugger_GDB_MI::OnRelease(bool appShutDown)
 
 void Debugger_GDB_MI::ShowToolMenu()
 {
-    #warning "not implemented"
+    wxMenu m;
+    m.Append(id_menu_info_command_stream, _("Show command stream"));
+    Manager::Get()->GetAppWindow()->PopupMenu(&m);
 }
 
 int Debugger_GDB_MI::Configure()
@@ -322,6 +329,19 @@ void Debugger_GDB_MI::OnTimer(wxTimerEvent& event)
 {
     RunQueue();
     wxWakeUpIdle();
+}
+
+void Debugger_GDB_MI::OnMenuInfoCommandStream(wxCommandEvent& event)
+{
+    wxString full;
+    for(int ii = 0; ii < m_execution_logger.GetCommandCount(); ++ii)
+    {
+        full += m_execution_logger.GetCommand(ii) + wxT("\n");
+    }
+    dbg_mi::TextInfoWindow window(Manager::Get()->GetAppWindow(), wxT("Command stream"), full);
+
+
+    window.ShowModal();
 }
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)

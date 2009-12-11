@@ -40,6 +40,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     public:
         virtual void ShowToolMenu();
+        virtual bool ToolMenuEnabled() const { return true; }
 
         /** Invoke configuration dialog. */
         virtual int Configure();
@@ -162,6 +163,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void OnTimer(wxTimerEvent& event);
         void OnIdle(wxIdleEvent& event);
 
+        void OnMenuInfoCommandStream(wxCommandEvent& event);
+
+    private:
         void AddStringCommand(wxString const &command);
         void RunQueue();
         void ParseOutput(wxString const &str);

@@ -280,6 +280,11 @@ public:
 
     virtual void Debug(wxString const &line) = 0;
     virtual wxString GetDebugLine(int index) const = 0;
+
+    virtual void AddCommand(wxString const &command) = 0;
+    virtual int GetCommandCount() const = 0;
+    virtual wxString const& GetCommand(int index) const = 0;
+    virtual void ClearCommand() = 0;
 };
 
 } // namespace dbg_mi

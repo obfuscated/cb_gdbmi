@@ -17,6 +17,19 @@ public:
     {
         return wxEmptyString;
     }
+
+    virtual void AddCommand(wxString const &command) { m_commands.push_back(command); }
+    virtual int GetCommandCount() const { return m_commands.size(); }
+    virtual wxString const& GetCommand(int index) const
+    {
+        Commands::const_iterator it = m_commands.begin();
+        std::advance(it, index);
+        return *it;
+    }
+    virtual void ClearCommand() { m_commands.clear(); }
+private:
+    typedef std::vector<wxString> Commands;
+    Commands m_commands;
 };
 
 class GDBExecutor : public CommandExecutor

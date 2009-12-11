@@ -41,7 +41,10 @@ CommandID CommandExecutor::Execute(wxString const &cmd)
 {
     dbg_mi::CommandID id(0, m_last++);
     if(m_logger)
+    {
         m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
+        m_logger->AddCommand(id.ToString() + cmd);
+    }
     if(DoExecute(id, cmd))
         return id;
     else
@@ -50,7 +53,10 @@ CommandID CommandExecutor::Execute(wxString const &cmd)
 void CommandExecutor::ExecuteSimple(dbg_mi::CommandID const &id, wxString const &cmd)
 {
     if(m_logger)
+    {
         m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
+        m_logger->AddCommand(id.ToString() + cmd);
+    }
     DoExecute(id, cmd);
 }
 

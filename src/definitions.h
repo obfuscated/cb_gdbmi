@@ -3,7 +3,11 @@
 
 #include <deque>
 #include <tr1/memory>
+
+#include <wx/sizer.h>
+
 #include <debuggermanager.h>
+#include <scrollingdialog.h>
 
 namespace dbg_mi
 {
@@ -90,6 +94,29 @@ private:
 typedef std::vector<dbg_mi::Watch::Pointer> WatchesContainer;
 
 Watch* FindWatch(wxString const &expression, WatchesContainer &watches);
+
+// Custom window to display output of DebuggerInfoCmd
+class TextInfoWindow : public wxScrollingDialog
+{
+    public:
+        TextInfoWindow(wxWindow *parent, const wxChar *title, const wxString& content) :
+            wxScrollingDialog(parent, -1, title, wxDefaultPosition, wxDefaultSize,
+                              wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxMAXIMIZE_BOX | wxMINIMIZE_BOX)
+        {
+            wxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+            wxFont font(8, wxMODERN, wxNORMAL, wxNORMAL);
+            m_text = new wxTextCtrl(this, -1, content, wxDefaultPosition, wxDefaultSize,
+                                    wxTE_READONLY | wxTE_MULTILINE | wxTE_RICH2 | wxHSCROLL);
+            m_text->SetFont(font);
+
+            sizer->Add(m_text, 1, wxGROW);
+
+            SetSizer(sizer);
+            sizer->Layout();
+        }
+    private:
+        wxTextCtrl* m_text;
+};
 
 } // namespace dbg_mi
 

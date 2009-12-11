@@ -603,11 +603,33 @@ public:
         else
             return wxEmptyString;
     }
+
+    virtual void AddCommand(wxString const &command)
+    {
+        m_commands_history.push_back(command);
+    }
+
+    virtual int GetCommandCount() const
+    {
+        return m_commands_history.size();
+    }
+    virtual wxString const& GetCommand(int index) const
+    {
+        Lines::const_iterator it = m_commands_history.begin();
+        std::advance(it, index);
+        return *it;
+    }
+
+    virtual void ClearCommand()
+    {
+        m_commands_history.clear();
+    }
 public:
     int GetDebugLineCount() const { return m_debug.size(); }
 private:
     typedef std::vector<wxString> Lines;
     Lines m_debug;
+    Lines m_commands_history;
 };
 
 struct LoggingFixture
@@ -638,4 +660,17 @@ TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorProcessOutput)
     exec.Execute(wxT("-exec-run"));
     CHECK_EQUAL(2, logger.GetDebugLineCount());
     CHECK_EQUAL(wxT("output==>00000000000^running"), logger.GetDebugLine(1));
+}
+
+TEST_FIXTURE(LoggingFixture, CommandHistory)
+{
+    exec.ExecuteSimple(dbg_mi::CommandID(0, 1), wxT("-exec-run"));
+    exec.ExecuteSimple(dbg_mi::CommandID(0, 2), wxT("-exec-next"));
+    exec.ExecuteSimple(dbg_mi::CommandID(0, 3), wxT("-break-insert"));
+
+    CHECK_EQUAL(3, logger.GetCommandCount());
+
+    CHECK(logger.GetCommand(0) == (dbg_mi::CommandID(0, 1).ToString() + wxT("-exec-run")));
+    CHECK(logger.GetCommand(1) == (dbg_mi::CommandID(0, 2).ToString() + wxT("-exec-next")));
+    CHECK(logger.GetCommand(2) == (dbg_mi::CommandID(0, 3).ToString() + wxT("-break-insert")));
 }
