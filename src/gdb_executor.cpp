@@ -91,7 +91,7 @@ int GDBExecutor::LaunchProcess(wxString const &cmd, wxString const& cwd, int id_
         return -1;
 
     // start the gdb process
-    m_process = new PipedProcess((void**)&m_process, event_handler, id_gdb_process, true, cwd, false);
+    m_process = new PipedProcess((void**)&m_process, event_handler, id_gdb_process, true, cwd);
     log->Log(_("Starting debugger: "), m_log_page);
     m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
     m_child_pid = -1;
