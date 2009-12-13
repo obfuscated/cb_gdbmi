@@ -11,10 +11,71 @@
 
 namespace
 {
+// function pointer to DebugBreakProcess under windows (XP+)
+#if (_WIN32_WINNT >= 0x0501)
+#include "Tlhelp32.h"
+typedef WINBASEAPI BOOL WINAPI   (*DebugBreakProcessApiCall)       (HANDLE);
+typedef WINBASEAPI HANDLE WINAPI (*CreateToolhelp32SnapshotApiCall)(DWORD  dwFlags,   DWORD             th32ProcessID);
+typedef WINBASEAPI BOOL WINAPI   (*Process32FirstApiCall)          (HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+typedef WINBASEAPI BOOL WINAPI   (*Process32NextApiCall)           (HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+
+DebugBreakProcessApiCall        DebugBreakProcessFunc = 0;
+CreateToolhelp32SnapshotApiCall CreateToolhelp32SnapshotFunc = 0;
+Process32FirstApiCall           Process32FirstFunc = 0;
+Process32NextApiCall            Process32NextFunc = 0;
+
+HINSTANCE kernelLib = 0;
+
+
+void InitDebuggingFuncs()
+{
+    // get a function pointer to DebugBreakProcess under windows (XP+)
+    kernelLib = LoadLibrary(TEXT("kernel32.dll"));
+    if (kernelLib)
+    {
+        DebugBreakProcessFunc = (DebugBreakProcessApiCall)GetProcAddress(kernelLib, "DebugBreakProcess");
+        //Windows XP
+        CreateToolhelp32SnapshotFunc = (CreateToolhelp32SnapshotApiCall)GetProcAddress(kernelLib, "CreateToolhelp32Snapshot");
+        Process32FirstFunc = (Process32FirstApiCall)GetProcAddress(kernelLib, "Process32First");
+        Process32NextFunc = (Process32NextApiCall)GetProcAddress(kernelLib, "Process32Next");
+    }
+}
+
+void FreeDebuggingFuncs()
+{
+    if (kernelLib)
+        FreeLibrary(kernelLib);
+}
+#else
+void InitDebuggingFuncs()
+{
+}
+void FreeDebuggingFuncs()
+{
+}
+#endif
+
+void InteruptChild(int child_pid)
+{
+#ifndef __WXMSW__
+    wxKillError error;
+    wxKill(child_pid, wxSIGINT, &error);
+#else
+    if (DebugBreakProcessFunc)
+    {
+        HANDLE proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, (DWORD)child_pid);
+        if (proc)
+        {
+            DebugBreakProcessFunc(proc); // yay!
+            CloseHandle(proc);
+        }
+    }
+#endif
+}
 
 void GetChildPIDs(int parent, std::vector<int> &childs)
 {
-#ifndef __WX_MSW__
+#ifndef __WXMSW__
     const char *c_proc_base = "/proc";
 
     DIR *dir = opendir(c_proc_base);
@@ -56,6 +117,27 @@ void GetChildPIDs(int parent, std::vector<int> &childs)
     } while(entry);
 
     closedir(dir);
+#else
+    if((CreateToolhelp32SnapshotFunc!=NULL) && (Process32FirstFunc!=NULL) && (Process32NextFunc!=NULL) )
+    {
+        HANDLE snap = CreateToolhelp32SnapshotFunc(TH32CS_SNAPALL,0);
+        if (snap!=INVALID_HANDLE_VALUE)
+        {
+            PROCESSENTRY32 lppe;
+            lppe.dwSize = sizeof(PROCESSENTRY32);
+            BOOL ok = Process32FirstFunc(snap, &lppe);
+            while ( ok == TRUE)
+            {
+                if (lppe.th32ParentProcessID == parent) // Have my Child...
+                {
+                    childs.push_back(lppe.th32ProcessID);
+                }
+                lppe.dwSize = sizeof(PROCESSENTRY32);
+                ok = Process32NextFunc(snap, &lppe);
+            }
+            CloseHandle(snap);
+        }
+    }
 #endif
 }
 }
@@ -81,6 +163,12 @@ GDBExecutor::GDBExecutor() :
     m_interupting(false),
     m_temporary_interupt(false)
 {
+    InitDebuggingFuncs();
+}
+
+GDBExecutor::~GDBExecutor()
+{
+    FreeDebuggingFuncs();
 }
 
 int GDBExecutor::LaunchProcess(wxString const &cmd, wxString const& cwd, int id_gdb_process,
@@ -202,9 +290,9 @@ void GDBExecutor::Interupt(bool temporary)
     {
         m_temporary_interupt = temporary;
         m_interupting = true;
-        wxKillError error;
+
         GetChildPID();
-        wxKill(m_child_pid, wxSIGINT, &error);
+        InteruptChild(m_child_pid);
         return;
     }
 }

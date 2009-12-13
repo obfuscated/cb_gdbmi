@@ -387,12 +387,16 @@ struct Notifications
                         wxString signal_name, signal_meaning;
 
                         dbg_mi::Lookup(result_value, wxT("signal-name"), signal_name);
-                        dbg_mi::Lookup(result_value, wxT("signal-meaning"), signal_meaning);
 
-                        InfoWindow::Display(_("Signal received"),
-                                            wxString::Format(_("\nProgram received signal: %s (%s)\n\n"),
-                                                             signal_meaning.c_str(),
-                                                             signal_name.c_str()));
+                        if(signal_name != wxT("SIGTRAP"))
+                        {
+                            dbg_mi::Lookup(result_value, wxT("signal-meaning"), signal_meaning);
+                            InfoWindow::Display(_("Signal received"),
+                                                wxString::Format(_("\nProgram received signal: %s (%s)\n\n"),
+                                                                 signal_meaning.c_str(),
+                                                                 signal_name.c_str()));
+
+                        }
 
                         Manager::Get()->GetDebuggerManager()->ShowBacktraceDialog();
                         UpdateCursor(result_value, true);
@@ -470,6 +474,8 @@ private:
                 dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
                 m_plugin->SetCurrentPosition(frame.GetFilename(), frame.GetLine());
             }
+            else
+                log->Log(wxT("ParseStateInfo does not have valid source"), m_page_index);
         }
     }
 

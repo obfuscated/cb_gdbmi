@@ -6,19 +6,19 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Debug">
-				<Option output="libdebugger_gdbmi" prefix_auto="1" extension_auto="1" />
+			<Target title="debug_unix">
+				<Option output="debugger_gdbmi" prefix_auto="0" extension_auto="1" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option host_application="/home/obfuscated/projects/codeblocks/git/src/devel/codeblocks" />
+				<Option host_application="\home\obfuscated\projects\codeblocks\git\src\devel\codeblocks" />
 				<Compiler>
 					<Add option="-Wall" />
 					<Add option="-g" />
-					<Add option="`wx-config --cflags`" />
+					<Add option="-fPIC" />
 				</Compiler>
 				<Linker>
-					<Add option="`wx-config --libs`" />
 					<Add option="-z defs" />
+					<Add directory="$(#wx)\lib\gcc_dll" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="rm -f $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip" />
@@ -26,38 +26,70 @@
 					<Add after="zip -j9 $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip resource/manifest.xml resource/*.xrc" />
 				</ExtraCommands>
 			</Target>
+			<Target title="debug_win32">
+				<Option platforms="Windows;" />
+				<Option output="debugger_gdbmi" prefix_auto="1" extension_auto="1" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option host_application="\home\obfuscated\projects\codeblocks\git\src\devel\codeblocks" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-DHAVE_W32API_H" />
+					<Add option="-D__WXMSW__" />
+					<Add option="-DWXUSINGDLL" />
+					<Add option="-DwxUSE_UNICODE" />
+					<Add option="-DBUILDING_PLUGIN" />
+					<Add directory="$(#WX.include)" />
+					<Add directory="$(#wx)\contrib\include" />
+					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
+					<Add directory="sdk\wxscintilla\include" />
+				</Compiler>
+				<Linker>
+					<Add option="-Wl,--enable-auto-image-base" />
+					<Add option="-Wl,--add-stdcall-alias" />
+					<Add option="-Wl,--enable-auto-import" />
+					<Add library="wxmsw28U" />
+					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="rm -f $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip" />
+					<Add after="cp debugger_gdbmi.dll $(#cb_sdk)/devel/share/codeblocks/plugins/debugger_gdbmi.dll" />
+					<Add after="zip -j9 $(#cb_sdk)/devel/share/codeblocks/debugger_gdbmi.zip resource/manifest.xml resource/*.xrc" />
+				</ExtraCommands>
+			</Target>
 		</Build>
 		<Compiler>
-			<Add option="-fPIC" />
 			<Add directory="$(#cb_sdk.include)" />
 			<Add directory="src" />
 		</Compiler>
 		<Linker>
 			<Add library="codeblocks" />
+			<Add library="wxscintilla" />
 			<Add directory="$(#cb_sdk.lib)" />
 		</Linker>
 		<Unit filename="Debugger_GDB_MI.cpp" />
 		<Unit filename="Debugger_GDB_MI.h" />
-		<Unit filename="resource/debugger_gdbmi_menu.xrc" />
-		<Unit filename="resource/manifest.xml" />
-		<Unit filename="src/actions.cpp" />
-		<Unit filename="src/actions.h" />
-		<Unit filename="src/cmd_queue.cpp" />
-		<Unit filename="src/cmd_queue.h" />
-		<Unit filename="src/cmd_result_parser.cpp" />
-		<Unit filename="src/cmd_result_parser.h" />
-		<Unit filename="src/cmd_result_tokens.cpp" />
-		<Unit filename="src/cmd_result_tokens.h" />
-		<Unit filename="src/definitions.cpp" />
-		<Unit filename="src/definitions.h" />
-		<Unit filename="src/events.cpp" />
-		<Unit filename="src/events.h" />
-		<Unit filename="src/frame.cpp" />
-		<Unit filename="src/frame.h" />
-		<Unit filename="src/gdb_executor.cpp" />
-		<Unit filename="src/gdb_executor.h" />
-		<Unit filename="src/updated_variable.cpp" />
-		<Unit filename="src/updated_variable.h" />
+		<Unit filename="resource\debugger_gdbmi_menu.xrc" />
+		<Unit filename="resource\manifest.xml" />
+		<Unit filename="src\actions.cpp" />
+		<Unit filename="src\actions.h" />
+		<Unit filename="src\cmd_queue.cpp" />
+		<Unit filename="src\cmd_queue.h" />
+		<Unit filename="src\cmd_result_parser.cpp" />
+		<Unit filename="src\cmd_result_parser.h" />
+		<Unit filename="src\cmd_result_tokens.cpp" />
+		<Unit filename="src\cmd_result_tokens.h" />
+		<Unit filename="src\definitions.cpp" />
+		<Unit filename="src\definitions.h" />
+		<Unit filename="src\events.cpp" />
+		<Unit filename="src\events.h" />
+		<Unit filename="src\frame.cpp" />
+		<Unit filename="src\frame.h" />
+		<Unit filename="src\gdb_executor.cpp" />
+		<Unit filename="src\gdb_executor.h" />
+		<Unit filename="src\updated_variable.cpp" />
+		<Unit filename="src\updated_variable.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

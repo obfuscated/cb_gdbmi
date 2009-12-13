@@ -38,6 +38,7 @@ class GDBExecutor : public CommandExecutor
     GDBExecutor& operator =(GDBExecutor &o);
 public:
     GDBExecutor();
+    ~GDBExecutor();
 
     void Init(int log_page, int debug_page);
     int LaunchProcess(wxString const &cmd, wxString const& cwd, int id_gdb_process, wxEvtHandler *event_handler);
