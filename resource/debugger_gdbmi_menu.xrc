@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resource>
+  <object class="wxMenu" name="debugger_gdbmi_menu">
+    <object class="wxMenuItem" name="idDebuggerGDBMI_MenuStart">
+
+      <label>&amp;Start</label>
+
+      <bitmap>images\16x16\dbgrun.png</bitmap>
+
+      <accel>F8</accel>
+
+      <help>Run current project in debugger</help>
+    </object>
+    <object class="wxMenuItem" name="idDebuggerGDBMI_MenuStop">
+
+      <label>Stop debugger</label>
+
+      <bitmap>images\16x16\dbgstop.png</bitmap>
+
+      <help>Stop current debugging session</help>
+    </object>
+  </object>
+</resource>
