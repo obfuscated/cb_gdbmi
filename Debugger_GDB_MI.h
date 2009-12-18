@@ -151,6 +151,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     protected:
         virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
+        virtual cbProject* GetProject() { return NULL; }
+        virtual void CleanupWhenProjectClosed(cbProject *project) {}
+
     public:
         void UpdateWhenStopped();
         void UpdateOnFrameChanged(bool wait);
