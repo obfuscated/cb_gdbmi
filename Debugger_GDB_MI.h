@@ -149,6 +149,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           */
         virtual void OnRelease(bool appShutDown);
 
+    protected:
+        virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
     public:
         void UpdateWhenStopped();
         void UpdateOnFrameChanged(bool wait);
@@ -170,11 +172,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void RunQueue();
         void ParseOutput(wxString const &str);
 
-        void ShowLog();
         bool SelectCompiler(cbProject &project, Compiler *&compiler,
                             ProjectBuildTarget *&target, long pid_to_attach);
         wxString FindDebuggerExecutable(Compiler* compiler);
-        wxString GetDebuggee(ProjectBuildTarget* target);
 
         void CommitBreakpoints(bool force);
         void CommitRunCommand(wxString const &command);

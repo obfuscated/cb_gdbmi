@@ -139,15 +139,6 @@ int Debugger_GDB_MI::Configure()
     return -1;
 }
 
-void Debugger_GDB_MI::ShowLog()
-{
-    // TODO (obfuscated#): if the "Debugger (debug)" log pane is active don't activate the "Debugger"
-    CodeBlocksLogEvent event_switch_log(cbEVT_SWITCH_TO_LOG_WINDOW, m_log);
-    CodeBlocksLogEvent event_show_log(cbEVT_SHOW_LOG_MANAGER);
-    Manager::Get()->ProcessEvent(event_switch_log);
-    Manager::Get()->ProcessEvent(event_show_log);
-}
-
 bool Debugger_GDB_MI::SelectCompiler(cbProject &project, Compiler *&compiler,
                                      ProjectBuildTarget *&target, long pid_to_attach)
 {
@@ -159,8 +150,6 @@ bool Debugger_GDB_MI::SelectCompiler(cbProject &project, Compiler *&compiler,
 
     if(pid_to_attach == 0)
     {
-        ShowLog();
-
         log.Log(_("Selecting target: "), m_page_index);
         if (!project.BuildTargetValid(active_build_target, false))
         {
@@ -242,52 +231,6 @@ wxString Debugger_GDB_MI::FindDebuggerExecutable(Compiler* compiler)
     }
 
     return binPath;
-}
-
-wxString Debugger_GDB_MI::GetDebuggee(ProjectBuildTarget* target)
-{
-    if (!target)
-        return wxEmptyString;
-
-    wxString out;
-    switch (target->GetTargetType())
-    {
-        case ttExecutable:
-        case ttConsoleOnly:
-            out = UnixFilename(target->GetOutputFilename());
-            Manager::Get()->GetMacrosManager()->ReplaceEnvVars(out); // apply env vars
-            Manager::Get()->GetLogManager()->Log(_("Adding file: ") + out, m_page_index);
-//            ConvertToGDBDirectory(out);
-            break;
-
-        case ttStaticLib:
-        case ttDynamicLib:
-            // check for hostapp
-            if (target->GetHostApplication().IsEmpty())
-            {
-                cbMessageBox(_("You must select a host application to \"run\" a library..."));
-                return wxEmptyString;
-            }
-            out = UnixFilename(target->GetHostApplication());
-            Manager::Get()->GetMacrosManager()->ReplaceEnvVars(out); // apply env vars
-            Manager::Get()->GetLogManager()->Log(_("Adding file: ") + out, m_page_index);
-//            ConvertToGDBDirectory(out);
-            break;
-//            // for DLLs, add the DLL's symbols
-//            if (target->GetTargetType() == ttDynamicLib)
-//            {
-//                wxString symbols;
-//                out = UnixFilename(target->GetOutputFilename());
-//                Manager::Get()->GetMacrosManager()->ReplaceEnvVars(out); // apply env vars
-//                msgMan->Log(m_page_index, _("Adding symbol file: %s"), out.c_str());
-//                ConvertToGDBDirectory(out);
-//                QueueCommand(new DbgCmd_AddSymbolFile(this, out));
-//            }
-//            break;
-
-        default: break;
-    }
-    return out;
 }
 
 void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
@@ -569,7 +512,7 @@ struct StopNotification
 
 int Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
-    ShowLog();
+    ShowLog(true);
     Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
 
     ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
