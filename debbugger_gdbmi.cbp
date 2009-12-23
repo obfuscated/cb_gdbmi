@@ -7,7 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="debug_unix">
-				<Option output="debugger_gdbmi" prefix_auto="1" extension_auto="1" />
+				<Option output="libdebugger_gdbmi.so" prefix_auto="0" extension_auto="0" />
 				<Option type="3" />
 				<Option compiler="gcc" />
 				<Option host_application="/home/obfuscated/projects/codeblocks/git/src/devel/codeblocks" />
