@@ -153,6 +153,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
         virtual cbProject* GetProject() { return NULL; }
         virtual void CleanupWhenProjectClosed(cbProject *project) {}
+        virtual void CompilerFinished();
 
     public:
         void UpdateWhenStopped();
@@ -177,8 +178,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         bool SelectCompiler(cbProject &project, Compiler *&compiler,
                             ProjectBuildTarget *&target, long pid_to_attach);
-        wxString FindDebuggerExecutable(Compiler* compiler);
-
+        int StartDebugger(cbProject *project);
         void CommitBreakpoints(bool force);
         void CommitRunCommand(wxString const &command);
         void CommitWatches();

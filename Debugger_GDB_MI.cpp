@@ -146,7 +146,7 @@ bool Debugger_GDB_MI::SelectCompiler(cbProject &project, Compiler *&compiler,
    // select the build target to debug
     target = NULL;
     compiler = NULL;
-    wxString active_build_target;
+    wxString active_build_target = project.GetActiveBuildTarget();
 
     if(pid_to_attach == 0)
     {
@@ -181,56 +181,6 @@ bool Debugger_GDB_MI::SelectCompiler(cbProject &project, Compiler *&compiler,
     else
         compiler = CompilerFactory::GetDefaultCompiler();
     return true;
-}
-
-
-wxString Debugger_GDB_MI::FindDebuggerExecutable(Compiler* compiler)
-{
-    if (compiler->GetPrograms().DBG.IsEmpty())
-        return wxEmptyString;
-//    if (!wxFileExists(compiler->GetMasterPath() + wxFILE_SEP_PATH + _T("bin") + wxFILE_SEP_PATH + compiler->GetPrograms().DBG))
-//        return wxEmptyString;
-
-    wxString masterPath = compiler->GetMasterPath();
-    while (masterPath.Last() == '\\' || masterPath.Last() == '/')
-        masterPath.RemoveLast();
-    wxString gdb = compiler->GetPrograms().DBG;
-    const wxArrayString& extraPaths = compiler->GetExtraPaths();
-
-    wxPathList pathList;
-    pathList.Add(masterPath + wxFILE_SEP_PATH + _T("bin"));
-    for (unsigned int i = 0; i < extraPaths.GetCount(); ++i)
-    {
-        if (!extraPaths[i].IsEmpty())
-            pathList.Add(extraPaths[i]);
-    }
-    pathList.AddEnvList(_T("PATH"));
-    wxString binPath = pathList.FindAbsoluteValidPath(gdb);
-    // it seems, under Win32, the above command doesn't search in paths with spaces...
-    // look directly for the file in question in masterPath
-    if (binPath.IsEmpty() || !(pathList.Index(wxPathOnly(binPath)) != wxNOT_FOUND))
-    {
-        if (wxFileExists(masterPath + wxFILE_SEP_PATH + _T("bin") + wxFILE_SEP_PATH + gdb))
-            binPath = masterPath + wxFILE_SEP_PATH + _T("bin");
-        else if (wxFileExists(masterPath + wxFILE_SEP_PATH + gdb))
-            binPath = masterPath;
-        else
-        {
-            for (unsigned int i = 0; i < extraPaths.GetCount(); ++i)
-            {
-                if (!extraPaths[i].IsEmpty())
-                {
-                    if (wxFileExists(extraPaths[i] + wxFILE_SEP_PATH + gdb))
-                    {
-                        binPath = extraPaths[i];
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    return binPath;
 }
 
 void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
@@ -512,7 +462,7 @@ struct StopNotification
 
 int Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
-    ShowLog(true);
+//    ShowLog(true);
     Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
 
     ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
@@ -522,6 +472,32 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
         Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
         return 1;
     }
+
+    if(!EnsureBuildUpToDate())
+        return 1;
+
+    if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
+        return StartDebugger(project);
+    else
+        return 0;
+}
+
+void Debugger_GDB_MI::CompilerFinished()
+{
+    ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
+    cbProject *project = project_manager.GetActiveProject();
+    if(project)
+        StartDebugger(project);
+    else
+        Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
+}
+
+int Debugger_GDB_MI::StartDebugger(cbProject *project)
+{
+    ShowLog(true);
+    if (!CheckBuild())
+        return 1;
+
     Compiler *compiler;
     ProjectBuildTarget *target;
     SelectCompiler(*project, compiler, target, 0);
@@ -586,7 +562,8 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
 
     m_timer_poll_debugger.Start(20);
 
-    SwitchToDebuggingLayout();
+//    SwitchToDebuggingLayout();
+
     return 0;
 }
 
