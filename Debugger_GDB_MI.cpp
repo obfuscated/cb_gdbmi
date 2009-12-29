@@ -562,7 +562,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 
     m_timer_poll_debugger.Start(20);
 
-//    SwitchToDebuggingLayout();
+    SwitchToDebuggingLayout();
 
     return 0;
 }
