@@ -208,5 +208,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         int m_current_line;
         int m_current_stack_frame;
         int m_exit_code;
+        int m_console_pid;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

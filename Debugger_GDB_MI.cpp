@@ -64,7 +64,8 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_debug_log(NULL),
     m_current_thread(-1),
     m_current_line(-1),
-    m_current_stack_frame(-1)
+    m_current_stack_frame(-1),
+    m_console_pid(0)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -204,6 +205,12 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
     plm->NotifyPlugins(evt);
 
     SwitchToPreviousLayout();
+
+    if(m_console_pid >= 0)
+    {
+        wxKill(m_console_pid);
+        m_console_pid = -1;
+    }
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
@@ -555,6 +562,14 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 //    m_executor.Execute(_T("-enable-timings"));
     CommitBreakpoints(true);
     CommitWatches();
+
+    if(target->GetTargetType() == ttConsoleOnly)
+    {
+        wxString console_tty;
+        m_console_pid = RunNixConsole(console_tty);
+        if(m_console_pid >= 0)
+            m_actions.Add(new dbg_mi::SimpleAction(wxT("-inferior-tty-set ") + console_tty));
+    }
 
     m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
     CommitRunCommand(wxT("-exec-run"));
