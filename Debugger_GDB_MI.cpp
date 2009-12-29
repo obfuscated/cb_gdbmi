@@ -281,7 +281,7 @@ struct Notifications
 
                         dbg_mi::Lookup(result_value, wxT("signal-name"), signal_name);
 
-                        if(signal_name != wxT("SIGTRAP"))
+                        if(signal_name != wxT("SIGTRAP") && signal_name != wxT("SIGINT"))
                         {
                             dbg_mi::Lookup(result_value, wxT("signal-meaning"), signal_meaning);
                             InfoWindow::Display(_("Signal received"),
