@@ -48,6 +48,8 @@ public:
 
     int GetCount() const;
     bool GetFrame(int index, wxString &args) const;
+    static bool ParseFrame(ResultValue const &frame_value, wxString &args);
+
 private:
     ResultValue const *m_stack_args;
 };

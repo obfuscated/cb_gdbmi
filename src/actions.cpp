@@ -177,34 +177,63 @@ GenerateThreadsList::GenerateThreadsList(ThreadsContainer &threads, int current_
 void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
     Finish();
-    dbg_mi::ResultValue const *threads = result.GetResultValue().GetTupleValue(wxT("thread-ids"));
-    if(!threads)
+    m_threads.clear();
+
+    int current_thread_id = 0;
+    if(!Lookup(result.GetResultValue(), wxT("current-thread-id"), current_thread_id))
     {
-        m_logger.Debug(wxT("GenerateThreadsList::OnCommandOutput - wrong command output"));
+        m_logger.Debug(wxT("GenerateThreadsList::OnCommandOutput - no current thread id"));
         return;
     }
-    m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - parsed %s"),
-                                    threads->MakeDebugString().c_str()));
 
+    ResultValue const *threads = result.GetResultValue().GetTupleValue(wxT("threads"));
+    if(!threads || (threads->GetType() != ResultValue::Tuple && threads->GetType() != ResultValue::Array))
+    {
+        m_logger.Debug(wxT("GenerateThreadsList::OnCommandOutput - no threads"));
+        return;
+    }
     int count = threads->GetTupleSize();
-    m_threads.clear();
     for(int ii = 0; ii < count; ++ii)
     {
-        dbg_mi::ResultValue const &thread_value = *threads->GetTupleValueByIndex(ii);
+        ResultValue const &thread_value = *threads->GetTupleValueByIndex(ii);
 
-        int number;
+        int id;
+        if(!Lookup(thread_value, wxT("id"), id))
+            continue;
 
-        if(dbg_mi::ToInt(thread_value, number))
+        wxString info;
+        if(!Lookup(thread_value, wxT("target-id"), info))
+            info = wxEmptyString;
+
+        ResultValue const *frame_value = thread_value.GetTupleValue(wxT("frame"));
+
+        if(frame_value)
         {
-            m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - parsed %s %d"),
-                                            thread_value.MakeDebugString().c_str(), number));
-            m_threads.push_back(cbThread(m_current_thread_id == number, number, wxEmptyString));
+            wxString str;
+
+            if(Lookup(*frame_value, wxT("addr"), str))
+                info += wxT(" ") + str;
+            if(Lookup(*frame_value, wxT("func"), str))
+            {
+                info += wxT(" ") + str;
+
+                if(FrameArguments::ParseFrame(*frame_value, str))
+                    info += wxT("(") + str + wxT(")");
+                else
+                    info += wxT("()");
+            }
+
+            int line;
+
+            if(Lookup(*frame_value, wxT("file"), str) && Lookup(*frame_value, wxT("line"), line))
+            {
+                info += wxString::Format(wxT(" in %s:%d"), str.c_str(), line);
+            }
+            else if(Lookup(*frame_value, wxT("from"), str))
+                info += wxT(" in ") + str;
         }
-        else
-        {
-            m_logger.Debug(wxString::Format(wxT("GenerateThreadsList::OnCommandOutput - can't parse %s"),
-                                            thread_value.MakeDebugString().c_str()));
-        }
+
+        m_threads.push_back(cbThread(id == current_thread_id, id, info));
     }
 
     Manager::Get()->GetDebuggerManager()->GetThreadsDialog()->Reload();
@@ -212,7 +241,7 @@ void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser cons
 
 void GenerateThreadsList::OnStart()
 {
-    Execute(wxT("-thread-list-ids"));
+    Execute(wxT("-thread-info"));
 }
 
 int ParseWatchSingle(Watch &watch, ResultValue const &value, bool &has_type, bool &dynamic_has_more)

@@ -85,9 +85,15 @@ bool FrameArguments::GetFrame(int index, wxString &args) const
     ResultValue const *frame = m_stack_args->GetTupleValueByIndex(index);
     if(!frame || frame->GetName() != wxT("frame"))
         return false;
+
+    return ParseFrame(*frame, args);
+}
+
+bool FrameArguments::ParseFrame(ResultValue const &frame_value, wxString &args)
+{
     args = wxEmptyString;
 
-    ResultValue const *args_tuple = frame->GetTupleValue(wxT("args"));
+    ResultValue const *args_tuple = frame_value.GetTupleValue(wxT("args"));
     if(!args_tuple || args_tuple->GetType() != ResultValue::Array)
         return false;
 
