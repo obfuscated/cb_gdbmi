@@ -320,6 +320,9 @@ struct Notifications
                 default:
                     UpdateCursor(result_value, !m_executor.IsTemporaryInterupt());
                 }
+
+                if(!m_executor.IsTemporaryInterupt())
+                    m_plugin->BringCBToFront();
             }
         }
     }
