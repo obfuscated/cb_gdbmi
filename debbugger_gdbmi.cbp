@@ -10,7 +10,7 @@
 				<Option output="libdebugger_gdbmi.so" prefix_auto="0" extension_auto="0" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option host_application="/home/obfuscated/projects/codeblocks/git/src/devel/codeblocks" />
+				<Option host_application="/home/obfuscated/projects/codeblocks/brances/wxpropgrid_debugger/src/devel/codeblocks" />
 				<Compiler>
 					<Add option="-Wall" />
 					<Add option="-g" />

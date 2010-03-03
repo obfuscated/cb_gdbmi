@@ -640,6 +640,15 @@ void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
     }
 }
 
+void Debugger_GDB_MI::SetNextStatement(const wxString& filename, int line)
+{
+    if(IsStopped())
+    {
+        AddStringCommand(wxString::Format(wxT("-break-insert -t %s:%d"), filename.c_str(), line));
+        AddStringCommand(wxString::Format(wxT("-exec-jump %s:%d"), filename.c_str(), line));
+    }
+}
+
 void Debugger_GDB_MI::Continue()
 {
     if(!IsStopped() && !m_executor.Interupting())

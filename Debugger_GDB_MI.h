@@ -76,6 +76,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual int Debug(bool breakOnEntry);
         virtual void Continue();
         virtual void RunToCursor(const wxString& filename, int line, const wxString& line_text);
+        virtual void SetNextStatement(const wxString& filename, int line);
         virtual void Next();
         virtual void NextInstruction();
         virtual void Step();
