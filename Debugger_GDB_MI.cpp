@@ -104,7 +104,7 @@ void Debugger_GDB_MI::OnAttachReal()
     // (see: does not need) this plugin...
 }
 
-void Debugger_GDB_MI::OnRelease(bool appShutDown)
+void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
 {
     DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
     dbg_manager.UnregisterDebugger(this);
@@ -373,9 +373,8 @@ private:
             }
             if(frame.HasValidSource())
             {
-                DebuggerManager *dbg = Manager::Get()->GetDebuggerManager();
-                dbg->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
                 m_plugin->SetCurrentPosition(frame.GetFilename(), frame.GetLine());
+                m_plugin->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
             }
             else
                 log->Log(wxT("ParseStateInfo does not have valid source"), m_page_index);
@@ -470,7 +469,7 @@ struct StopNotification
     dbg_mi::GDBExecutor &m_executor;
 };
 
-int Debugger_GDB_MI::Debug(bool breakOnEntry)
+bool Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
 //    ShowLog(true);
     Manager::Get()->GetLogManager()->Log(_T("start debugger"), m_page_index);
@@ -480,16 +479,16 @@ int Debugger_GDB_MI::Debug(bool breakOnEntry)
     if(!project)
     {
         Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
-        return 1;
+        return false;
     }
 
     if(!EnsureBuildUpToDate())
-        return 1;
+        return false;
 
     if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
         return StartDebugger(project);
     else
-        return 0;
+        return true;
 }
 
 void Debugger_GDB_MI::CompilerFinished()
@@ -505,8 +504,8 @@ void Debugger_GDB_MI::CompilerFinished()
 int Debugger_GDB_MI::StartDebugger(cbProject *project)
 {
     ShowLog(true);
-    if (!CheckBuild())
-        return 1;
+//    if (!CheckBuild())
+//        return 1;
 
     Compiler *compiler;
     ProjectBuildTarget *target;
@@ -623,20 +622,22 @@ void Debugger_GDB_MI::CommitRunCommand(wxString const &command)
                   );
 }
 
-void Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
+bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
 {
     if(IsRunning())
     {
         if(IsStopped())
         {
             CommitRunCommand(wxString::Format(wxT("-exec-until %s:%d"), filename.c_str(), line));
+            return true;
         }
+        return false;
     }
     else
     {
         dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
         m_temporary_breakpoints.push_back(ptr);
-        Debug(false);
+        return Debug(false);
     }
 }
 
@@ -671,6 +672,11 @@ void Debugger_GDB_MI::Next()
 void Debugger_GDB_MI::NextInstruction()
 {
     CommitRunCommand(wxT("-exec-next-instruction"));
+}
+
+void Debugger_GDB_MI::StepIntoInstruction()
+{
+    CommitRunCommand(wxT("-exec-step-instruction"));
 }
 
 void Debugger_GDB_MI::Step()
@@ -1077,6 +1083,12 @@ void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
 void Debugger_GDB_MI::DetachFromProcess()
 {
     #warning "not implemented"
+}
+
+bool Debugger_GDB_MI::IsAttachedToProcess() const
+{
+    #warning "not implemented"
+    return false;
 }
 
 void Debugger_GDB_MI::RequestUpdate(DebugWindows window)

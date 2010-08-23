@@ -73,12 +73,13 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           */
         virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
 
-        virtual int Debug(bool breakOnEntry);
+        virtual bool Debug(bool breakOnEntry);
         virtual void Continue();
-        virtual void RunToCursor(const wxString& filename, int line, const wxString& line_text);
+        virtual bool RunToCursor(const wxString& filename, int line, const wxString& line_text);
         virtual void SetNextStatement(const wxString& filename, int line);
         virtual void Next();
         virtual void NextInstruction();
+        virtual void StepIntoInstruction();
         virtual void Step();
         virtual void StepOut();
         virtual void Break();
@@ -123,6 +124,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         virtual void AttachToProcess(const wxString& pid);
         virtual void DetachFromProcess();
+        virtual bool IsAttachedToProcess() const;
 
         virtual void GetCurrentPosition(wxString &filename, int &line);
         virtual void RequestUpdate(DebugWindows window);
@@ -148,11 +150,12 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           *         case *don't* use Manager::Get()->Get...() functions or the
           *         behaviour is undefined...
           */
-        virtual void OnRelease(bool appShutDown);
+        virtual void OnReleaseReal(bool appShutDown);
 
     protected:
         virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
         virtual cbProject* GetProject() { return NULL; }
+        virtual void ResetProject() {}
         virtual void CleanupWhenProjectClosed(cbProject *project) {}
         virtual void CompilerFinished();
 
