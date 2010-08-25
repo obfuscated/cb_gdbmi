@@ -561,6 +561,14 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
             m_actions.Add(new dbg_mi::SimpleAction(wxT("-inferior-tty-set ") + console_tty));
     }
 
+    wxString const &init = Manager::Get()->GetConfigManager(_T("debugger"))->Read(_T("init_commands"), wxEmptyString);
+    if (!init.empty())
+    {
+        wxArrayString commands = GetArrayFromString(init, wxT('\n'));
+        for (unsigned ii = 0; ii < commands.GetCount(); ++ii)
+            SendCommand(commands[ii]);
+    }
+
     m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
     CommitRunCommand(wxT("-exec-run"));
     m_actions.Run(m_executor);
@@ -1094,7 +1102,16 @@ void Debugger_GDB_MI::SendCommand(const wxString& cmd)
         return;
     }
 
-    m_executor.Execute(cmd);
+    if (cmd.empty())
+        return;
+
+    wxString escaped_cmd = cmd;
+    escaped_cmd.Replace(wxT("\n"), wxT("\\n"), true);
+
+    if (escaped_cmd[0] == wxT('-'))
+        AddStringCommand(escaped_cmd);
+    else
+        AddStringCommand(wxT("-interpreter-exec console \"") + escaped_cmd + wxT("\""));
 }
 
 void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
