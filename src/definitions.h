@@ -118,6 +118,59 @@ class TextInfoWindow : public wxScrollingDialog
         wxTextCtrl* m_text;
 };
 
+class CurrentFrame
+{
+public:
+    CurrentFrame() :
+        m_line(-1),
+        m_stack_frame(-1),
+        m_user_selected_stack_frame(-1),
+        m_thread(-1)
+    {
+    }
+
+    void Reset()
+    {
+        m_stack_frame = -1;
+        m_user_selected_stack_frame = -1;
+    }
+
+    void SwitchToFrame(int frame_number)
+    {
+        m_user_selected_stack_frame = m_stack_frame = frame_number;
+    }
+
+    void SetFrame(int frame_number)
+    {
+        if (m_user_selected_stack_frame >= 0)
+            m_stack_frame = m_user_selected_stack_frame;
+        else
+            m_stack_frame = frame_number;
+    }
+    void SetThreadId(int thread_id) { m_thread = thread_id; }
+    void SetPosition(wxString const &filename, int line)
+    {
+        m_filename = filename;
+        m_line = line;
+    }
+
+    int GetStackFrame() const { return m_stack_frame; }
+    int GetUserSelectedFrame() const { return m_user_selected_stack_frame; }
+    void GetPosition(wxString &filename, int &line)
+    {
+        filename = m_filename;
+        line = m_line;
+    }
+    int GetThreadId() const { return m_thread; }
+
+private:
+    wxString m_filename;
+    int m_line;
+    int m_stack_frame;
+    int m_user_selected_stack_frame;
+    int m_thread;
+};
+
 } // namespace dbg_mi
 
 #endif // _DEBUGGER_GDB_MI_DEFINITIONS_H_

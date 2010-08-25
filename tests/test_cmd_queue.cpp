@@ -592,16 +592,19 @@ TEST(DelayedAction)
 class DummyLogger : public dbg_mi::Logger
 {
 public:
-    virtual void Debug(wxString const &line)
+    virtual void Debug(wxString const &line, Line::Type type)
     {
-        m_debug.push_back(line);
+        Line l;
+        l.line = line;
+        l.type = type;
+        m_debug.push_back(l);
     }
-    virtual wxString GetDebugLine(int index) const
+    virtual Line const & GetDebugLine(int index) const
     {
         if(index < static_cast<int>(m_debug.size()))
             return m_debug[index];
         else
-            return wxEmptyString;
+            return m_empty_line;
     }
 
     virtual void AddCommand(wxString const &command)
@@ -615,7 +618,7 @@ public:
     }
     virtual wxString const& GetCommand(int index) const
     {
-        Lines::const_iterator it = m_commands_history.begin();
+        Commands::const_iterator it = m_commands_history.begin();
         std::advance(it, index);
         return *it;
     }
@@ -627,9 +630,11 @@ public:
 public:
     int GetDebugLineCount() const { return m_debug.size(); }
 private:
-    typedef std::vector<wxString> Lines;
+    typedef std::vector<Line> Lines;
+    typedef std::vector<wxString> Commands;
     Lines m_debug;
-    Lines m_commands_history;
+    Commands m_commands_history;
+    Line m_empty_line;
 };
 
 struct LoggingFixture
@@ -652,14 +657,19 @@ TEST_FIXTURE(LoggingFixture, GetLogger)
 TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorExecute)
 {
     exec.Execute(wxT("-exec-run"));
-    CHECK_EQUAL(wxT("cmd==>00000000000-exec-run"), logger.GetDebugLine(0));
+    dbg_mi::Logger::Line const &line = logger.GetDebugLine(0);
+    CHECK_EQUAL(wxT("cmd==>00000000000-exec-run"), line.line);
+    CHECK_EQUAL(dbg_mi::Logger::Line::Command, line.type);
 }
 
 TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorProcessOutput)
 {
     exec.Execute(wxT("-exec-run"));
     CHECK_EQUAL(2, logger.GetDebugLineCount());
-    CHECK_EQUAL(wxT("output==>00000000000^running"), logger.GetDebugLine(1));
+
+    dbg_mi::Logger::Line const &line = logger.GetDebugLine(1);
+    CHECK_EQUAL(wxT("output==>00000000000^running"), line.line);
+    CHECK_EQUAL(dbg_mi::Logger::Line::CommandResult, line.type);
 }
 
 TEST_FIXTURE(LoggingFixture, CommandHistory)

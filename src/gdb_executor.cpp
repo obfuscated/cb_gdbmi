@@ -145,12 +145,33 @@ void GetChildPIDs(int parent, std::vector<int> &childs)
 namespace dbg_mi
 {
 
-void LogPaneLogger::Debug(wxString const &line)
+void LogPaneLogger::Debug(wxString const &line, Line::Type type)
 {
     int index;
     Manager::Get()->GetDebuggerManager()->GetLogger(true, index);
     if(index != -1)
-        Manager::Get()->GetLogManager()->Log(line, index);
+    {
+        LogManager &log = *Manager::Get()->GetLogManager();
+
+        switch (type)
+        {
+            case Line::Debug:
+                log.Log(line, index, ::Logger::info);
+                break;
+            case Line::Unknown:
+                log.Log(line, index, ::Logger::info);
+                break;
+            case Line::Command:
+                log.Log(line, index, ::Logger::warning);
+                break;
+            case Line::CommandResult:
+                log.Log(line, index, ::Logger::error);
+                break;
+            case Line::ProgramState:
+                log.Log(line, index, ::Logger::critical);
+                break;
+        }
+    }
 }
 
 GDBExecutor::GDBExecutor() :
@@ -159,7 +180,7 @@ GDBExecutor::GDBExecutor() :
     m_debug_page(-1),
     m_pid(-1),
     m_child_pid(-1),
-    m_stopped(false),
+    m_stopped(true),
     m_interupting(false),
     m_temporary_interupt(false)
 {

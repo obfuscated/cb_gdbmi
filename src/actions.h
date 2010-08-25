@@ -114,18 +114,31 @@ private:
     Logger &m_logger;
 };
 
+struct SwitchToFrameInvoker
+{
+    virtual ~SwitchToFrameInvoker() {}
+
+    virtual void Invoke(int frame_number) = 0;
+};
+
 class GenerateBacktrace : public Action
 {
+    GenerateBacktrace(GenerateBacktrace &);
+    GenerateBacktrace& operator =(GenerateBacktrace &);
 public:
-    GenerateBacktrace(BacktraceContainer &backtrace, int &current_frame, Logger &logger);
+    GenerateBacktrace(SwitchToFrameInvoker *switch_to_frame, BacktraceContainer &backtrace,
+                      CurrentFrame &current_frame, Logger &logger);
+    virtual ~GenerateBacktrace();
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
     virtual void OnStart();
 private:
+    SwitchToFrameInvoker *m_switch_to_frame;
     CommandID m_backtrace_id, m_args_id;
     BacktraceContainer &m_backtrace;
     Logger &m_logger;
-    int &m_current_frame;
+    CurrentFrame &m_current_frame;
+    int m_first_valid;
     bool m_parsed_backtrace, m_parsed_args;
 };
 
@@ -168,6 +181,31 @@ protected:
 private:
     int m_thread_id;
     Logger &m_logger;
+    Notification m_notification;
+};
+
+template<typename Notification>
+class SwitchToFrame : public Action
+{
+public:
+    SwitchToFrame(int frame_id, Notification const &notification) :
+        m_frame_id(frame_id),
+        m_notification(notification)
+    {
+    }
+
+    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    {
+        m_notification(result);
+        Finish();
+    }
+protected:
+    virtual void OnStart()
+    {
+        Execute(wxString::Format(wxT("-stack-select-frame %d"), m_frame_id));
+    }
+private:
+    int m_frame_id;
     Notification m_notification;
 };
 

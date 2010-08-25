@@ -12,10 +12,10 @@ class LogPaneLogger : public Logger
 {
 public:
 
-    virtual void Debug(wxString const &line);
-    virtual wxString GetDebugLine(int index) const
+    virtual void Debug(wxString const &line, Line::Type type = Line::Debug);
+    virtual Line const& GetDebugLine(int index) const
     {
-        return wxEmptyString;
+        return Line();
     }
 
     virtual void AddCommand(wxString const &command) { m_commands.push_back(command); }

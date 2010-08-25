@@ -42,7 +42,7 @@ CommandID CommandExecutor::Execute(wxString const &cmd)
     dbg_mi::CommandID id(0, m_last++);
     if(m_logger)
     {
-        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
+        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd, Logger::Line::Command);
         m_logger->AddCommand(id.ToString() + cmd);
     }
     if(DoExecute(id, cmd))
@@ -54,7 +54,7 @@ void CommandExecutor::ExecuteSimple(dbg_mi::CommandID const &id, wxString const 
 {
     if(m_logger)
     {
-        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd);
+        m_logger->Debug(wxT("cmd==>") + id.ToString() + cmd, Logger::Line::Command);
         m_logger->AddCommand(id.ToString() + cmd);
     }
     DoExecute(id, cmd);
@@ -69,11 +69,11 @@ bool CommandExecutor::ProcessOutput(wxString const &output)
     {
         if(!dbg_mi::ParseGDBOutputLine(output, r.id, r.output))
         {
-            m_logger->Debug(wxT("unparsable_output==>") + output);
+            m_logger->Debug(wxT("unparsable_output==>") + output, Logger::Line::Unknown);
             return false;
         }
         else
-            m_logger->Debug(wxT("output==>") + output);
+            m_logger->Debug(wxT("output==>") + output, Logger::Line::CommandResult);
     }
     else
     {
@@ -159,7 +159,8 @@ void ActionsMap::Run(CommandExecutor &executor)
             if(logger)
             {
                 logger->Debug(wxString::Format(wxT("ActionsMap::Run -> starting action: %p id: %d"),
-                                               &action, action.GetID()));
+                                               &action, action.GetID()),
+                              Logger::Line::Debug);
             }
             action.Start();
         }
@@ -177,7 +178,8 @@ void ActionsMap::Run(CommandExecutor &executor)
             {
                 logger->Debug(wxString::Format(wxT("ActionsMap::Run -> action[%p id: %d] ")
                                                wxT("has pending commands but is being removed"),
-                                               &action, action.GetID()));
+                                               &action, action.GetID()),
+                              Logger::Line::Debug);
             }
             if(it == m_actions.begin())
             {

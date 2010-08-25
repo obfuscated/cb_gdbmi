@@ -69,14 +69,23 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
     }
 }
 
-GenerateBacktrace::GenerateBacktrace(BacktraceContainer &backtrace, int &current_frame, Logger &logger) :
+GenerateBacktrace::GenerateBacktrace(SwitchToFrameInvoker *switch_to_frame, BacktraceContainer &backtrace,
+                                     CurrentFrame &current_frame, Logger &logger) :
+    m_switch_to_frame(switch_to_frame),
     m_backtrace(backtrace),
     m_logger(logger),
     m_current_frame(current_frame),
+    m_first_valid(-1),
     m_parsed_backtrace(false),
     m_parsed_args(false)
 {
 }
+
+GenerateBacktrace::~GenerateBacktrace()
+{
+    delete m_switch_to_frame;
+}
+
 void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
     if(id == m_backtrace_id)
@@ -91,8 +100,6 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                                             size, stack->MakeDebugString().c_str()));
 
             m_backtrace.clear();
-
-            int first_valid = -1;
 
             for(int ii = 0; ii < size; ++ii)
             {
@@ -110,8 +117,8 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                     s.SetNumber(ii);
                     s.SetAddress(frame.GetAddress());
                     s.MakeValid(frame.HasValidSource());
-                    if(s.IsValid() && first_valid == -1)
-                        first_valid = ii;
+                    if(s.IsValid() && m_first_valid == -1)
+                        m_first_valid = ii;
 
                     m_backtrace.push_back(s);
                 }
@@ -156,7 +163,16 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
 
     if(m_parsed_backtrace && m_parsed_args)
     {
-        m_current_frame = 0;
+        if (!m_backtrace.empty())
+        {
+            int frame = m_current_frame.GetUserSelectedFrame();
+            if (frame < 0)
+                frame = m_first_valid;
+
+            m_switch_to_frame->Invoke(m_backtrace[frame].GetNumber());
+            m_current_frame.SetFrame(frame);
+        }
+
         Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
         Finish();
     }
@@ -353,7 +369,6 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                     default:
                         if(has_type)
                         {
-                        //    ExecuteListCommand(*child, NULL);
                             if(!parent_watch->HasBeenExpanded())
                             {
                                 parent_watch->SetHasBeenExpanded(true);
@@ -429,16 +444,13 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
                 int children = ParseWatchSingle(*m_watch, value, has_type, dynamic_has_more);
                 if(dynamic_has_more)
                 {
-//                    ExecuteListCommand()
-                    //m_step = StepListChildren;
                     m_step = StepSetRange;
                     Execute(wxT("-var-set-update-range \"") + m_watch->GetID() + wxT("\" 0 100"));
                     AppendNullChild(*m_watch);
 
                 }
-                else  if(children > 0)
+                else if(children > 0)
                 {
-//                    ExecuteListCommand(*m_watch, NULL);
                     m_step = StepListChildren;
                     AppendNullChild(*m_watch);
                 }

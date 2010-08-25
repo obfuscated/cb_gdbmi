@@ -162,8 +162,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
     public:
         void UpdateWhenStopped();
         void UpdateOnFrameChanged(bool wait);
-        void SetCurrentThread(int thread_id);
-        void SetCurrentPosition(wxString const &filename, int line);
+        dbg_mi::CurrentFrame& GetCurrentFrame() { return m_current_frame; }
     private:
         DECLARE_EVENT_TABLE();
 
@@ -206,11 +205,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::BacktraceContainer m_backtrace;
         dbg_mi::ThreadsContainer m_threads;
         dbg_mi::WatchesContainer m_watches;
-        int m_current_thread;
 
-        wxString m_current_filename;
-        int m_current_line;
-        int m_current_stack_frame;
+        dbg_mi::CurrentFrame m_current_frame;
         int m_exit_code;
         int m_console_pid;
 };

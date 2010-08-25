@@ -62,9 +62,6 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_log(NULL),
     m_debug_log(NULL),
-    m_current_thread(-1),
-    m_current_line(-1),
-    m_current_stack_frame(-1),
     m_console_pid(0)
 {
     // Make sure our resources are available.
@@ -211,6 +208,7 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
         wxKill(m_console_pid);
         m_console_pid = -1;
     }
+    MarkAsStopped();
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
@@ -369,11 +367,11 @@ private:
                              m_page_index);
                 }
                 else
-                    m_plugin->SetCurrentThread(id);
+                    m_plugin->GetCurrentFrame().SetThreadId(id);
             }
             if(frame.HasValidSource())
             {
-                m_plugin->SetCurrentPosition(frame.GetFilename(), frame.GetLine());
+                m_plugin->GetCurrentFrame().SetPosition(frame.GetFilename(), frame.GetLine());
                 m_plugin->SyncEditor(frame.GetFilename(), frame.GetLine(), true);
             }
             else
@@ -394,7 +392,7 @@ void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
         m_actions.Add(new dbg_mi::BarrierAction());
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
 
-    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()))
+    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()) && !m_watches.empty())
     {
         for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
         {
@@ -409,20 +407,12 @@ void Debugger_GDB_MI::UpdateWhenStopped()
 {
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
     if(dbg_manager->UpdateBacktrace())
-    {
         RequestUpdate(Backtrace);
-    }
 
     if(dbg_manager->UpdateThreads())
-    {
         RequestUpdate(Threads);
-    }
-    UpdateOnFrameChanged(false);
-}
 
-void Debugger_GDB_MI::SetCurrentThread(int thread_id)
-{
-    m_current_thread = thread_id;
+    UpdateOnFrameChanged(false);
 }
 
 void Debugger_GDB_MI::RunQueue()
@@ -460,9 +450,7 @@ struct StopNotification
     {
         m_executor.Stopped(stopped);
         if(!stopped)
-        {
             m_plugin->ClearActiveMarkFromAllEditors();
-        }
     }
 
     cbDebuggerPlugin *m_plugin;
@@ -486,7 +474,7 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
         return false;
 
     if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
-        return StartDebugger(project);
+        return StartDebugger(project) == 0;
     else
         return true;
 }
@@ -646,7 +634,7 @@ void Debugger_GDB_MI::SetNextStatement(const wxString& filename, int line)
     if(IsStopped())
     {
         AddStringCommand(wxString::Format(wxT("-break-insert -t %s:%d"), filename.c_str(), line));
-        AddStringCommand(wxString::Format(wxT("-exec-jump %s:%d"), filename.c_str(), line));
+        CommitRunCommand(wxString::Format(wxT("-exec-jump %s:%d"), filename.c_str(), line));
     }
 }
 
@@ -701,6 +689,7 @@ void Debugger_GDB_MI::Stop()
     ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("stop debugger"), m_page_index);
     m_executor.ForceStop();
+    MarkAsStopped();
 }
 bool Debugger_GDB_MI::IsRunning() const
 {
@@ -725,6 +714,39 @@ const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
     return m_backtrace[index];
 }
 
+struct SwitchToFrameNotification
+{
+    SwitchToFrameNotification(Debugger_GDB_MI *plugin, int frame_number) :
+        m_plugin(plugin),
+        m_frame_number(frame_number)
+    {
+    }
+
+    void operator()(dbg_mi::ResultParser const &result)
+    {
+        if (m_frame_number < m_plugin->GetStackFrameCount())
+        {
+            dbg_mi::CurrentFrame &current_frame = m_plugin->GetCurrentFrame();
+            current_frame.SwitchToFrame(m_frame_number);
+
+            cbStackFrame const &frame = m_plugin->GetStackFrame(m_frame_number);
+
+            wxString const &filename = frame.GetFilename();
+            long line;
+            if (frame.GetLine().ToLong(&line))
+            {
+                current_frame.SetPosition(filename, line);
+                m_plugin->SyncEditor(filename, line, true);
+            }
+
+            m_plugin->UpdateOnFrameChanged(true);
+        }
+    }
+
+    Debugger_GDB_MI *m_plugin;
+    int m_frame_number;
+};
+
 void Debugger_GDB_MI::SwitchToFrame(int number)
 {
     m_execution_logger.Debug(wxT("Debugger_GDB_MI::SwitchToFrame"));
@@ -735,15 +757,15 @@ void Debugger_GDB_MI::SwitchToFrame(int number)
             m_execution_logger.Debug(wxT("Debugger_GDB_MI::SwitchToFrame - adding commnad"));
 
             int frame = m_backtrace[number].GetNumber();
-            AddStringCommand(wxString::Format(wxT("-stack-select-frame %d"), frame));
-            m_current_stack_frame = number;
-            UpdateOnFrameChanged(true);
+            typedef dbg_mi::SwitchToFrame<SwitchToFrameNotification> SwitchType;
+            m_actions.Add(new SwitchType(frame, SwitchToFrameNotification(this, frame)));
         }
     }
 }
+
 int Debugger_GDB_MI::GetActiveStackFrame() const
 {
-    return m_current_stack_frame;
+    return m_current_frame.GetStackFrame();
 }
 
 cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
@@ -1099,24 +1121,37 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
     switch(window)
     {
     case Backtrace:
-        m_actions.Add(new dbg_mi::GenerateBacktrace(m_backtrace, m_current_stack_frame, m_execution_logger));
+        {
+            struct Switcher : dbg_mi::SwitchToFrameInvoker
+            {
+                Switcher(Debugger_GDB_MI *plugin, dbg_mi::ActionsMap &actions) :
+                    m_plugin(plugin),
+                    m_actions(actions)
+                {
+                }
+
+                virtual void Invoke(int frame_number)
+                {
+                    typedef dbg_mi::SwitchToFrame<SwitchToFrameNotification> SwitchType;
+                    m_actions.Add(new SwitchType(frame_number, SwitchToFrameNotification(m_plugin, frame_number)));
+                }
+
+                Debugger_GDB_MI *m_plugin;
+                dbg_mi::ActionsMap &m_actions;
+            };
+
+            Switcher *switcher = new Switcher(this, m_actions);
+            m_actions.Add(new dbg_mi::GenerateBacktrace(switcher, m_backtrace, m_current_frame, m_execution_logger));
+        }
         break;
 
     case Threads:
-        m_actions.Add(new dbg_mi::GenerateThreadsList(m_threads, m_current_thread, m_execution_logger));
+        m_actions.Add(new dbg_mi::GenerateThreadsList(m_threads, m_current_frame.GetThreadId(), m_execution_logger));
         break;
     }
 }
 
 void Debugger_GDB_MI::GetCurrentPosition(wxString &filename, int &line)
 {
-    filename = m_current_filename;
-    line = m_current_line;
+    m_current_frame.GetPosition(filename, line);
 }
-
-void Debugger_GDB_MI::SetCurrentPosition(wxString const &filename, int line)
-{
-    m_current_filename = filename;
-    m_current_line = line;
-}
-
