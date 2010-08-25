@@ -169,7 +169,8 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
             if (frame < 0)
                 frame = m_first_valid;
 
-            m_switch_to_frame->Invoke(m_backtrace[frame].GetNumber());
+            if (frame != m_current_frame.GetStackFrame())
+                m_switch_to_frame->Invoke(m_backtrace[frame].GetNumber());
             m_current_frame.SetFrame(frame);
         }
 
@@ -608,6 +609,9 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 
     if(id == m_update_command)
     {
+        for(WatchesContainer::iterator it = m_watches.begin();  it != m_watches.end(); ++it)
+            (*it)->MarkAsChangedRecursive(false);
+
         if(!ParseUpdate(result))
         {
             Finish();
