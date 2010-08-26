@@ -62,7 +62,7 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_menu(NULL),
     m_log(NULL),
     m_debug_log(NULL),
-    m_console_pid(0)
+    m_console_pid(-1)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
