@@ -109,6 +109,9 @@ void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
     dbg_manager.HideLogger(false);
     dbg_manager.HideLogger(true);
 
+    KillConsole();
+    m_executor.ForceStop();
+
     // do de-initialization for your plugin
     // if appShutDown is true, the plugin is unloaded because Code::Blocks is being shut down,
     // which means you must not use any of the SDK Managers
@@ -203,11 +206,7 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
 
     SwitchToPreviousLayout();
 
-    if(m_console_pid >= 0)
-    {
-        wxKill(m_console_pid);
-        m_console_pid = -1;
-    }
+    KillConsole();
     MarkAsStopped();
 }
 
@@ -397,7 +396,7 @@ void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
         for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
         {
             if((*it)->GetID().empty())
-                m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_execution_logger));
+                m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_watches, m_execution_logger));
         }
         m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
     }
@@ -479,14 +478,27 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
         return true;
 }
 
-void Debugger_GDB_MI::CompilerFinished()
+void Debugger_GDB_MI::CompilerFinished(bool compilerFailed)
 {
-    ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
-    cbProject *project = project_manager.GetActiveProject();
-    if(project)
-        StartDebugger(project);
+    if (compilerFailed)
+    {
+        m_temporary_breakpoints.clear();
+    }
     else
-        Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
+    {
+        ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
+        cbProject *project = project_manager.GetActiveProject();
+        if(project)
+            StartDebugger(project);
+        else
+            Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
+    }
+}
+
+void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject *project)
+{
+    if (IsRunning())
+        Stop();
 }
 
 int Debugger_GDB_MI::StartDebugger(cbProject *project)
@@ -528,7 +540,9 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
         return 5;
     }
 
-    wxString debuggee = GetDebuggee(target);
+    wxString debuggee;
+    if (!GetDebuggee(debuggee, target))
+        return 6;
 
     Manager::Get()->GetLogManager()->Log(_T("GDB path: ") + debugger, m_page_index);
     Manager::Get()->GetLogManager()->Log(_T("DEBUGGEE path: ") + debuggee, m_page_index);
@@ -566,7 +580,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
     {
         wxArrayString commands = GetArrayFromString(init, wxT('\n'));
         for (unsigned ii = 0; ii < commands.GetCount(); ++ii)
-            SendCommand(commands[ii]);
+            DoSendCommand(commands[ii]);
     }
 
     m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
@@ -688,6 +702,11 @@ void Debugger_GDB_MI::StepOut()
 void Debugger_GDB_MI::Break()
 {
     m_executor.Interupt(false);
+
+    // Notify debugger plugins for end of debug session
+    PluginManager *plm = Manager::Get()->GetPluginManager();
+    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
+    plm->NotifyPlugins(evt);
 }
 
 void Debugger_GDB_MI::Stop()
@@ -699,14 +718,17 @@ void Debugger_GDB_MI::Stop()
     m_executor.ForceStop();
     MarkAsStopped();
 }
+
 bool Debugger_GDB_MI::IsRunning() const
 {
     return m_executor.IsRunning();
 }
+
 bool Debugger_GDB_MI::IsStopped() const
 {
     return m_executor.IsStopped();
 }
+
 int Debugger_GDB_MI::GetExitCode() const
 {
     return m_exit_code;
@@ -991,7 +1013,7 @@ cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
     m_watches.push_back(w);
 
     if(IsRunning())
-        m_actions.Add(new dbg_mi::WatchCreateAction(w, m_execution_logger));
+        m_actions.Add(new dbg_mi::WatchCreateAction(w, m_watches, m_execution_logger));
     return w.get();
 }
 
@@ -1064,7 +1086,7 @@ void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
     {
         dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
         if(!real_watch->HasBeenExpanded())
-            m_actions.Add(new dbg_mi::WatchExpandedAction(*it, real_watch, m_execution_logger));
+            m_actions.Add(new dbg_mi::WatchExpandedAction(*it, real_watch, m_watches, m_execution_logger));
     }
 }
 
@@ -1080,11 +1102,11 @@ void Debugger_GDB_MI::CollapseWatch(cbWatch *watch)
     {
         dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
         if(real_watch->HasBeenExpanded())
-            m_actions.Add(new dbg_mi::WatchCollapseAction(*it, real_watch, m_execution_logger));
+            m_actions.Add(new dbg_mi::WatchCollapseAction(*it, real_watch, m_watches, m_execution_logger));
     }
 }
 
-void Debugger_GDB_MI::SendCommand(const wxString& cmd)
+void Debugger_GDB_MI::SendCommand(const wxString& cmd, bool debugLog)
 {
     LogManager *log = Manager::Get()->GetLogManager();
     if(!IsRunning())
@@ -1105,6 +1127,11 @@ void Debugger_GDB_MI::SendCommand(const wxString& cmd)
     if (cmd.empty())
         return;
 
+    DoSendCommand(cmd);
+}
+
+void Debugger_GDB_MI::DoSendCommand(const wxString& cmd)
+{
     wxString escaped_cmd = cmd;
     escaped_cmd.Replace(wxT("\n"), wxT("\\n"), true);
 
@@ -1171,4 +1198,13 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
 void Debugger_GDB_MI::GetCurrentPosition(wxString &filename, int &line)
 {
     m_current_frame.GetPosition(filename, line);
+}
+
+void Debugger_GDB_MI::KillConsole()
+{
+    if(m_console_pid >= 0)
+    {
+        wxKill(m_console_pid);
+        m_console_pid = -1;
+    }
 }

@@ -212,17 +212,18 @@ private:
 class WatchBaseAction : public Action
 {
 public:
-    WatchBaseAction(Logger &logger);
+    WatchBaseAction(WatchesContainer &watches, Logger &logger);
     virtual ~WatchBaseAction();
 
 protected:
     void ExecuteListCommand(Watch &watch, Watch *parent, int start = -1, int end = -1);
+    void ExecuteListCommand(wxString const &watch_id, Watch *parent, int start = -1, int end = -1);
     bool ParseListCommand(CommandID const &id, ResultValue const &value);
-    void AppendNullChild(Watch &watch);
 protected:
     typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
 protected:
     ListCommandParentMap m_parent_map;
+    WatchesContainer &m_watches;
     Logger &m_logger;
     int m_sub_commands_left;
 };
@@ -236,7 +237,7 @@ class WatchCreateAction : public WatchBaseAction
         StepSetRange
     };
 public:
-    WatchCreateAction(Watch::Pointer const &watch, Logger &logger);
+    WatchCreateAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger);
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
@@ -259,15 +260,16 @@ protected:
 private:
     bool ParseUpdate(ResultParser const &result);
 private:
-    WatchesContainer &m_watches;
+//    WatchesContainer &m_watches;
     CommandID   m_update_command;
 };
 
 class WatchExpandedAction : public WatchBaseAction
 {
 public:
-    WatchExpandedAction(Watch::Pointer parent_watch, Watch *expanded_watch, Logger &logger) :
-        WatchBaseAction(logger),
+    WatchExpandedAction(Watch::Pointer parent_watch, Watch *expanded_watch,
+                        WatchesContainer &watches, Logger &logger) :
+        WatchBaseAction(watches, logger),
         m_watch(parent_watch),
         m_expanded_watch(expanded_watch)
     {
@@ -285,8 +287,9 @@ private:
 class WatchCollapseAction : public WatchBaseAction
 {
 public:
-    WatchCollapseAction(Watch::Pointer parent_watch, Watch *collapsed_watch, Logger &logger) :
-        WatchBaseAction(logger),
+    WatchCollapseAction(Watch::Pointer parent_watch, Watch *collapsed_watch,
+                        WatchesContainer &watches, Logger &logger) :
+        WatchBaseAction(watches, logger),
         m_watch(parent_watch),
         m_collapsed_watch(collapsed_watch)
     {

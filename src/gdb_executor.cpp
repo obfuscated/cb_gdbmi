@@ -331,10 +331,13 @@ void GDBExecutor::ForceStop()
     }
     else
     {
-        wxKillError error;
-        wxKill(m_pid, wxSIGINT, &error);
+//        wxKillError error;
+//        wxKill(m_pid, wxSIGINT, &error);
+        Interupt(false);
 
         Execute(wxT("-gdb-exit"));
+        m_process->CloseOutput();
+        wxYieldIfNeeded();
         return;
     }
 }
@@ -347,26 +350,23 @@ wxString GDBExecutor::GetOutput()
 
 bool GDBExecutor::DoExecute(dbg_mi::CommandID const &id, wxString const &cmd)
 {
-    if(m_process)
-    {
-        if(!m_stopped)
-        {
-            if(m_logger)
-            {
-                m_logger->Debug(wxString::Format(wxT("GDBExecutor is not stopped, but command (%s) was executed!"),
-                                                 cmd.c_str())
-                                );
-            }
-        }
-        m_process->SendString(id.ToString() + cmd);
-        return true;
-    }
-    else
+    if(!m_process)
         return false;
+    if(!m_stopped && m_logger)
+    {
+        m_logger->Debug(wxString::Format(wxT("GDBExecutor is not stopped, but command (%s) was executed!"),
+                                         cmd.c_str())
+                        );
+    }
+
+    m_process->SendString(id.ToString() + cmd);
+    return true;
 }
 void GDBExecutor::DoClear()
 {
     m_stopped = true;
+    delete m_process;
+    m_process = NULL;
 }
 
 } // namespace dbg_mi

@@ -261,44 +261,74 @@ void GenerateThreadsList::OnStart()
     Execute(wxT("-thread-info"));
 }
 
-int ParseWatchSingle(Watch &watch, ResultValue const &value, bool &has_type, bool &dynamic_has_more)
+void ParseWatchInfo(ResultValue const &value, int &children_count, bool &dynamic_has_more)
 {
     dynamic_has_more = false;
-    int children = -1;
-    wxString s;
 
-    if(Lookup(value, wxT("type"), s))
+    int dynamic, has_more;
+    if(Lookup(value, wxT("dynamic"), dynamic) && Lookup(value, wxT("has_more"), has_more))
     {
-        has_type = true;
-        watch.SetType(s);
+        if(dynamic == 1 && has_more == 1)
+            dynamic_has_more = true;
     }
-    else
-        has_type = false;
 
+    if(!Lookup(value, wxT("numchild"), children_count))
+        children_count = -1;
+}
+
+void ParseWatchValueID(Watch &watch, ResultValue const &value)
+{
+    wxString s;
     if(Lookup(value, wxT("name"), s))
         watch.SetID(s);
 
     if(Lookup(value, wxT("value"), s))
         watch.SetValue(s);
 
-    int dynamic, has_more;
-    if(Lookup(value, wxT("dynamic"), dynamic) && Lookup(value, wxT("has_more"), has_more))
-    {
-        if(dynamic == 1 && has_more == 1)
-        {
-            dynamic_has_more = true;
-        }
-    }
-
-    if(Lookup(value, wxT("numchild"), children))
-    {
-        return children;
-    }
-
-    return -1;
+    if(Lookup(value, wxT("type"), s))
+        watch.SetType(s);
 }
 
-WatchBaseAction::WatchBaseAction(Logger &logger) :
+bool WatchHasType(ResultValue const &value)
+{
+    wxString s;
+    return Lookup(value, wxT("type"), s);
+}
+
+void AppendNullChild(Watch &watch)
+{
+    watch.AddChild(new Watch(wxT("updating...")));
+}
+
+Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &symbol, WatchesContainer &watches)
+{
+    wxString id;
+    if(!Lookup(child_value, wxT("name"), id))
+        return NULL;
+
+    Watch *child = FindWatch(id, watches);
+    if(child)
+    {
+        wxString s;
+        if(Lookup(child_value, wxT("value"), s))
+            child->SetValue(s);
+
+        if(Lookup(child_value, wxT("type"), s))
+            child->SetType(s);
+    }
+    else
+    {
+        child = new Watch(symbol);
+        ParseWatchValueID(*child, child_value);
+        parent.AddChild(child);
+    }
+
+    child->MarkAsRemoved(false);
+    return child;
+}
+
+WatchBaseAction::WatchBaseAction(WatchesContainer &watches, Logger &logger) :
+    m_watches(watches),
     m_logger(logger),
     m_sub_commands_left(0)
 {
@@ -316,14 +346,12 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                    + id.ToString() + wxT(" -> ") + value.MakeDebugString());
 
     ListCommandParentMap::iterator it = m_parent_map.find(id);
-    Watch *parent_watch;
     if(it == m_parent_map.end() || !it->second)
     {
         m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - no parent for id: ") + id.ToString());
         return false;
     }
 
-    parent_watch = it->second;
 
     ResultValue const *children = value.GetTupleValue(wxT("children"));
     if(children)
@@ -331,6 +359,8 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
         int count = children->GetTupleSize();
 
         m_logger.Debug(wxString::Format(wxT("WatchCreateAction::OnCommandOutput - children %d"), count));
+        Watch *parent_watch = it->second;
+
         for(int ii = 0; ii < count; ++ii)
         {
             ResultValue const *child_value;
@@ -338,22 +368,25 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
             if(child_value->GetName() == wxT("child"))
             {
-                wxString name;
-                if(!Lookup(*child_value, wxT("exp"), name))
-                    name = wxT("--unknown--");
+                wxString symbol;
+                if(!Lookup(*child_value, wxT("exp"), symbol))
+                    symbol = wxT("--unknown--");
 
-                Watch *child = new Watch(name);
+                Watch *child = NULL;
                 bool has_type, dynamic_has_more;
 
-                int child_count = ParseWatchSingle(*child, *child_value, has_type, dynamic_has_more);
+                int children_count;
+                ParseWatchInfo(*child_value, children_count, dynamic_has_more);
 
                 if(dynamic_has_more)
                 {
+                    child = new Watch(symbol);
+                    ParseWatchValueID(*child, *child_value);
                     ExecuteListCommand(*child, parent_watch);
                 }
                 else
                 {
-                    switch(child_count)
+                    switch(children_count)
                     {
                     case -1:
                         error = true;
@@ -364,18 +397,18 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             parent_watch->SetHasBeenExpanded(true);
                             parent_watch->RemoveChildren();
                         }
-                        parent_watch->AddChild(child);
+                        child = AddChild(*parent_watch, *child_value, symbol, m_watches);
                         child = NULL;
                         break;
                     default:
-                        if(has_type)
+                        if(WatchHasType(*child_value))
                         {
                             if(!parent_watch->HasBeenExpanded())
                             {
                                 parent_watch->SetHasBeenExpanded(true);
                                 parent_watch->RemoveChildren();
                             }
-                            parent_watch->AddChild(child);
+                            child = AddChild(*parent_watch, *child_value, symbol, m_watches);
                             AppendNullChild(*child);
 
                             m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - adding child ")
@@ -384,8 +417,11 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             child = NULL;
                         }
                         else
-                            ExecuteListCommand(*child, parent_watch);
-
+                        {
+                            wxString id;
+                            if(Lookup(*child_value, wxT("name"), id))
+                                ExecuteListCommand(id, parent_watch);
+                        }
                     }
                 }
 
@@ -397,6 +433,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                                + children->GetTupleValueByIndex(ii)->MakeDebugString());
             }
         }
+        parent_watch->RemoveMarkedChildren();
     }
     else
         error = true;
@@ -416,14 +453,27 @@ void WatchBaseAction::ExecuteListCommand(Watch &watch, Watch *parent, int start,
     ++m_sub_commands_left;
 }
 
-void WatchBaseAction::AppendNullChild(Watch &watch)
+void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch *parent, int start, int end)
 {
-    watch.AddChild(new Watch(wxT("updating...")));
+    if (!parent)
+    {
+        m_logger.Debug(wxT("Parent for '") + watch_id + wxT("' is NULL; skipping this watch"));
+        return;
+    }
+    CommandID id;
+
+    if(start > -1 && end > -1)
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch_id.c_str(), start, end));
+    else
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch_id.c_str()));
+
+    m_parent_map[id] = parent;
+    ++m_sub_commands_left;
 }
 
 
-WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, Logger &logger) :
-    WatchBaseAction(logger),
+WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger) :
+    WatchBaseAction(watches, logger),
     m_watch(watch),
     m_step(StepCreate)
 {
@@ -441,8 +491,10 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
         {
         case StepCreate:
             {
-                bool has_type, dynamic_has_more;
-                int children = ParseWatchSingle(*m_watch, value, has_type, dynamic_has_more);
+                bool dynamic_has_more;
+                int children;
+                ParseWatchInfo(value, children, dynamic_has_more);
+                ParseWatchValueID(*m_watch, value);
                 if(dynamic_has_more)
                 {
                     m_step = StepSetRange;
@@ -492,8 +544,7 @@ void WatchCreateAction::OnStart()
 }
 
 WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logger) :
-    WatchBaseAction(logger),
-    m_watches(watches)
+    WatchBaseAction(watches, logger)
 {
 }
 
@@ -559,7 +610,7 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                         }
                         else if(updated_var.HasMore())
                         {
-                            watch->RemoveChildren();
+                            watch->MarkChildsAsRemoved(); // watch->RemoveChildren();
                             ExecuteListCommand(*watch, NULL);
                         }
                         else if(updated_var.HasValue())

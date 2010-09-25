@@ -120,7 +120,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ExpandWatch(cbWatch *watch);
         virtual void CollapseWatch(cbWatch *watch);
 
-        virtual void SendCommand(const wxString& cmd);
+        virtual void SendCommand(const wxString& cmd, bool debugLog);
 
         virtual void AttachToProcess(const wxString& pid);
         virtual void DetachFromProcess();
@@ -156,8 +156,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
         virtual cbProject* GetProject() { return NULL; }
         virtual void ResetProject() {}
-        virtual void CleanupWhenProjectClosed(cbProject *project) {}
-        virtual void CompilerFinished();
+        virtual void CleanupWhenProjectClosed(cbProject *project);
+        virtual void CompilerFinished(bool compilerFailed);
 
     public:
         void UpdateWhenStopped();
@@ -176,6 +176,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     private:
         void AddStringCommand(wxString const &command);
+        void DoSendCommand(const wxString& cmd);
         void RunQueue();
         void ParseOutput(wxString const &str);
 
@@ -186,7 +187,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void CommitRunCommand(wxString const &command);
         void CommitWatches();
 
-        long GetChildPID();
+        void KillConsole();
 
     private:
         wxMenu *m_menu;
