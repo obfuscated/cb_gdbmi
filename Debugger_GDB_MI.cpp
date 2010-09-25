@@ -101,7 +101,7 @@ void Debugger_GDB_MI::OnAttachReal()
     // (see: does not need) this plugin...
 }
 
-void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
+void Debugger_GDB_MI::OnReleaseReal(bool /*appShutDown*/)
 {
     DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
     dbg_manager.UnregisterDebugger(this);
@@ -191,7 +191,7 @@ void Debugger_GDB_MI::OnGDBOutput(wxCommandEvent& event)
         ParseOutput(msg);
 }
 
-void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& event)
+void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& /*event*/)
 {
     ClearActiveMarkFromAllEditors();
     Manager::Get()->GetLogManager()->Log(_T("debugger terminated!"), m_page_index);
@@ -222,13 +222,13 @@ void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
         event.Skip();
 }
 
-void Debugger_GDB_MI::OnTimer(wxTimerEvent& event)
+void Debugger_GDB_MI::OnTimer(wxTimerEvent& /*event*/)
 {
     RunQueue();
     wxWakeUpIdle();
 }
 
-void Debugger_GDB_MI::OnMenuInfoCommandStream(wxCommandEvent& event)
+void Debugger_GDB_MI::OnMenuInfoCommandStream(wxCommandEvent& /*event*/)
 {
     wxString full;
     for(int ii = 0; ii < m_execution_logger.GetCommandCount(); ++ii)
@@ -495,7 +495,7 @@ void Debugger_GDB_MI::CompilerFinished(bool compilerFailed)
     }
 }
 
-void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject *project)
+void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject * /*project*/)
 {
 }
 
@@ -629,7 +629,7 @@ void Debugger_GDB_MI::CommitRunCommand(wxString const &command)
                   );
 }
 
-bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& line_text)
+bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxString& /*line_text*/)
 {
     if(IsRunning())
     {
@@ -827,7 +827,7 @@ cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
     return &m_breakpoints.back()->Get();
 }
 
-cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& dataExpression)
+cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& /*dataExpression*/)
 {
     #warning "not implemented"
     return NULL;
@@ -959,7 +959,7 @@ void Debugger_GDB_MI::DeleteAllBreakpoints()
     m_breakpoints.clear();
 }
 
-void Debugger_GDB_MI::ShiftBreakpoint(int index, int lines_to_shift)
+void Debugger_GDB_MI::ShiftBreakpoint(int /*index*/, int /*lines_to_shift*/)
 {
     #warning "not implemented"
 }
@@ -1043,7 +1043,7 @@ bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
     return it != m_watches.end();
 }
 
-void Debugger_GDB_MI::ShowWatchProperties(cbWatch *watch)
+void Debugger_GDB_MI::ShowWatchProperties(cbWatch * /*watch*/)
 {
     #warning "not implemented"
 }
@@ -1138,7 +1138,7 @@ void Debugger_GDB_MI::DoSendCommand(const wxString& cmd)
         AddStringCommand(wxT("-interpreter-exec console \"") + escaped_cmd + wxT("\""));
 }
 
-void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
+void Debugger_GDB_MI::AttachToProcess(const wxString& /*pid*/)
 {
     #warning "not implemented"
 }

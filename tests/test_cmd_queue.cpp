@@ -449,7 +449,7 @@ TEST_FIXTURE(ActionsMapFixture, Clear)
 struct DispatchedAction : public dbg_mi::Action
 {
 public:
-    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const & /*result*/)
     {
         dispatched_id = id;
     }
@@ -517,7 +517,7 @@ public:
         dependency_finished(dependency_finished_)
     {
     }
-    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
+    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const & /*result*/)
     {
         if(id.GetCommandID() == 2)
         {
@@ -546,7 +546,7 @@ public:
     {
         correct = false;
     }
-    virtual void OnCommandOutput(dbg_mi::CommandID const &id, dbg_mi::ResultParser const &result)
+    virtual void OnCommandOutput(dbg_mi::CommandID const &/*id*/, dbg_mi::ResultParser const &/*result*/)
     {
     }
 protected:

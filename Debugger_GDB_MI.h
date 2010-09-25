@@ -71,7 +71,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
           * @param project The project that is being edited.
           * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
           */
-        virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
+        virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* /*parent*/, cbProject* /*project*/){ return 0; }
 
         virtual bool Debug(bool breakOnEntry);
         virtual void Continue();
@@ -153,7 +153,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void OnReleaseReal(bool appShutDown);
 
     protected:
-        virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
+        virtual void ConvertDirectory(wxString& /*str*/, wxString /*base*/, bool /*relative*/) {}
         virtual cbProject* GetProject() { return m_project; }
         virtual void ResetProject() { m_project = NULL; }
         virtual void CleanupWhenProjectClosed(cbProject *project);

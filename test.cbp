@@ -19,6 +19,7 @@
 			</Target>
 		</Build>
 		<Compiler>
+			<Add option="-Wextra" />
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add option="`wx-config --cflags`" />

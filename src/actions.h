@@ -19,7 +19,7 @@ public:
     {
     }
 
-    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    virtual void OnCommandOutput(CommandID const & /*id*/, ResultParser const & /*result*/)
     {
         Finish();
     }
@@ -39,7 +39,7 @@ public:
     {
         SetWaitPrevious(true);
     }
-    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result) {}
+    virtual void OnCommandOutput(CommandID const & /*id*/, ResultParser const & /*result*/) {}
 protected:
     virtual void OnStart()
     {
@@ -90,7 +90,7 @@ public:
         m_logger.Debug(wxT("RunAction::destructor"));
     }
 
-    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    virtual void OnCommandOutput(CommandID const &/*id*/, ResultParser const &result)
     {
         if(result.GetResultClass() == ResultParser::ClassRunning)
         {
@@ -167,7 +167,7 @@ public:
     {
     }
 
-    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    virtual void OnCommandOutput(CommandID const &/*id*/, ResultParser const &result)
     {
         m_notification(result);
         Finish();
@@ -194,7 +194,7 @@ public:
     {
     }
 
-    virtual void OnCommandOutput(CommandID const &id, ResultParser const &result)
+    virtual void OnCommandOutput(CommandID const &/*id*/, ResultParser const &result)
     {
         m_notification(result);
         Finish();

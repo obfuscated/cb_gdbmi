@@ -191,7 +191,7 @@ GenerateThreadsList::GenerateThreadsList(ThreadsContainer &threads, int current_
 {
 }
 
-void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser const &result)
+void GenerateThreadsList::OnCommandOutput(CommandID const & /*id*/, ResultParser const &result)
 {
     Finish();
     m_threads.clear();
@@ -214,8 +214,8 @@ void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser cons
     {
         ResultValue const &thread_value = *threads->GetTupleValueByIndex(ii);
 
-        int id;
-        if(!Lookup(thread_value, wxT("id"), id))
+        int thread_id;
+        if(!Lookup(thread_value, wxT("id"), thread_id))
             continue;
 
         wxString info;
@@ -250,7 +250,7 @@ void GenerateThreadsList::OnCommandOutput(CommandID const &id, ResultParser cons
                 info += wxT(" in ") + str;
         }
 
-        m_threads.push_back(cbThread(id == current_thread_id, id, info));
+        m_threads.push_back(cbThread(thread_id == current_thread_id, thread_id, info));
     }
 
     Manager::Get()->GetDebuggerManager()->GetThreadsDialog()->Reload();
@@ -373,7 +373,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                     symbol = wxT("--unknown--");
 
                 Watch *child = NULL;
-                bool has_type, dynamic_has_more;
+                bool dynamic_has_more;
 
                 int children_count;
                 ParseWatchInfo(*child_value, children_count, dynamic_has_more);
