@@ -154,8 +154,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
     protected:
         virtual void ConvertDirectory(wxString& str, wxString base = _T(""), bool relative = true) {}
-        virtual cbProject* GetProject() { return NULL; }
-        virtual void ResetProject() {}
+        virtual cbProject* GetProject() { return m_project; }
+        virtual void ResetProject() { m_project = NULL; }
         virtual void CleanupWhenProjectClosed(cbProject *project);
         virtual void CompilerFinished(bool compilerFailed);
 
@@ -190,10 +190,10 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void KillConsole();
 
     private:
-        wxMenu *m_menu;
         int m_page_index, m_dbg_page_index;
         TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
+        cbProject *m_project;
 
         dbg_mi::GDBExecutor m_executor;
         dbg_mi::ActionsMap  m_actions;

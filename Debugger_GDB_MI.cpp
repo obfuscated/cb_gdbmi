@@ -59,9 +59,9 @@ END_EVENT_TABLE()
 
 // constructor
 Debugger_GDB_MI::Debugger_GDB_MI() :
-    m_menu(NULL),
     m_log(NULL),
     m_debug_log(NULL),
+    m_project(NULL),
     m_console_pid(-1)
 {
     // Make sure our resources are available.
@@ -497,15 +497,11 @@ void Debugger_GDB_MI::CompilerFinished(bool compilerFailed)
 
 void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject *project)
 {
-    if (IsRunning())
-        Stop();
 }
 
 int Debugger_GDB_MI::StartDebugger(cbProject *project)
 {
     ShowLog(true);
-//    if (!CheckBuild())
-//        return 1;
 
     Compiler *compiler;
     ProjectBuildTarget *target;
@@ -590,6 +586,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
     m_timer_poll_debugger.Start(20);
 
     SwitchToDebuggingLayout();
+    m_project = project;
 
     return 0;
 }
