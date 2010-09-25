@@ -55,6 +55,9 @@ public:
 
     virtual wxString GetOutput();
 
+    void SetAttachedPID(long pid) { m_attached_pid = pid; }
+    long GetAttachedPID() const { return m_attached_pid; }
+
 protected:
     virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd);
     virtual void DoClear();
@@ -64,7 +67,7 @@ private:
     PipedProcess *m_process;
     int m_log_page;
     int m_debug_page;
-    long m_pid, m_child_pid;
+    long m_pid, m_child_pid, m_attached_pid;
 
     bool m_stopped;
     bool m_interupting;

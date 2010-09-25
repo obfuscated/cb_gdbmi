@@ -62,7 +62,8 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     m_log(NULL),
     m_debug_log(NULL),
     m_project(NULL),
-    m_console_pid(-1)
+    m_console_pid(-1),
+    m_pid_attached(0)
 {
     // Make sure our resources are available.
     // In the generated boilerplate code we have no resources but when
@@ -520,41 +521,54 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 
     // is gdb accessible, i.e. can we find it?
     wxString debugger;
-    debugger = compiler->GetPrograms().DBG;
-    debugger.Trim();
-    debugger.Trim(true);
-    if(debugger.IsEmpty())
-    {
-        Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found!"), m_page_index);
-        return 4;
-    }
+
     // access the gdb executable name
     debugger = FindDebuggerExecutable(compiler);
+
+    wxString debuggee;
+    if (!GetDebuggee(debuggee, target))
+        return 6;
+
+    wxString working_dir = project->GetBasePath();
+    bool console = target->GetTargetType() == ttConsoleOnly;
+
+    int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console);
+    if (res != 0)
+        return res;
+    m_executor.SetAttachedPID(-1);
+
+    m_project = project;
+    return 0;
+}
+
+int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &debuggee,
+                                    wxString const &working_dir, int pid, bool console)
+{
     if(debugger.IsEmpty())
     {
         Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found (full path)!"), m_page_index);
         return 5;
     }
 
-    wxString debuggee;
-    if (!GetDebuggee(debuggee, target))
-        return 6;
-
     Manager::Get()->GetLogManager()->Log(_T("GDB path: ") + debugger, m_page_index);
-    Manager::Get()->GetLogManager()->Log(_T("DEBUGGEE path: ") + debuggee, m_page_index);
+    if (pid == 0)
+        Manager::Get()->GetLogManager()->Log(_T("DEBUGGEE path: ") + debuggee, m_page_index);
 
     wxString cmd;
     cmd << debugger;
 //    cmd << _T(" -nx");          // don't run .gdbinit
-    cmd << _T(" -fullname ");   // report full-path filenames when breaking
-    cmd << _T(" -quiet");       // don't display version on startup
-    cmd << _T(" --interpreter=mi");
-    cmd << _T(" -args ") << debuggee;
+    cmd << wxT(" -fullname ");   // report full-path filenames when breaking
+    cmd << wxT(" -quiet");       // don't display version on startup
+    cmd << wxT(" --interpreter=mi");
+    if (pid == 0)
+        cmd << wxT(" -args ") << debuggee;
+    else
+        cmd << wxT(" -pid=") << pid;
 
     // start the gdb process
-    wxString working_dir = project->GetBasePath();
     Manager::Get()->GetLogManager()->Log(_T("Command-line: ") + cmd, m_page_index);
-    Manager::Get()->GetLogManager()->Log(_T("Working dir : ") + working_dir, m_page_index);
+    if (pid == 0)
+        Manager::Get()->GetLogManager()->Log(_T("Working dir : ") + working_dir, m_page_index);
 
     int ret = m_executor.LaunchProcess(cmd, working_dir, id_gdb_process, this);
 
@@ -563,7 +577,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
     CommitBreakpoints(true);
     CommitWatches();
 
-    if(target->GetTargetType() == ttConsoleOnly)
+    if(console)
     {
         wxString console_tty;
         m_console_pid = RunNixConsole(console_tty);
@@ -580,14 +594,14 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
     }
 
     m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
-    CommitRunCommand(wxT("-exec-run"));
+    if (pid == 0)
+        CommitRunCommand(wxT("-exec-run"));
     m_actions.Run(m_executor);
 
     m_timer_poll_debugger.Start(20);
 
     SwitchToDebuggingLayout();
-    m_project = project;
-
+    m_pid_attached = pid;
     return 0;
 }
 
@@ -1138,20 +1152,29 @@ void Debugger_GDB_MI::DoSendCommand(const wxString& cmd)
         AddStringCommand(wxT("-interpreter-exec console \"") + escaped_cmd + wxT("\""));
 }
 
-void Debugger_GDB_MI::AttachToProcess(const wxString& /*pid*/)
+void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
 {
-    #warning "not implemented"
+    m_project = NULL;
+    Compiler *compiler = CompilerFactory::GetDefaultCompiler();
+    if (!compiler)
+        return;
+
+    long number;
+    if (!pid.ToLong(&number))
+        return;
+
+    LaunchDebugger(compiler->GetPrograms().DBG, wxEmptyString, wxEmptyString, number, false);
+    m_executor.SetAttachedPID(number);
 }
 
 void Debugger_GDB_MI::DetachFromProcess()
 {
-    #warning "not implemented"
+    AddStringCommand(wxString::Format(wxT("-target-detach %ld"), m_executor.GetAttachedPID()));
 }
 
 bool Debugger_GDB_MI::IsAttachedToProcess() const
 {
-    #warning "not implemented"
-    return false;
+    return m_pid_attached != 0;
 }
 
 void Debugger_GDB_MI::RequestUpdate(DebugWindows window)

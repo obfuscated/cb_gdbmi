@@ -174,6 +174,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         void OnMenuInfoCommandStream(wxCommandEvent& event);
 
+        int LaunchDebugger(wxString const &debugger, wxString const &debuggee, wxString const &working_dir,
+                           int pid, bool console);
+
     private:
         void AddStringCommand(wxString const &command);
         void DoSendCommand(const wxString& cmd);
@@ -210,5 +213,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::CurrentFrame m_current_frame;
         int m_exit_code;
         int m_console_pid;
+        int m_pid_attached;
 };
 #endif // DEBUGGER_GDB_MI_H_INCLUDED

@@ -180,6 +180,7 @@ GDBExecutor::GDBExecutor() :
     m_debug_page(-1),
     m_pid(-1),
     m_child_pid(-1),
+    m_attached_pid(-1),
     m_stopped(true),
     m_interupting(false),
     m_temporary_interupt(false)
@@ -312,8 +313,14 @@ void GDBExecutor::Interupt(bool temporary)
         m_temporary_interupt = temporary;
         m_interupting = true;
 
-        GetChildPID();
-        InteruptChild(m_child_pid);
+        if (m_attached_pid > 0)
+            InteruptChild(m_attached_pid);
+        else
+        {
+            GetChildPID();
+            if (m_child_pid > 0)
+                InteruptChild(m_child_pid);
+        }
         return;
     }
 }
@@ -331,9 +338,10 @@ void GDBExecutor::ForceStop()
     }
     else
     {
-//        wxKillError error;
-//        wxKill(m_pid, wxSIGINT, &error);
         Interupt(false);
+
+        if (m_attached_pid > 0)
+            Execute(wxT("kill"));
 
         Execute(wxT("-gdb-exit"));
         m_process->CloseOutput();
