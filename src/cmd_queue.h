@@ -294,7 +294,7 @@ public:
     virtual ~Logger() {}
 
     virtual void Debug(wxString const &line, Line::Type type = Line::Debug) = 0;
-    virtual Line const & GetDebugLine(int index) const = 0;
+    virtual Line const* GetDebugLine(int index) const = 0;
 
     virtual void AddCommand(wxString const &command) = 0;
     virtual int GetCommandCount() const = 0;

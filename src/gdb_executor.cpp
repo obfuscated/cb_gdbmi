@@ -147,6 +147,9 @@ namespace dbg_mi
 
 void LogPaneLogger::Debug(wxString const &line, Line::Type type)
 {
+    if (m_shutdowned)
+        return;
+
     int index;
     Manager::Get()->GetDebuggerManager()->GetLogger(true, index);
     if(index != -1)

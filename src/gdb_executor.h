@@ -11,12 +11,10 @@ namespace dbg_mi
 class LogPaneLogger : public Logger
 {
 public:
+    LogPaneLogger() : m_shutdowned(false) {}
 
     virtual void Debug(wxString const &line, Line::Type type = Line::Debug);
-    virtual Line const& GetDebugLine(int index) const
-    {
-        return Line();
-    }
+    virtual Line const* GetDebugLine(int index) const { return NULL; }
 
     virtual void AddCommand(wxString const &command) { m_commands.push_back(command); }
     virtual int GetCommandCount() const { return m_commands.size(); }
@@ -27,9 +25,12 @@ public:
         return *it;
     }
     virtual void ClearCommand() { m_commands.clear(); }
+
+    void MarkAsShutdowned() { m_shutdowned = true; }
 private:
     typedef std::vector<wxString> Commands;
     Commands m_commands;
+    bool m_shutdowned;
 };
 
 class GDBExecutor : public CommandExecutor

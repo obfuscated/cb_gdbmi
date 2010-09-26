@@ -102,8 +102,12 @@ void Debugger_GDB_MI::OnAttachReal()
     // (see: does not need) this plugin...
 }
 
-void Debugger_GDB_MI::OnReleaseReal(bool /*appShutDown*/)
+void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
 {
+    // TODO: remove this when the loggers are fixed in C::B
+    if (appShutDown)
+        m_execution_logger.MarkAsShutdowned();
+
     DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
     dbg_manager.UnregisterDebugger(this);
 

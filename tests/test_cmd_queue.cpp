@@ -599,12 +599,12 @@ public:
         l.type = type;
         m_debug.push_back(l);
     }
-    virtual Line const & GetDebugLine(int index) const
+    virtual Line const * GetDebugLine(int index) const
     {
         if(index < static_cast<int>(m_debug.size()))
-            return m_debug[index];
+            return &m_debug[index];
         else
-            return m_empty_line;
+            return &m_empty_line;
     }
 
     virtual void AddCommand(wxString const &command)
@@ -657,9 +657,9 @@ TEST_FIXTURE(LoggingFixture, GetLogger)
 TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorExecute)
 {
     exec.Execute(wxT("-exec-run"));
-    dbg_mi::Logger::Line const &line = logger.GetDebugLine(0);
-    CHECK_EQUAL(wxT("cmd==>00000000000-exec-run"), line.line);
-    CHECK_EQUAL(dbg_mi::Logger::Line::Command, line.type);
+    dbg_mi::Logger::Line const *line = logger.GetDebugLine(0);
+    CHECK_EQUAL(wxT("cmd==>00000000000-exec-run"), line->line);
+    CHECK_EQUAL(dbg_mi::Logger::Line::Command, line->type);
 }
 
 TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorProcessOutput)
@@ -667,9 +667,9 @@ TEST_FIXTURE(LoggingFixture, LoggingCmdExecutorProcessOutput)
     exec.Execute(wxT("-exec-run"));
     CHECK_EQUAL(2, logger.GetDebugLineCount());
 
-    dbg_mi::Logger::Line const &line = logger.GetDebugLine(1);
-    CHECK_EQUAL(wxT("output==>00000000000^running"), line.line);
-    CHECK_EQUAL(dbg_mi::Logger::Line::CommandResult, line.type);
+    dbg_mi::Logger::Line const *line = logger.GetDebugLine(1);
+    CHECK_EQUAL(wxT("output==>00000000000^running"), line->line);
+    CHECK_EQUAL(dbg_mi::Logger::Line::CommandResult, line->type);
 }
 
 TEST_FIXTURE(LoggingFixture, CommandHistory)
