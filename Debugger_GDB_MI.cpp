@@ -713,11 +713,7 @@ void Debugger_GDB_MI::StepOut()
 void Debugger_GDB_MI::Break()
 {
     m_executor.Interupt(false);
-
-    // Notify debugger plugins for end of debug session
-    PluginManager *plm = Manager::Get()->GetPluginManager();
-    CodeBlocksEvent evt(cbEVT_DEBUGGER_PAUSED);
-    plm->NotifyPlugins(evt);
+    // cbEVT_DEBUGGER_PAUSED will be sent, when the debugger has pause for real
 }
 
 void Debugger_GDB_MI::Stop()
