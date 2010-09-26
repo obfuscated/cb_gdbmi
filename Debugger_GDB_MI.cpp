@@ -544,6 +544,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &debuggee,
                                     wxString const &working_dir, int pid, bool console)
 {
+    m_current_frame.Reset();
     if(debugger.IsEmpty())
     {
         Manager::Get()->GetLogManager()->LogError(_T("no debugger executable found (full path)!"), m_page_index);
