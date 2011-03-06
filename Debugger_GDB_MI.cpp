@@ -474,7 +474,7 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
         return false;
     }
 
-    if(!EnsureBuildUpToDate())
+    if(!EnsureBuildUpToDate(breakOnEntry ? StartTypeStepInto : StartTypeRun))
         return false;
 
     if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
@@ -483,21 +483,20 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
         return true;
 }
 
-void Debugger_GDB_MI::CompilerFinished(bool compilerFailed)
+bool Debugger_GDB_MI::CompilerFinished(bool compilerFailed, StartType startType)
 {
-    if (compilerFailed)
-    {
+    if (compilerFailed || startType == StartTypeUnknown)
         m_temporary_breakpoints.clear();
-    }
     else
     {
         ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
         cbProject *project = project_manager.GetActiveProject();
         if(project)
-            StartDebugger(project);
+            return StartDebugger(project) == 0;
         else
             Manager::Get()->GetLogManager()->LogError(_T("no active project"), m_page_index);
     }
+    return false;
 }
 
 void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject * /*project*/)

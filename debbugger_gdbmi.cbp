@@ -69,7 +69,6 @@
 		</Compiler>
 		<Linker>
 			<Add library="codeblocks" />
-			<Add library="wxscintilla" />
 			<Add directory="$(#cb_sdk.lib)" />
 		</Linker>
 		<Unit filename="Debugger_GDB_MI.cpp" />

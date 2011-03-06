@@ -157,7 +157,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual cbProject* GetProject() { return m_project; }
         virtual void ResetProject() { m_project = NULL; }
         virtual void CleanupWhenProjectClosed(cbProject *project);
-        virtual void CompilerFinished(bool compilerFailed);
+        virtual bool CompilerFinished(bool compilerFailed, StartType startType);
 
     public:
         void UpdateWhenStopped();

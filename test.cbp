@@ -33,7 +33,6 @@
 			<Add option="-Wl,-rpath=$(#cb_sdk.lib)" />
 			<Add library="UnitTest++" />
 			<Add library="codeblocks" />
-			<Add library="wxscintilla" />
 			<Add library="wxpropgrid" />
 			<Add directory="$(#unittest_pp)/" />
 			<Add directory="$(#cb_sdk.lib)" />
