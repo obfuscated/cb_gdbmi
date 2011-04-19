@@ -25,9 +25,13 @@
 #include "events.h"
 #include "gdb_executor.h"
 
-//class PipedProcess;
 class TextCtrlLogger;
 class Compiler;
+
+namespace dbg_mi
+{
+class Configuration;
+} // namespace dbg_mi
 
 
 class Debugger_GDB_MI : public cbDebuggerPlugin
@@ -42,36 +46,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ShowToolMenu();
         virtual bool ToolMenuEnabled() const { return true; }
 
-        /** Invoke configuration dialog. */
-        virtual int Configure();
+        virtual cbDebuggerConfiguration* LoadConfig(const ConfigManagerWrapper &config);
 
-        /** Return the plugin's configuration priority.
-          * This is a number (default is 50) that is used to sort plugins
-          * in configuration dialogs. Lower numbers mean the plugin's
-          * configuration is put higher in the list.
-          */
-        virtual int GetConfigurationPriority() const { return 50; }
-
-        /** Return the configuration group for this plugin. Default is cgUnknown.
-          * Notice that you can logically OR more than one configuration groups,
-          * so you could set it, for example, as "cgCompiler | cgContribPlugin".
-          */
-        virtual int GetConfigurationGroup() const { return cgUnknown; }
-
-        /** Return plugin's configuration panel.
-          * @param parent The parent window.
-          * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
-          */
-        virtual cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent){ return 0; }
-
-        /** Return plugin's configuration panel for projects.
-          * The panel returned from this function will be added in the project's
-          * configuration dialog.
-          * @param parent The parent window.
-          * @param project The project that is being edited.
-          * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
-          */
-        virtual cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* /*parent*/, cbProject* /*project*/){ return 0; }
+        dbg_mi::Configuration& GetActiveConfigEx();
 
         virtual bool Debug(bool breakOnEntry);
         virtual void Continue();
@@ -193,8 +170,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void KillConsole();
 
     private:
-        int m_page_index, m_dbg_page_index;
-        TextCtrlLogger  *m_log, *m_debug_log;
         wxTimer m_timer_poll_debugger;
         cbProject *m_project;
 

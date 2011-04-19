@@ -3,6 +3,7 @@
 
 #include "cmd_queue.h"
 
+class cbDebuggerPlugin;
 class PipedProcess;
 class wxEvtHandler;
 
@@ -11,7 +12,7 @@ namespace dbg_mi
 class LogPaneLogger : public Logger
 {
 public:
-    LogPaneLogger() : m_shutdowned(false) {}
+    LogPaneLogger(cbDebuggerPlugin *plugin) : m_plugin(plugin), m_shutdowned(false) {}
 
     virtual void Debug(wxString const &line, Line::Type type = Line::Debug);
     virtual Line const* GetDebugLine(int index) const { return NULL; }
@@ -30,6 +31,7 @@ public:
 private:
     typedef std::vector<wxString> Commands;
     Commands m_commands;
+    cbDebuggerPlugin *m_plugin;
     bool m_shutdowned;
 };
 
@@ -66,7 +68,6 @@ private:
     long GetChildPID();
 private:
     PipedProcess *m_process;
-    int m_log_page;
     int m_debug_page;
     long m_pid, m_child_pid, m_attached_pid;
 

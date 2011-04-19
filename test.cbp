@@ -9,8 +9,6 @@
 			<Target title="debug_unix">
 				<Option output="bin/debug/test" prefix_auto="1" extension_auto="1" />
 				<Option object_output=".obj/debug/" />
-				<Option external_deps="Debugger_GDB_MI.so;" />
-				<Option additional_output="bin/debug/test;" />
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -30,7 +28,6 @@
 		</Compiler>
 		<Linker>
 			<Add option="`wx-config --libs`" />
-			<Add option="-Wl,-rpath=$(#cb_sdk.lib)" />
 			<Add library="UnitTest++" />
 			<Add library="codeblocks" />
 			<Add library="wxpropgrid" />
@@ -38,7 +35,7 @@
 			<Add directory="$(#cb_sdk.lib)" />
 		</Linker>
 		<ExtraCommands>
-			<Add after="$(TARGET_OUTPUT_FILE)" />
+			<Add after="export LD_LIBRARY_PATH=$(#cb_sdk.lib) &amp;&amp; $(TARGET_OUTPUT_FILE)" />
 		</ExtraCommands>
 		<Unit filename="src/cmd_queue.cpp" />
 		<Unit filename="src/cmd_queue.h" />

@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include <sdk.h>
+#include <cbplugin.h>
 #include <loggers.h>
 #include <logmanager.h>
 #include <manager.h>
@@ -151,35 +152,29 @@ void LogPaneLogger::Debug(wxString const &line, Line::Type type)
         return;
 
     int index;
-    Manager::Get()->GetDebuggerManager()->GetLogger(true, index);
-    if(index != -1)
-    {
-        LogManager &log = *Manager::Get()->GetLogManager();
 
-        switch (type)
-        {
-            case Line::Debug:
-                log.Log(line, index, ::Logger::info);
-                break;
-            case Line::Unknown:
-                log.Log(line, index, ::Logger::info);
-                break;
-            case Line::Command:
-                log.Log(line, index, ::Logger::warning);
-                break;
-            case Line::CommandResult:
-                log.Log(line, index, ::Logger::error);
-                break;
-            case Line::ProgramState:
-                log.Log(line, index, ::Logger::critical);
-                break;
-        }
+    switch (type)
+    {
+        case Line::Debug:
+            m_plugin->DebugLog(line, ::Logger::info);
+            break;
+        case Line::Unknown:
+            m_plugin->DebugLog(line, ::Logger::info);
+            break;
+        case Line::Command:
+            m_plugin->DebugLog(line, ::Logger::warning);
+            break;
+        case Line::CommandResult:
+            m_plugin->DebugLog(line, ::Logger::error);
+            break;
+        case Line::ProgramState:
+            m_plugin->DebugLog(line, ::Logger::critical);
+            break;
     }
 }
 
 GDBExecutor::GDBExecutor() :
     m_process(NULL),
-    m_log_page(-1),
     m_debug_page(-1),
     m_pid(-1),
     m_child_pid(-1),
@@ -205,46 +200,44 @@ int GDBExecutor::LaunchProcess(wxString const &cmd, wxString const& cwd, int id_
 
     // start the gdb process
     m_process = new PipedProcess((void**)&m_process, event_handler, id_gdb_process, true, cwd);
-    log->Log(_("Starting debugger: "), m_log_page);
+//    log->Log(_("Starting debugger: "), m_log_page);
     m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
     m_child_pid = -1;
 
-#ifdef __WXMAC__
-    if (m_pid == -1)
-    {
-        log->LogError(_("debugger has fake macos PID"), m_log_page);
-    }
-#endif
+//#ifdef __WXMAC__
+//    if (m_pid == -1)
+//        log->LogError(_("debugger has fake macos PID"), m_log_page);
+//#endif
 
     if (!m_pid)
     {
         delete m_process;
         m_process = 0;
-        log->Log(_("failed"), m_log_page);
+//        log->Log(_("failed"), m_log_page);
         return -1;
     }
     else if (!m_process->GetOutputStream())
     {
         delete m_process;
         m_process = 0;
-        log->Log(_("failed (to get debugger's stdin)"), m_log_page);
+//        log->Log(_("failed (to get debugger's stdin)"), m_log_page);
         return -2;
     }
     else if (!m_process->GetInputStream())
     {
         delete m_process;
         m_process = 0;
-        log->Log(_("failed (to get debugger's stdout)"), m_log_page);
+//        log->Log(_("failed (to get debugger's stdout)"), m_log_page);
         return -2;
     }
     else if (!m_process->GetErrorStream())
     {
         delete m_process;
         m_process = 0;
-        log->Log(_("failed (to get debugger's stderr)"), m_log_page);
+//        log->Log(_("failed (to get debugger's stderr)"), m_log_page);
         return -2;
     }
-    log->Log(_("done"), m_log_page);
+//    log->Log(_("done"), m_log_page);
 
     return 0;
 }
