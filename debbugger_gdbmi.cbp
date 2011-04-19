@@ -74,7 +74,6 @@
 		</Linker>
 		<Unit filename="Debugger_GDB_MI.cpp" />
 		<Unit filename="Debugger_GDB_MI.h" />
-		<Unit filename="config_panel.cpp" />
 		<Unit filename="config_panel.h" />
 		<Unit filename="resource/debugger_gdbmi_menu.xrc" />
 		<Unit filename="resource/manifest.xml" />
