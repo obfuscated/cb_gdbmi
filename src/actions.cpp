@@ -166,16 +166,14 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
         if (!m_backtrace.empty())
         {
             int frame = m_current_frame.GetUserSelectedFrame();
+            if (frame < 0 && cbDebuggerCommonConfig::GetFlag(cbDebuggerCommonConfig::AutoSwitchFrame))
+                frame = m_first_valid;
             if (frame < 0)
-            {
-                if (cbDebuggerCommonConfig::GetFlag(cbDebuggerCommonConfig::AutoSwitchFrame))
-                    frame = m_first_valid;
-                else
-                    frame = 0;
-            }
+                frame = 0;
 
             m_current_frame.SetFrame(frame);
-            m_switch_to_frame->Invoke(m_backtrace[frame].GetNumber());
+            int number = m_backtrace.empty() ? 0 : m_backtrace[frame].GetNumber();
+            m_switch_to_frame->Invoke(number);
         }
 
         Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
