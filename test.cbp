@@ -54,10 +54,10 @@
 		<Unit filename="tests/main.cpp" />
 		<Unit filename="tests/mock_command_executor.h" />
 		<Unit filename="tests/test_cmd_queue.cpp" />
+		<Unit filename="tests/test_find_watches.cpp" />
 		<Unit filename="tests/test_frame.cpp" />
 		<Unit filename="tests/test_result_parser.cpp" />
 		<Unit filename="tests/test_updated_variable.cpp" />
-		<Unit filename="tests/test_watches.cpp" />
 		<Extensions>
 			<envvars />
 			<code_completion />
