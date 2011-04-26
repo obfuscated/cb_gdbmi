@@ -129,8 +129,6 @@ TEST(UpdateVar_NewTypeInt_IsDynamic)
 TEST(UpdateVar_NewTypeInt_MakeDebugString)
 {
     Fixture f(c_new_type_int);
-
-    printf("%s", f.var.MakeDebugString().utf8_str().data());
     CHECK(f.var.MakeDebugString() == wxT("name=var1; value=0; new_type=int; in_scope=InScope_Yes; new_num_children=0;")
                                      wxT(" type_changed=1; has_value=1; has_more=1; dynamic=1;"));
 }

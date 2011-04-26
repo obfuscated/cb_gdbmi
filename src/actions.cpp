@@ -338,7 +338,9 @@ WatchBaseAction::WatchBaseAction(WatchesContainer &watches, Logger &logger) :
 
 WatchBaseAction::~WatchBaseAction()
 {
+#ifndef TEST_PROJECT
     Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
+#endif
 }
 
 bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &value)
