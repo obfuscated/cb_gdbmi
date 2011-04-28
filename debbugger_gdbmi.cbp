@@ -10,7 +10,7 @@
 				<Option output="libdebugger_gdbmi.so" prefix_auto="0" extension_auto="0" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="-p debug" />
+				<Option parameters="-p debug -ns -nc --debug-log --multiple-instance " />
 				<Option host_application="$(#cb_sdk.lib)/codeblocks" />
 				<Option run_host_application_in_terminal="0" />
 				<Compiler>
@@ -89,6 +89,8 @@
 		<Unit filename="src/config.h" />
 		<Unit filename="src/definitions.cpp" />
 		<Unit filename="src/definitions.h" />
+		<Unit filename="src/escape.cpp" />
+		<Unit filename="src/escape.h" />
 		<Unit filename="src/events.cpp" />
 		<Unit filename="src/events.h" />
 		<Unit filename="src/frame.cpp" />
@@ -99,7 +101,7 @@
 		<Unit filename="src/updated_variable.h" />
 		<Unit filename="wxsmith/config_panel.wxs" />
 		<Extensions>
-			<envvars />
+			<envvars set="gdbmi_plugin" />
 			<code_completion />
 			<debugger />
 			<wxsmith version="1">

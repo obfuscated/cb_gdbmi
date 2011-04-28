@@ -21,6 +21,7 @@
 #include "actions.h"
 #include "cmd_result_parser.h"
 #include "config.h"
+#include "escape.h"
 #include "frame.h"
 
 #ifndef __WX_MSW__
@@ -438,12 +439,13 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
         Log(wxT("no active project"), Logger::error);
         return false;
     }
+    StartType start_type = breakOnEntry ? StartTypeStepInto : StartTypeRun;
 
-    if(!EnsureBuildUpToDate(breakOnEntry ? StartTypeStepInto : StartTypeRun))
+    if(!EnsureBuildUpToDate(start_type))
         return false;
 
     if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
-        return StartDebugger(project) == 0;
+        return StartDebugger(project, start_type) == 0;
     else
         return true;
 }
@@ -457,18 +459,23 @@ bool Debugger_GDB_MI::CompilerFinished(bool compilerFailed, StartType startType)
         ProjectManager &project_manager = *Manager::Get()->GetProjectManager();
         cbProject *project = project_manager.GetActiveProject();
         if(project)
-            return StartDebugger(project) == 0;
+            return StartDebugger(project, startType) == 0;
         else
             Log(wxT("no active project"), Logger::error);
     }
     return false;
 }
 
+void Debugger_GDB_MI::ConvertDirectory(wxString& str, wxString base, bool relative)
+{
+    dbg_mi::ConvertDirectory(str, base, relative);
+}
+
 void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject * /*project*/)
 {
 }
 
-int Debugger_GDB_MI::StartDebugger(cbProject *project)
+int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 {
 //    ShowLog(true);
 
@@ -495,7 +502,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 
     bool console = target->GetTargetType() == ttConsoleOnly;
 
-    int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console);
+    int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console, start_type);
     if (res != 0)
         return res;
     m_executor.SetAttachedPID(-1);
@@ -505,7 +512,8 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project)
 }
 
 int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &debuggee,
-                                    wxString const &working_dir, int pid, bool console)
+                                    wxString const &working_dir, int pid, bool console,
+                                    StartType start_type)
 {
     m_current_frame.Reset();
     if(debugger.IsEmpty())
@@ -564,7 +572,17 @@ int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &de
     }
 
     if (pid == 0)
-        CommitRunCommand(wxT("-exec-run"));
+    {
+        switch (start_type)
+        {
+        case StartTypeRun:
+            CommitRunCommand(wxT("-exec-run"));
+            break;
+        case StartTypeStepInto:
+            CommitRunCommand(wxT("-exec-step"));
+            break;
+        }
+    }
     m_actions.Run(m_executor);
 
     m_timer_poll_debugger.Start(20);
@@ -1120,7 +1138,8 @@ void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
     if (!pid.ToLong(&number))
         return;
 
-    LaunchDebugger(GetActiveConfigEx().GetDebuggerExecutable(), wxEmptyString, wxEmptyString, number, false);
+    LaunchDebugger(GetActiveConfigEx().GetDebuggerExecutable(), wxEmptyString, wxEmptyString,
+                   number, false, StartTypeRun);
     m_executor.SetAttachedPID(number);
 }
 

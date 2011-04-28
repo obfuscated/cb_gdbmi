@@ -130,7 +130,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void OnReleaseReal(bool appShutDown);
 
     protected:
-        virtual void ConvertDirectory(wxString& /*str*/, wxString /*base*/, bool /*relative*/) {}
+        virtual void ConvertDirectory(wxString& /*str*/, wxString /*base*/, bool /*relative*/);
         virtual cbProject* GetProject() { return m_project; }
         virtual void ResetProject() { m_project = NULL; }
         virtual void CleanupWhenProjectClosed(cbProject *project);
@@ -152,7 +152,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void OnMenuInfoCommandStream(wxCommandEvent& event);
 
         int LaunchDebugger(wxString const &debugger, wxString const &debuggee, wxString const &working_dir,
-                           int pid, bool console);
+                           int pid, bool console, StartType start_type);
 
     private:
         void AddStringCommand(wxString const &command);
@@ -162,7 +162,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         bool SelectCompiler(cbProject &project, Compiler *&compiler,
                             ProjectBuildTarget *&target, long pid_to_attach);
-        int StartDebugger(cbProject *project);
+        int StartDebugger(cbProject *project, StartType startType);
         void CommitBreakpoints(bool force);
         void CommitRunCommand(wxString const &command);
         void CommitWatches();
