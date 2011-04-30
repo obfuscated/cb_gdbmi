@@ -72,9 +72,6 @@
 			<Add library="codeblocks" />
 			<Add directory="$(#cb_sdk.lib)" />
 		</Linker>
-		<Unit filename="Debugger_GDB_MI.cpp" />
-		<Unit filename="Debugger_GDB_MI.h" />
-		<Unit filename="config_panel.h" />
 		<Unit filename="resource/debugger_gdbmi_menu.xrc" />
 		<Unit filename="resource/manifest.xml" />
 		<Unit filename="src/actions.cpp" />
@@ -97,6 +94,8 @@
 		<Unit filename="src/frame.h" />
 		<Unit filename="src/gdb_executor.cpp" />
 		<Unit filename="src/gdb_executor.h" />
+		<Unit filename="src/plugin.cpp" />
+		<Unit filename="src/plugin.h" />
 		<Unit filename="src/updated_variable.cpp" />
 		<Unit filename="src/updated_variable.h" />
 		<Unit filename="wxsmith/config_panel.wxs" />

@@ -1,6 +1,6 @@
 #include <sdk.h> // Code::Blocks SDK
 
-#include "Debugger_GDB_MI.h"
+#include "plugin.h"
 
 #include <algorithm>
 #include <wx/xrc/xmlres.h>

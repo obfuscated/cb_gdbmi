@@ -7,8 +7,8 @@
  * License:   GPL
  **************************************************************/
 
-#ifndef DEBUGGER_GDB_MI_H_INCLUDED
-#define DEBUGGER_GDB_MI_H_INCLUDED
+#ifndef _DEBUGGER_GDB_MI_PLUGIN_H_
+#define _DEBUGGER_GDB_MI_PLUGIN_H_
 
 // For compilers that support precompilation, includes <wx/wx.h>
 #include <wx/wxprec.h>
@@ -190,4 +190,4 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         int m_console_pid;
         int m_pid_attached;
 };
-#endif // DEBUGGER_GDB_MI_H_INCLUDED
+#endif // _DEBUGGER_GDB_MI_PLUGIN_H_
