@@ -134,12 +134,12 @@ protected:
     virtual void OnStart();
 private:
     SwitchToFrameInvoker *m_switch_to_frame;
-    CommandID m_backtrace_id, m_args_id;
+    CommandID m_backtrace_id, m_args_id, m_frame_info_id;
     BacktraceContainer &m_backtrace;
     Logger &m_logger;
     CurrentFrame &m_current_frame;
-    int m_first_valid;
-    bool m_parsed_backtrace, m_parsed_args;
+    int m_first_valid, m_old_active_frame;
+    bool m_parsed_backtrace, m_parsed_args, m_parsed_frame_info;
 };
 
 class GenerateThreadsList : public Action

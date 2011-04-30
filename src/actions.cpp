@@ -76,8 +76,10 @@ GenerateBacktrace::GenerateBacktrace(SwitchToFrameInvoker *switch_to_frame, Back
     m_logger(logger),
     m_current_frame(current_frame),
     m_first_valid(-1),
+    m_old_active_frame(-1),
     m_parsed_backtrace(false),
-    m_parsed_args(false)
+    m_parsed_args(false),
+    m_parsed_frame_info(false)
 {
 }
 
@@ -160,8 +162,25 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
         }
         m_parsed_args = true;
     }
+    else if (id == m_frame_info_id)
+    {
+        m_parsed_frame_info = true;
 
-    if(m_parsed_backtrace && m_parsed_args)
+        //^done,frame={level="0",addr="0x0000000000401060",func="main",
+        //file="/path/main.cpp",fullname="/path/main.cpp",line="80"}
+        if (result.GetResultClass() != ResultParser::ClassDone)
+        {
+            m_old_active_frame = 0;
+            m_logger.Debug(wxT("Wrong result class, using default value!"));
+        }
+        else
+        {
+            if (!Lookup(result.GetResultValue(), wxT("frame.level"), m_old_active_frame))
+                m_old_active_frame = 0;
+        }
+    }
+
+    if(m_parsed_backtrace && m_parsed_args && m_parsed_frame_info)
     {
         if (!m_backtrace.empty())
         {
@@ -173,7 +192,8 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
 
             m_current_frame.SetFrame(frame);
             int number = m_backtrace.empty() ? 0 : m_backtrace[frame].GetNumber();
-            m_switch_to_frame->Invoke(number);
+            if (m_old_active_frame != number)
+                m_switch_to_frame->Invoke(number);
         }
 
         Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
@@ -182,6 +202,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
 }
 void GenerateBacktrace::OnStart()
 {
+    m_frame_info_id = Execute(wxT("-stack-info-frame"));
     m_backtrace_id = Execute(wxT("-stack-list-frames 0 30"));
     m_args_id = Execute(wxT("-stack-list-arguments 1 0 30"));
 }

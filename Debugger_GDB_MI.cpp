@@ -765,6 +765,7 @@ struct SwitchToFrameNotification
             }
 
             m_plugin->UpdateOnFrameChanged(true);
+            Manager::Get()->GetDebuggerManager()->GetBacktraceDialog()->Reload();
         }
     }
 
