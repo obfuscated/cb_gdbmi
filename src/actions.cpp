@@ -1,10 +1,8 @@
 #include "actions.h"
 
-#include <backtracedlg.h>
+#include <cbdebugger_interfaces.h>
 #include <cbplugin.h>
 #include <logmanager.h>
-#include <threadsdlg.h>
-#include <watchesdlg.h>
 
 #include "cmd_result_parser.h"
 #include "frame.h"

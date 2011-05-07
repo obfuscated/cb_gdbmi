@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <wx/xrc/xmlres.h>
 
-#include <backtracedlg.h>
+#include <cbdebugger_interfaces.h>
 #include <cbproject.h>
 #include <compilerfactory.h>
 #include <configurationpanel.h>
@@ -15,8 +15,6 @@
 #include <macrosmanager.h>
 #include <pipedprocess.h>
 #include <projectmanager.h>
-#include <threadsdlg.h>
-#include <watchesdlg.h>
 
 #include "actions.h"
 #include "cmd_result_parser.h"
@@ -362,7 +360,7 @@ void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
         m_actions.Add(new dbg_mi::BarrierAction());
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
 
-    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()) && !m_watches.empty())
+    if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()->GetWindow()) && !m_watches.empty())
     {
         for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
         {
