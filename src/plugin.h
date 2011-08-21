@@ -89,7 +89,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual bool SwitchToThread(int thread_number);
 
         // watches
-        virtual cbWatch* AddWatch(const wxString& symbol);
+        virtual cb::shared_ptr<cbWatch> AddWatch(const wxString& symbol);
         virtual void DeleteWatch(cbWatch *watch);
         virtual bool HasWatch(cbWatch *watch);
         virtual void ShowWatchProperties(cbWatch *watch);

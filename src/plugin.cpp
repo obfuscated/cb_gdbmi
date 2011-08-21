@@ -996,19 +996,19 @@ struct CompareWatchPtr
     cbWatch *watch;
 };
 
-cbWatch* Debugger_GDB_MI::AddWatch(const wxString& symbol)
+cb::shared_ptr<cbWatch> Debugger_GDB_MI::AddWatch(const wxString& symbol)
 {
     dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol));
     m_watches.push_back(w);
 
     if(IsRunning())
         m_actions.Add(new dbg_mi::WatchCreateAction(w, m_watches, m_execution_logger));
-    return w.get();
+    return w;
 }
 
 void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
 {
-    cbWatch *root_watch = GetRootWatch(watch);
+    cbWatch *root_watch = cbGetRootWatch(watch);
     dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
                                                          CompareWatchPtr(root_watch));
 
@@ -1045,7 +1045,7 @@ bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
     if(!IsStopped() || !IsRunning())
         return false;
 
-    cbWatch *root_watch = GetRootWatch(watch);
+    cbWatch *root_watch = cbGetRootWatch(watch);
     dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
                                                          CompareWatchPtr(root_watch));
 
@@ -1068,7 +1068,7 @@ void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
 {
     if(!IsStopped() || !IsRunning())
         return;
-    cbWatch *root_watch = GetRootWatch(watch);
+    cbWatch *root_watch = cbGetRootWatch(watch);
     dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
                                                          CompareWatchPtr(root_watch));
     if(it != m_watches.end())
@@ -1084,7 +1084,7 @@ void Debugger_GDB_MI::CollapseWatch(cbWatch *watch)
     if(!IsStopped() || !IsRunning())
         return;
 
-    cbWatch *root_watch = GetRootWatch(watch);
+    cbWatch *root_watch = cbGetRootWatch(watch);
     dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
                                                          CompareWatchPtr(root_watch));
     if(it != m_watches.end())
