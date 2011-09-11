@@ -12,7 +12,7 @@ wxString const c_frame_output_valid(wxT("thread-id=\"0\",frame={addr=\"0x0000000
 
 // output of frame for notification with file/line info
 wxString const c_frame_output_no_source(wxT("reason=\"end-stepping-range\",thread-id=\"0\",")
-                                        wxT("frame={addr=\"0x00007fd9c8e68486\",func=\"__libc_start_main\",")
+                                        wxT("frame={addr=\"0xc8e68486\",func=\"__libc_start_main\",")
                                         wxT("args=[],from=\"/lib/libc.so.6\"}"));
 
 TEST(FrameCtor)
