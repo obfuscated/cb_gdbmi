@@ -107,10 +107,8 @@ bool Configuration::SaveChanges(wxPanel *p)
 
 wxString Configuration::GetDebuggerExecutable()
 {
-    if (platform::unix)
-        return m_config.Read(wxT("executable_path"), wxT("/usr/bin/gdb"));
-    else
-        return m_config.Read(wxT("executable_path"), wxEmptyString);
+    const wxString &result = m_config.Read(wxT("executable_path"), wxEmptyString);
+    return !result.empty() ? result : cbDetectDebuggerExecutable(wxT("gdb"));
 }
 
 wxArrayString Configuration::GetInitialCommands()
