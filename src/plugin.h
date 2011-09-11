@@ -89,7 +89,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual bool SwitchToThread(int thread_number);
 
         // watches
-        virtual cb::shared_ptr<cbWatch> AddWatch(const wxString& symbol);
+        virtual cb::shared_ptr<cbWatch> AddWatch(const wxString &symbol);
+        void AddTooltipWatch(const wxString &symbol, wxRect const &rect);
         virtual void DeleteWatch(cbWatch *watch);
         virtual bool HasWatch(cbWatch *watch);
         virtual void ShowWatchProperties(cbWatch *watch);
@@ -105,6 +106,9 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         virtual void GetCurrentPosition(wxString &filename, int &line);
         virtual void RequestUpdate(DebugWindows window);
+
+        virtual void OnValueTooltip(const wxString &token, const wxRect &evalRect);
+        virtual bool ShowValueTooltip(int style);
     protected:
         /** Any descendent plugin should override this virtual method and
           * perform any necessary initialization. This method is called by
@@ -189,5 +193,6 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         int m_exit_code;
         int m_console_pid;
         int m_pid_attached;
+        bool m_hasStartUpError;
 };
 #endif // _DEBUGGER_GDB_MI_PLUGIN_H_

@@ -54,7 +54,7 @@ dbg_mi::ResultParser MakeParser(wxString const &str)
 TEST(UpdateSimple)
 {
     dbg_mi::WatchesContainer watches;
-    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(wxT("a")));
+    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(wxT("a"), false));
     w->SetValue(wxT("0"));
     w->SetID(wxT("var1"));
     watches.push_back(w);

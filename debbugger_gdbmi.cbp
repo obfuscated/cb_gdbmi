@@ -45,16 +45,15 @@
 					<Add option="-DwxUSE_UNICODE" />
 					<Add option="-DBUILDING_PLUGIN" />
 					<Add directory="$(#WX.include)" />
-					<Add directory="$(#wx)/contrib/include" />
-					<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)/msw$(WX_SUFFIX)" />
-					<Add directory="sdk/wxscintilla/include" />
+					<Add directory="$(#wx)\contrib\include" />
+					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
 				</Compiler>
 				<Linker>
 					<Add option="-Wl,--enable-auto-image-base" />
 					<Add option="-Wl,--add-stdcall-alias" />
 					<Add option="-Wl,--enable-auto-import" />
 					<Add library="wxmsw28U" />
-					<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)" />
+					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="pack.bat $(#cb_sdk)" />
@@ -71,6 +70,7 @@
 			<Add option="-Wall" />
 			<Add directory="src" />
 			<Add directory="$(#cb_sdk.include)" />
+			<Add directory="$(#cb_sdk)/sdk/wxscintilla/include" />
 		</Compiler>
 		<Linker>
 			<Add library="codeblocks" />

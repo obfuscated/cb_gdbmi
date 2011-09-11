@@ -290,9 +290,19 @@ public:
         wxString line;
         Type type;
     };
+
+    struct Log
+    {
+        enum Type
+        {
+            Normal = 0,
+            Error
+        };
+    };
 public:
     virtual ~Logger() {}
 
+    virtual void Log(wxString const &line, Log::Type type = Log::Normal) = 0;
     virtual void Debug(wxString const &line, Line::Type type = Line::Debug) = 0;
     virtual Line const* GetDebugLine(int index) const = 0;
 

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <wx/xrc/xmlres.h>
+#include <wx/wxscintilla.h>
 
 #include <cbdebugger_interfaces.h>
 #include <cbproject.h>
@@ -71,6 +72,7 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     }
 
     m_executor.SetLogger(&m_execution_logger);
+    RegisterValueTooltip();
 }
 
 // destructor
@@ -364,7 +366,7 @@ void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
     {
         for(dbg_mi::WatchesContainer::iterator it = m_watches.begin(); it != m_watches.end(); ++it)
         {
-            if((*it)->GetID().empty())
+            if((*it)->GetID().empty() && !(*it)->ForTooltip())
                 m_actions.Add(new dbg_mi::WatchCreateAction(*it, m_watches, m_execution_logger));
         }
         m_actions.Add(new dbg_mi::WatchesUpdateAction(m_watches, m_execution_logger));
@@ -427,6 +429,7 @@ struct StopNotification
 
 bool Debugger_GDB_MI::Debug(bool breakOnEntry)
 {
+    m_hasStartUpError = false;
 //    ShowLog(true);
     Log(wxT("start debugger"));
 
@@ -442,7 +445,7 @@ bool Debugger_GDB_MI::Debug(bool breakOnEntry)
     if(!EnsureBuildUpToDate(start_type))
         return false;
 
-    if(!WaitingCompilerToFinish() && !m_executor.IsRunning())
+    if(!WaitingCompilerToFinish() && !m_executor.IsRunning() && !m_hasStartUpError)
         return StartDebugger(project, start_type) == 0;
     else
         return true;
@@ -484,11 +487,13 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
     if(!compiler)
     {
         Log(_T("no compiler found!"), Logger::error);
+        m_hasStartUpError = true;
         return 2;
     }
     if(!target)
     {
         Log(_T("no target found!"), Logger::error);
+        m_hasStartUpError = true;
         return 3;
     }
 
@@ -496,16 +501,23 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
     wxString debugger = GetActiveConfigEx().GetDebuggerExecutable();
     wxString debuggee, working_dir;
     if (!GetDebuggee(debuggee, working_dir, target))
+    {
+        m_hasStartUpError = true;
         return 6;
+    }
 
     bool console = target->GetTargetType() == ttConsoleOnly;
 
     int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console, start_type);
     if (res != 0)
+    {
+        m_hasStartUpError = true;
         return res;
+    }
     m_executor.SetAttachedPID(-1);
 
     m_project = project;
+    m_hasStartUpError = false;
     return 0;
 }
 
@@ -540,7 +552,9 @@ int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &de
     if (pid == 0)
         Log(_T("Working dir : ") + working_dir);
 
-    int ret = m_executor.LaunchProcess(cmd, working_dir, id_gdb_process, this);
+    int ret = m_executor.LaunchProcess(cmd, working_dir, id_gdb_process, this, m_execution_logger);
+    if (ret != 0)
+        return ret;
 
     m_executor.Stopped(true);
 //    m_executor.Execute(_T("-enable-timings"));
@@ -998,12 +1012,21 @@ struct CompareWatchPtr
 
 cb::shared_ptr<cbWatch> Debugger_GDB_MI::AddWatch(const wxString& symbol)
 {
-    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol));
+    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol, false));
     m_watches.push_back(w);
 
     if(IsRunning())
         m_actions.Add(new dbg_mi::WatchCreateAction(w, m_watches, m_execution_logger));
     return w;
+}
+
+void Debugger_GDB_MI::AddTooltipWatch(const wxString &symbol, wxRect const &rect)
+{
+    dbg_mi::Watch::Pointer w(new dbg_mi::Watch(symbol, true));
+    m_watches.push_back(w);
+
+    if(IsRunning())
+        m_actions.Add(new dbg_mi::WatchCreateTooltipAction(w, m_watches, m_execution_logger, rect));
 }
 
 void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
@@ -1202,4 +1225,18 @@ void Debugger_GDB_MI::KillConsole()
         wxKill(m_console_pid);
         m_console_pid = -1;
     }
+}
+
+void Debugger_GDB_MI::OnValueTooltip(const wxString &token, const wxRect &evalRect)
+{
+    AddTooltipWatch(token, evalRect);
+}
+
+bool Debugger_GDB_MI::ShowValueTooltip(int style)
+{
+    if (!IsRunning() || !IsStopped())
+        return false;
+    if (style != wxSCI_C_DEFAULT && style != wxSCI_C_OPERATOR && style != wxSCI_C_IDENTIFIER)
+        return false;
+    return true;
 }

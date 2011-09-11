@@ -5,6 +5,10 @@
 class MockLogger : public dbg_mi::Logger
 {
 public:
+    virtual void Log(wxString const &line, Log::Type type)
+    {
+    }
+
     virtual void Debug(wxString const &line, Line::Type type)
     {
         Line l;

@@ -146,6 +146,24 @@ void GetChildPIDs(int parent, std::vector<int> &childs)
 namespace dbg_mi
 {
 
+void LogPaneLogger::Log(wxString const &line, Log::Type type)
+{
+    if (m_shutdowned)
+        return;
+
+    int index;
+
+    switch (type)
+    {
+        case Log::Normal:
+            m_plugin->Log(line, ::Logger::info);
+            break;
+        case Log::Error:
+            m_plugin->Log(line, ::Logger::error);
+            break;
+    }
+}
+
 void LogPaneLogger::Debug(wxString const &line, Line::Type type)
 {
     if (m_shutdowned)
@@ -175,7 +193,6 @@ void LogPaneLogger::Debug(wxString const &line, Line::Type type)
 
 GDBExecutor::GDBExecutor() :
     m_process(NULL),
-    m_debug_page(-1),
     m_pid(-1),
     m_child_pid(-1),
     m_attached_pid(-1),
@@ -192,52 +209,52 @@ GDBExecutor::~GDBExecutor()
 }
 
 int GDBExecutor::LaunchProcess(wxString const &cmd, wxString const& cwd, int id_gdb_process,
-                               wxEvtHandler *event_handler)
+                               wxEvtHandler *event_handler, Logger &logger)
 {
-    LogManager *log = Manager::Get()->GetLogManager();
     if(m_process)
         return -1;
 
     // start the gdb process
     m_process = new PipedProcess((void**)&m_process, event_handler, id_gdb_process, true, cwd);
-//    log->Log(_("Starting debugger: "), m_log_page);
+    logger.Log(_("Starting debugger: "));
+    logger.Debug(wxT("Executing command: ") + cmd);
     m_pid = wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_MAKE_GROUP_LEADER, m_process);
     m_child_pid = -1;
 
-//#ifdef __WXMAC__
-//    if (m_pid == -1)
-//        log->LogError(_("debugger has fake macos PID"), m_log_page);
-//#endif
+#ifdef __WXMAC__
+    if (m_pid == -1)
+        logger.Log(_("debugger has fake macos PID"), Logger::Log::Error);
+#endif
 
     if (!m_pid)
     {
         delete m_process;
         m_process = 0;
-//        log->Log(_("failed"), m_log_page);
+        logger.Log(_("failed"), Logger::Log::Error);
         return -1;
     }
     else if (!m_process->GetOutputStream())
     {
         delete m_process;
         m_process = 0;
-//        log->Log(_("failed (to get debugger's stdin)"), m_log_page);
+        logger.Log(_("failed (to get debugger's stdin)"), Logger::Log::Error);
         return -2;
     }
     else if (!m_process->GetInputStream())
     {
         delete m_process;
         m_process = 0;
-//        log->Log(_("failed (to get debugger's stdout)"), m_log_page);
+        logger.Log(_("failed (to get debugger's stdout)"), Logger::Log::Error);
         return -2;
     }
     else if (!m_process->GetErrorStream())
     {
         delete m_process;
         m_process = 0;
-//        log->Log(_("failed (to get debugger's stderr)"), m_log_page);
+        logger.Log(_("failed (to get debugger's stderr)"), Logger::Log::Error);
         return -2;
     }
-//    log->Log(_("done"), m_log_page);
+    logger.Log(_("done"));
 
     return 0;
 }

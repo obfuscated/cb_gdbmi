@@ -318,7 +318,7 @@ bool WatchHasType(ResultValue const &value)
 
 void AppendNullChild(Watch &watch)
 {
-    watch.AddChild(new Watch(wxT("updating...")));
+    watch.AddChild(new Watch(wxT("updating..."), watch.ForTooltip()));
 }
 
 Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &symbol, WatchesContainer &watches)
@@ -339,7 +339,7 @@ Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &
     }
     else
     {
-        child = new Watch(symbol);
+        child = new Watch(symbol, parent.ForTooltip());
         ParseWatchValueID(*child, child_value);
         parent.AddChild(child);
     }
@@ -347,7 +347,28 @@ Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &
     child->MarkAsRemoved(false);
     return child;
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void UpdateWatches(dbg_mi::Logger &logger)
+{
+#ifndef TEST_PROJECT
+    logger.Debug(wxT("updating watches"));
+    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
+#endif
+}
 
+void UpdateWatchesTooltipOrAll(dbg_mi::Watch *watch, dbg_mi::Logger &logger)
+{
+#ifndef TEST_PROJECT
+    if (watch->ForTooltip())
+    {
+        logger.Debug(wxT("updating tooltip watch"));
+        Manager::Get()->GetDebuggerManager()->GetInterfaceFactory()->UpdateValueTooltip();
+    }
+    else
+        UpdateWatches(logger);
+#endif
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WatchBaseAction::WatchBaseAction(WatchesContainer &watches, Logger &logger) :
     m_watches(watches),
     m_logger(logger),
@@ -357,21 +378,19 @@ WatchBaseAction::WatchBaseAction(WatchesContainer &watches, Logger &logger) :
 
 WatchBaseAction::~WatchBaseAction()
 {
-#ifndef TEST_PROJECT
-    Manager::Get()->GetDebuggerManager()->GetWatchesDialog()->UpdateWatches();
-#endif
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &value)
 {
     bool error = false;
-    m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - steplistchildren for id: ")
+    m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - steplistchildren for id: ")
                    + id.ToString() + wxT(" -> ") + value.MakeDebugString());
 
     ListCommandParentMap::iterator it = m_parent_map.find(id);
     if(it == m_parent_map.end() || !it->second)
     {
-        m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - no parent for id: ") + id.ToString());
+        m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - no parent for id: ") + id.ToString());
         return false;
     }
 
@@ -381,7 +400,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
     {
         int count = children->GetTupleSize();
 
-        m_logger.Debug(wxString::Format(wxT("WatchCreateAction::OnCommandOutput - children %d"), count));
+        m_logger.Debug(wxString::Format(wxT("WatchBaseAction::ParseListCommand - children %d"), count));
         Watch *parent_watch = it->second;
 
         for(int ii = 0; ii < count; ++ii)
@@ -403,7 +422,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
                 if(dynamic_has_more)
                 {
-                    child = new Watch(symbol);
+                    child = new Watch(symbol, parent_watch->ForTooltip());
                     ParseWatchValueID(*child, *child_value);
                     ExecuteListCommand(*child, parent_watch);
                 }
@@ -434,7 +453,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             child = AddChild(*parent_watch, *child_value, symbol, m_watches);
                             AppendNullChild(*child);
 
-                            m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - adding child ")
+                            m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - adding child ")
                                            + child->GetDebugString()
                                            + wxT(" to ") + parent_watch->GetDebugString());
                             child = NULL;
@@ -452,7 +471,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
             }
             else
             {
-                m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - can't find child in ")
+                m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - can't find child in ")
                                + children->GetTupleValueByIndex(ii)->MakeDebugString());
             }
         }
@@ -494,7 +513,7 @@ void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch *parent
     ++m_sub_commands_left;
 }
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger) :
     WatchBaseAction(watches, logger),
     m_watch(watch),
@@ -554,6 +573,7 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
     else if(m_sub_commands_left == 0)
     {
         m_logger.Debug(wxT("WatchCreateAction::Output - finishing at") + id.ToString());
+        UpdateWatches(m_logger);
         Finish();
     }
 }
@@ -565,7 +585,14 @@ void WatchCreateAction::OnStart()
     Execute(wxString::Format(wxT("-var-create - @ %s"), symbol.c_str()));
     m_sub_commands_left = 1;
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+WatchCreateTooltipAction::~WatchCreateTooltipAction()
+{
+    if (m_watch->ForTooltip())
+        Manager::Get()->GetDebuggerManager()->GetInterfaceFactory()->ShowValueTooltip(m_watch, m_rect);
+}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WatchesUpdateAction::WatchesUpdateAction(WatchesContainer &watches, Logger &logger) :
     WatchBaseAction(watches, logger)
 {
@@ -706,6 +733,7 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
     if(m_sub_commands_left == 0)
     {
         m_logger.Debug(wxT("WatchUpdateAction::Output - finishing at") + id.ToString());
+        UpdateWatches(m_logger);
         Finish();
     }
 }
@@ -727,10 +755,12 @@ void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser cons
     else if(m_sub_commands_left == 0)
     {
         m_logger.Debug(wxT("WatchExpandedAction::Output - done"));
+        UpdateWatchesTooltipOrAll(m_expanded_watch, m_logger);
         Finish();
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WatchCollapseAction::OnStart()
 {
     Execute(wxT("-var-delete -c ") + m_collapsed_watch->GetID());
@@ -743,6 +773,7 @@ void WatchCollapseAction::OnCommandOutput(CommandID const &id, ResultParser cons
         m_collapsed_watch->SetHasBeenExpanded(false);
         m_collapsed_watch->RemoveChildren();
         AppendNullChild(*m_collapsed_watch);
+        UpdateWatchesTooltipOrAll(m_collapsed_watch, m_logger);
     }
     Finish();
 }

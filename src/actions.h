@@ -243,9 +243,22 @@ public:
 protected:
     virtual void OnStart();
 
-private:
+protected:
     Watch::Pointer m_watch;
     Step m_step;
+};
+
+class WatchCreateTooltipAction : public WatchCreateAction
+{
+public:
+    WatchCreateTooltipAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger, wxRect const &rect) :
+        WatchCreateAction(watch, watches, logger),
+        m_rect(rect)
+    {
+    }
+    virtual ~WatchCreateTooltipAction();
+private:
+    wxRect m_rect;
 };
 
 class WatchesUpdateAction : public WatchBaseAction
@@ -260,7 +273,6 @@ protected:
 private:
     bool ParseUpdate(ResultParser const &result);
 private:
-//    WatchesContainer &m_watches;
     CommandID   m_update_command;
 };
 

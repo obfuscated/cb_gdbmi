@@ -4,7 +4,7 @@
 
 dbg_mi::Watch* MakeWatch(wxString const &symbol, wxString const &exp)
 {
-    dbg_mi::Watch *w(new dbg_mi::Watch(symbol));
+    dbg_mi::Watch *w(new dbg_mi::Watch(symbol, false));
     w->SetID(exp);
     return w;
 }
@@ -40,7 +40,7 @@ struct FindWatchFixture
 
     void AddWatch(wxString const &exp)
     {
-        dbg_mi::Watch *w = new dbg_mi::Watch(exp);
+        dbg_mi::Watch *w = new dbg_mi::Watch(exp, false);
         w->SetID(exp);
         watches.push_back(std::tr1::shared_ptr<dbg_mi::Watch>(w));
     }

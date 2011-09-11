@@ -14,6 +14,7 @@ class LogPaneLogger : public Logger
 public:
     LogPaneLogger(cbDebuggerPlugin *plugin) : m_plugin(plugin), m_shutdowned(false) {}
 
+    virtual void Log(wxString const &line, Log::Type type = Log::Normal);
     virtual void Debug(wxString const &line, Line::Type type = Line::Debug);
     virtual Line const* GetDebugLine(int index) const { return NULL; }
 
@@ -43,8 +44,7 @@ public:
     GDBExecutor();
     ~GDBExecutor();
 
-    void Init(int log_page, int debug_page);
-    int LaunchProcess(wxString const &cmd, wxString const& cwd, int id_gdb_process, wxEvtHandler *event_handler);
+    int LaunchProcess(wxString const &cmd, wxString const& cwd, int id_gdb_process, wxEvtHandler *event_handler, Logger &logger);
 
     bool ProcessHasInput();
     bool IsRunning() const;
@@ -68,7 +68,6 @@ private:
     long GetChildPID();
 private:
     PipedProcess *m_process;
-    int m_debug_page;
     long m_pid, m_child_pid, m_attached_pid;
 
     bool m_stopped;
