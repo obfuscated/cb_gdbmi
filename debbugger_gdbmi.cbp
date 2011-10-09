@@ -98,6 +98,8 @@
 		<Unit filename="src/frame.h" />
 		<Unit filename="src/gdb_executor.cpp" />
 		<Unit filename="src/gdb_executor.h" />
+		<Unit filename="src/helpers.cpp" />
+		<Unit filename="src/helpers.h" />
 		<Unit filename="src/plugin.cpp" />
 		<Unit filename="src/plugin.h" />
 		<Unit filename="src/updated_variable.cpp" />

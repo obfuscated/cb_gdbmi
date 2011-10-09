@@ -10,6 +10,8 @@
 #include <debuggermanager.h>
 #include <pipedprocess.h>
 
+#include "helpers.h"
+
 namespace
 {
 // function pointer to DebugBreakProcess under windows (XP+)
@@ -101,17 +103,10 @@ void GetChildPIDs(int parent, std::vector<int> &childs)
                     char line[101];
                     fgets(line, 100, file);
                     fclose(file);
-                    int dummy;
-                    char comm[100];
-                    int ppid;
-                    int count = sscanf(line, "%d %s %c %d", &dummy, comm, (char *) &dummy, &ppid);
-                    if(count == 4)
-                    {
-                        if(ppid == parent)
-                        {
-                            childs.push_back(pid);
-                        }
-                    }
+
+                    int ppid = dbg_mi::ParseParentPID(line);
+                    if(ppid == parent)
+                        childs.push_back(pid);
                 }
             }
         }
