@@ -14,14 +14,13 @@ namespace dbg_mi
 void BreakpointAddAction::OnStart()
 {
     wxString cmd(wxT("-break-insert "));
-    cbBreakpoint &bp = m_breakpoint->Get();
 
-    if(bp.UseCondition())
-        cmd += wxT("-c ") + bp.GetCondition() + wxT(" ");
-    if(bp.UseIgnoreCount())
-        cmd += wxT("-i ") + wxString::Format(wxT("%d "), bp.GetIgnoreCount());
+    if(m_breakpoint->HasCondition())
+        cmd += wxT("-c ") + m_breakpoint->GetCondition() + wxT(" ");
+    if(m_breakpoint->HasIgnoreCount())
+        cmd += wxT("-i ") + wxString::Format(wxT("%d "), m_breakpoint->GetIgnoreCount());
 
-    cmd += wxString::Format(wxT("%s:%d"), bp.GetFilename().c_str(), bp.GetLine());
+    cmd += wxString::Format(wxT("%s:%d"), m_breakpoint->GetLocation().c_str(), m_breakpoint->GetLine());
     m_initial_cmd = Execute(cmd);
     m_logger.Debug(wxT("BreakpointAddAction::m_initial_cmd = ") + m_initial_cmd.ToString());
 }
@@ -43,7 +42,7 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
                 m_logger.Debug(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
                 m_breakpoint->SetIndex(n);
 
-                if(!m_breakpoint->Get().IsEnabled())
+                if(!m_breakpoint->IsEnabled())
                     m_disable_cmd = Execute(wxString::Format(wxT("-break-disable %d"), n));
                 else
                 {
@@ -120,7 +119,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                     if(s.IsValid() && m_first_valid == -1)
                         m_first_valid = ii;
 
-                    m_backtrace.push_back(s);
+                    m_backtrace.push_back(cbStackFrame::Pointer(new cbStackFrame(s)));
                 }
                 else
                     m_logger.Debug(wxT("can't parse frame: ") + frame_value->MakeDebugString());
@@ -149,7 +148,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
             {
                 wxString args;
                 if(arguments.GetFrame(ii, args))
-                    m_backtrace[ii].SetSymbol(m_backtrace[ii].GetSymbol() + wxT("(") + args + wxT(")"));
+                    m_backtrace[ii]->SetSymbol(m_backtrace[ii]->GetSymbol() + wxT("(") + args + wxT(")"));
                 else
                 {
                     m_logger.Debug(wxString::Format(wxT("GenerateBacktrace::OnCommandOutput: ")
@@ -189,7 +188,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                 frame = 0;
 
             m_current_frame.SetFrame(frame);
-            int number = m_backtrace.empty() ? 0 : m_backtrace[frame].GetNumber();
+            int number = m_backtrace.empty() ? 0 : m_backtrace[frame]->GetNumber();
             if (m_old_active_frame != number)
                 m_switch_to_frame->Invoke(number);
         }
@@ -271,7 +270,7 @@ void GenerateThreadsList::OnCommandOutput(CommandID const & /*id*/, ResultParser
                 info += wxT(" in ") + str;
         }
 
-        m_threads.push_back(cbThread(thread_id == current_thread_id, thread_id, info));
+        m_threads.push_back(cbThread::Pointer(new cbThread(thread_id == current_thread_id, thread_id, info)));
     }
 
     Manager::Get()->GetDebuggerManager()->GetThreadsDialog()->Reload();
@@ -316,18 +315,19 @@ bool WatchHasType(ResultValue const &value)
     return Lookup(value, wxT("type"), s);
 }
 
-void AppendNullChild(Watch &watch)
+void AppendNullChild(Watch::Pointer watch)
 {
-    watch.AddChild(new Watch(wxT("updating..."), watch.ForTooltip()));
+    cbWatch::AddChild(watch, cbWatch::Pointer(new Watch(wxT("updating..."), watch->ForTooltip())));
 }
 
-Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &symbol, WatchesContainer &watches)
+Watch::Pointer AddChild(Watch::Pointer parent, ResultValue const &child_value, wxString const &symbol,
+                        WatchesContainer &watches)
 {
     wxString id;
     if(!Lookup(child_value, wxT("name"), id))
-        return NULL;
+        return Watch::Pointer();
 
-    Watch *child = FindWatch(id, watches);
+    Watch::Pointer child = FindWatch(id, watches);
     if(child)
     {
         wxString s;
@@ -339,9 +339,9 @@ Watch * AddChild(Watch &parent, ResultValue const &child_value, wxString const &
     }
     else
     {
-        child = new Watch(symbol, parent.ForTooltip());
+        child = Watch::Pointer(new Watch(symbol, parent->ForTooltip()));
         ParseWatchValueID(*child, child_value);
-        parent.AddChild(child);
+        cbWatch::AddChild(parent, child);
     }
 
     child->MarkAsRemoved(false);
@@ -356,7 +356,7 @@ void UpdateWatches(dbg_mi::Logger &logger)
 #endif
 }
 
-void UpdateWatchesTooltipOrAll(dbg_mi::Watch *watch, dbg_mi::Logger &logger)
+void UpdateWatchesTooltipOrAll(const dbg_mi::Watch::Pointer &watch, dbg_mi::Logger &logger)
 {
 #ifndef TEST_PROJECT
     if (watch->ForTooltip())
@@ -401,7 +401,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
         int count = children->GetTupleSize();
 
         m_logger.Debug(wxString::Format(wxT("WatchBaseAction::ParseListCommand - children %d"), count));
-        Watch *parent_watch = it->second;
+        Watch::Pointer parent_watch = it->second;
 
         for(int ii = 0; ii < count; ++ii)
         {
@@ -414,7 +414,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                 if(!Lookup(*child_value, wxT("exp"), symbol))
                     symbol = wxT("--unknown--");
 
-                Watch *child = NULL;
+                Watch::Pointer child;
                 bool dynamic_has_more;
 
                 int children_count;
@@ -422,9 +422,9 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
                 if(dynamic_has_more)
                 {
-                    child = new Watch(symbol, parent_watch->ForTooltip());
+                    child = Watch::Pointer(new Watch(symbol, parent_watch->ForTooltip()));
                     ParseWatchValueID(*child, *child_value);
-                    ExecuteListCommand(*child, parent_watch);
+                    ExecuteListCommand(child, parent_watch);
                 }
                 else
                 {
@@ -439,8 +439,8 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             parent_watch->SetHasBeenExpanded(true);
                             parent_watch->RemoveChildren();
                         }
-                        child = AddChild(*parent_watch, *child_value, symbol, m_watches);
-                        child = NULL;
+                        child = AddChild(parent_watch, *child_value, symbol, m_watches);
+                        child = Watch::Pointer();
                         break;
                     default:
                         if(WatchHasType(*child_value))
@@ -450,13 +450,13 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                                 parent_watch->SetHasBeenExpanded(true);
                                 parent_watch->RemoveChildren();
                             }
-                            child = AddChild(*parent_watch, *child_value, symbol, m_watches);
-                            AppendNullChild(*child);
+                            child = AddChild(parent_watch, *child_value, symbol, m_watches);
+                            AppendNullChild(child);
 
                             m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - adding child ")
                                            + child->GetDebugString()
                                            + wxT(" to ") + parent_watch->GetDebugString());
-                            child = NULL;
+                            child = Watch::Pointer();
                         }
                         else
                         {
@@ -466,8 +466,6 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                         }
                     }
                 }
-
-                child->Destroy();
             }
             else
             {
@@ -482,20 +480,20 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
     return !error;
 }
 
-void WatchBaseAction::ExecuteListCommand(Watch &watch, Watch *parent, int start, int end)
+void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent, int start, int end)
 {
     CommandID id;
 
     if(start > -1 && end > -1)
-        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch.GetID().c_str(), start, end));
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch->GetID().c_str(), start, end));
     else
-        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch.GetID().c_str()));
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch->GetID().c_str()));
 
-    m_parent_map[id] = parent ? parent : &watch;
+    m_parent_map[id] = parent ? parent : watch;
     ++m_sub_commands_left;
 }
 
-void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch *parent, int start, int end)
+void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent, int start, int end)
 {
     if (!parent)
     {
@@ -541,13 +539,13 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
                 {
                     m_step = StepSetRange;
                     Execute(wxT("-var-set-update-range \"") + m_watch->GetID() + wxT("\" 0 100"));
-                    AppendNullChild(*m_watch);
+                    AppendNullChild(m_watch);
 
                 }
                 else if(children > 0)
                 {
                     m_step = StepListChildren;
-                    AppendNullChild(*m_watch);
+                    AppendNullChild(m_watch);
                 }
                 else
                     Finish();
@@ -626,7 +624,7 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                 continue;
             }
 
-            Watch *watch = FindWatch(expression, m_watches);
+            Watch::Pointer watch = FindWatch(expression, m_watches);
             if(!watch)
             {
                 m_logger.Debug(wxT("WatchesUpdateAction::Output - can't find watch ") + expression);
@@ -656,12 +654,12 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                             watch->RemoveChildren();
 
                             if(updated_var.GetNewNumberOfChildren() > 0)
-                                ExecuteListCommand(*watch, NULL);
+                                ExecuteListCommand(watch);
                         }
                         else if(updated_var.HasMore())
                         {
                             watch->MarkChildsAsRemoved(); // watch->RemoveChildren();
-                            ExecuteListCommand(*watch, NULL);
+                            ExecuteListCommand(watch);
                         }
                         else if(updated_var.HasValue())
                         {
@@ -681,7 +679,7 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                             watch->RemoveChildren();
 
                             if(updated_var.GetNewNumberOfChildren() > 0)
-                                ExecuteListCommand(*watch, NULL);
+                                ExecuteListCommand(watch);
                         }
                         if(updated_var.HasValue())
                         {
@@ -740,7 +738,7 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 
 void WatchExpandedAction::OnStart()
 {
-    ExecuteListCommand(*m_expanded_watch, NULL, 0, 100);
+    ExecuteListCommand(m_expanded_watch, Watch::Pointer(), 0, 100);
 }
 
 void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
@@ -772,7 +770,7 @@ void WatchCollapseAction::OnCommandOutput(CommandID const &id, ResultParser cons
     {
         m_collapsed_watch->SetHasBeenExpanded(false);
         m_collapsed_watch->RemoveChildren();
-        AppendNullChild(*m_collapsed_watch);
+        AppendNullChild(m_collapsed_watch);
         UpdateWatchesTooltipOrAll(m_collapsed_watch, m_logger);
     }
     Finish();

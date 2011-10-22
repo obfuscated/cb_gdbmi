@@ -2,26 +2,69 @@
 
 namespace dbg_mi
 {
+void Breakpoint::SetEnabled(bool flag)
+{
+}
 
-Watch* FindWatch(wxString const &expression, WatchesContainer &watches)
+wxString Breakpoint::GetLocation() const
+{
+    return m_filename;
+}
+
+int Breakpoint::GetLine() const
+{
+    return m_line;
+}
+
+wxString Breakpoint::GetLineString() const
+{
+    return wxString::Format(wxT("%d"), m_line);
+}
+
+wxString Breakpoint::GetType() const
+{
+    return _("Code");
+}
+
+wxString Breakpoint::GetInfo() const
+{
+    return wxEmptyString;
+}
+
+bool Breakpoint::IsEnabled() const
+{
+    return m_enabled;
+}
+
+bool Breakpoint::IsVisibleInEditor() const
+{
+    return true;
+}
+
+bool Breakpoint::IsTemporary() const
+{
+    return m_temporary;
+}
+
+Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches)
 {
     for(WatchesContainer::iterator it = watches.begin(); it != watches.end(); ++it)
     {
         if(expression.StartsWith(it->get()->GetID()))
         {
             if(expression.length() == it->get()->GetID().length())
-                return it->get();
+                return *it;
             else
             {
-                Watch *curr = it->get();
+                Watch::Pointer curr = *it;
                 while(curr)
                 {
-                    Watch *temp = curr;
-                    curr = NULL;
+                    Watch::Pointer temp = curr;
+                    curr = Watch::Pointer();
 
                     for(int child = 0; child < temp->GetChildCount(); ++child)
                     {
-                        Watch *p = static_cast<Watch*>(temp->GetChild(child));
+                        Watch::Pointer p = cb::static_pointer_cast<Watch>(temp->GetChild(child));
                         if(expression.StartsWith(p->GetID()))
                         {
                             if(expression.length() == p->GetID().length())
@@ -39,7 +82,7 @@ Watch* FindWatch(wxString const &expression, WatchesContainer &watches)
             }
         }
     }
-    return NULL;
+    return Watch::Pointer();
 }
 
 } // namespace dbg_mi

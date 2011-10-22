@@ -11,7 +11,7 @@
 #include <compilerfactory.h>
 #include <configurationpanel.h>
 #include <configmanager.h>
-#include <editbreakpointdlg.h>
+//#include <editbreakpointdlg.h>
 #include <infowindow.h>
 #include <macrosmanager.h>
 #include <pipedprocess.h>
@@ -618,8 +618,8 @@ void Debugger_GDB_MI::CommitBreakpoints(bool force)
 
     for(Breakpoints::const_iterator it = m_temporary_breakpoints.begin(); it != m_temporary_breakpoints.end(); ++it)
     {
-        AddStringCommand(wxString::Format(_T("-break-insert -t %s:%d"), (*it)->Get().GetFilename().c_str(),
-                                          (*it)->Get().GetLine()));
+        AddStringCommand(wxString::Format(_T("-break-insert -t %s:%d"), (*it)->GetLocation().c_str(),
+                                          (*it)->GetLine()));
     }
     m_temporary_breakpoints.clear();
 }
@@ -656,7 +656,7 @@ bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
     }
     else
     {
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
         m_temporary_breakpoints.push_back(ptr);
         return Debug(false);
     }
@@ -736,6 +736,11 @@ bool Debugger_GDB_MI::IsStopped() const
     return m_executor.IsStopped();
 }
 
+bool Debugger_GDB_MI::IsBusy() const
+{
+    return !m_executor.IsStopped();
+}
+
 int Debugger_GDB_MI::GetExitCode() const
 {
     return m_exit_code;
@@ -746,7 +751,7 @@ int Debugger_GDB_MI::GetStackFrameCount() const
     return m_backtrace.size();
 }
 
-const cbStackFrame& Debugger_GDB_MI::GetStackFrame(int index) const
+cbStackFrame::ConstPointer Debugger_GDB_MI::GetStackFrame(int index) const
 {
     return m_backtrace[index];
 }
@@ -766,11 +771,11 @@ struct SwitchToFrameNotification
             dbg_mi::CurrentFrame &current_frame = m_plugin->GetCurrentFrame();
             current_frame.SwitchToFrame(m_frame_number);
 
-            cbStackFrame const &frame = m_plugin->GetStackFrame(m_frame_number);
+            cbStackFrame::ConstPointer frame = m_plugin->GetStackFrame(m_frame_number);
 
-            wxString const &filename = frame.GetFilename();
+            wxString const &filename = frame->GetFilename();
             long line;
-            if (frame.GetLine().ToLong(&line))
+            if (frame->GetLine().ToLong(&line))
             {
                 current_frame.SetPosition(filename, line);
                 m_plugin->SyncEditor(filename, line, true);
@@ -794,7 +799,7 @@ void Debugger_GDB_MI::SwitchToFrame(int number)
         {
             m_execution_logger.Debug(wxT("Debugger_GDB_MI::SwitchToFrame - adding commnad"));
 
-            int frame = m_backtrace[number].GetNumber();
+            int frame = m_backtrace[number]->GetNumber();
             typedef dbg_mi::SwitchToFrame<SwitchToFrameNotification> SwitchType;
             m_actions.Add(new SwitchType(frame, SwitchToFrameNotification(this, frame)));
         }
@@ -806,7 +811,7 @@ int Debugger_GDB_MI::GetActiveStackFrame() const
     return m_current_frame.GetStackFrame();
 }
 
-cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
+cbBreakpoint::Pointer Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
 {
     if(IsRunning())
     {
@@ -816,31 +821,31 @@ cbBreakpoint* Debugger_GDB_MI::AddBreakpoint(const wxString& filename, int line)
                                       filename.c_str(), line));
             m_executor.Interupt();
 
-            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
             m_breakpoints.push_back(ptr);
             CommitBreakpoints(false);
             Continue();
         }
         else
         {
-            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
             m_breakpoints.push_back(ptr);
             CommitBreakpoints(false);
         }
     }
     else
     {
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(cbBreakpoint(filename, line)));
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
         m_breakpoints.push_back(ptr);
     }
 
-    return &m_breakpoints.back()->Get();
+    return cb::static_pointer_cast<cbBreakpoint>(m_breakpoints.back());
 }
 
-cbBreakpoint* Debugger_GDB_MI::AddDataBreakpoint(const wxString& /*dataExpression*/)
+cbBreakpoint::Pointer Debugger_GDB_MI::AddDataBreakpoint(const wxString& /*dataExpression*/)
 {
     #warning "not implemented"
-    return NULL;
+    return cbBreakpoint::Pointer();
 }
 
 int Debugger_GDB_MI::GetBreakpointsCount() const
@@ -848,97 +853,116 @@ int Debugger_GDB_MI::GetBreakpointsCount() const
     return m_breakpoints.size();
 }
 
-cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index)
+cbBreakpoint::Pointer Debugger_GDB_MI::GetBreakpoint(int index)
 {
-    return &m_breakpoints[index]->Get();
+    return cb::static_pointer_cast<cbBreakpoint>(m_breakpoints[index]);
+}
+cbBreakpoint::ConstPointer Debugger_GDB_MI::GetBreakpoint(int index) const
+{
+    return cb::static_pointer_cast<const cbBreakpoint>(m_breakpoints[index]);
 }
 
-const cbBreakpoint* Debugger_GDB_MI::GetBreakpoint(int index) const
+void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint::Pointer breakpoint)
 {
-    return &m_breakpoints[index]->Get();
-}
-
-void Debugger_GDB_MI::UpdateBreakpoint(cbBreakpoint *breakpoint)
-{
-    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
-    {
-        dbg_mi::Breakpoint &current = **it;
-        if(&current.Get() != breakpoint)
-            continue;
-
-        switch(breakpoint->GetType())
-        {
-        case cbBreakpoint::Code:
-            {
-                cbBreakpoint temp(*breakpoint);
-                EditBreakpointDlg dialog(&temp);
-                PlaceWindow(&dialog);
-                if(dialog.ShowModal() == wxID_OK)
-                {
-                    // if the breakpoint is not sent to debugger, just copy
-                    if(current.GetIndex() != -1 || !IsRunning())
-                    {
-                        current.Get() = temp;
-                        current.SetIndex(-1);
-                    }
-                    else
-                    {
-//                        bool resume = !m_executor.IsStopped();
-//                        if(resume)
+#warning "not implemented"
+//    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+//    {
+//        dbg_mi::Breakpoint &current = **it;
+//        if(&current.Get() != breakpoint)
+//            continue;
+//
+//        switch(breakpoint->GetType())
+//        {
+//        case cbBreakpoint::Code:
+//            {
+//                cbBreakpoint temp(*breakpoint);
+//                EditBreakpointDlg dialog(&temp);
+//                PlaceWindow(&dialog);
+//                if(dialog.ShowModal() == wxID_OK)
+//                {
+//                    // if the breakpoint is not sent to debugger, just copy
+//                    if(current.GetIndex() != -1 || !IsRunning())
+//                    {
+//                        current.Get() = temp;
+//                        current.SetIndex(-1);
+//                    }
+//                    else
+//                    {
+////                        bool resume = !m_executor.IsStopped();
+////                        if(resume)
+////                            m_executor.Interupt();
+//#warning "not implemented"
+//                        bool changed = false;
+//                        if(breakpoint->IsEnabled() == temp.IsEnabled())
+//                        {
+//                            if(breakpoint->IsEnabled())
+//                                AddStringCommand(wxString::Format(wxT("-break-enable %d"), current.GetIndex()));
+//                            else
+//                                AddStringCommand(wxString::Format(wxT("-break-disable %d"), current.GetIndex()));
+//                            changed = true;
+//                        }
+//
+//                        if(changed)
+//                        {
 //                            m_executor.Interupt();
-#warning "not implemented"
-                        bool changed = false;
-                        if(breakpoint->IsEnabled() == temp.IsEnabled())
-                        {
-                            if(breakpoint->IsEnabled())
-                                AddStringCommand(wxString::Format(wxT("-break-enable %d"), current.GetIndex()));
-                            else
-                                AddStringCommand(wxString::Format(wxT("-break-disable %d"), current.GetIndex()));
-                            changed = true;
-                        }
-
-                        if(changed)
-                        {
-                            m_executor.Interupt();
-                            Continue();
-                        }
-                    }
-
-                }
-            }
-            break;
-        case cbBreakpoint::Data:
-#warning "not implemented"
-            break;
-        }
-    }
+//                            Continue();
+//                        }
+//                    }
+//
+//                }
+//            }
+//            break;
+//        case cbBreakpoint::Data:
+//#warning "not implemented"
+//            break;
+//        }
+//    }
 }
 
-void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint *breakpoint)
+void Debugger_GDB_MI::DeleteBreakpoint(cbBreakpoint::Pointer breakpoint)
 {
-    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+    Breakpoints::iterator it = std::find(m_breakpoints.begin(), m_breakpoints.end(), breakpoint);
+    if (it != m_breakpoints.end())
     {
-        dbg_mi::Breakpoint &current = **it;
-        if(&current.Get() == breakpoint)
+        DebugLog(wxString::Format(wxT("Debugger_GDB_MI::DeleteBreakpoint: %s:%d"),
+                                  breakpoint->GetLocation().c_str(), breakpoint->GetLine()));
+        int index = (*it)->GetIndex();
+        if (index != -1)
         {
-            DebugLog(wxString::Format(wxT("Debugger_GDB_MI::DeleteBreakpoint: %s:%d"),
-                                      breakpoint->GetFilename().c_str(),
-                                      breakpoint->GetLine()));
-            if(current.GetIndex() != -1)
+            if (!IsStopped())
             {
-                if(!IsStopped())
-                {
-                    m_executor.Interupt();
-                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
-                    Continue();
-                }
-                else
-                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
+                m_executor.Interupt();
+                AddStringCommand(wxString::Format(wxT("-break-delete %d"), index));
+                Continue();
             }
-            m_breakpoints.erase(it);
-            return;
+            else
+                AddStringCommand(wxString::Format(wxT("-break-delete %d"), index));
         }
+        m_breakpoints.erase(it);
     }
+//    for(Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+//    {
+//        dbg_mi::Breakpoint &current = **it;
+//        if(&current.Get() == breakpoint)
+//        {
+//            DebugLog(wxString::Format(wxT("Debugger_GDB_MI::DeleteBreakpoint: %s:%d"),
+//                                      breakpoint->GetFilename().c_str(),
+//                                      breakpoint->GetLine()));
+//            if(current.GetIndex() != -1)
+//            {
+//                if(!IsStopped())
+//                {
+//                    m_executor.Interupt();
+//                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
+//                    Continue();
+//                }
+//                else
+//                    AddStringCommand(wxString::Format(wxT("-break-delete %d"), current.GetIndex()));
+//            }
+//            m_breakpoints.erase(it);
+//            return;
+//        }
+//    }
 }
 
 void Debugger_GDB_MI::DeleteAllBreakpoints()
@@ -973,12 +997,17 @@ void Debugger_GDB_MI::ShiftBreakpoint(int /*index*/, int /*lines_to_shift*/)
     #warning "not implemented"
 }
 
+void Debugger_GDB_MI::EnableBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint, bool enable)
+{
+    #warning "not implemented"
+}
+
 int Debugger_GDB_MI::GetThreadsCount() const
 {
     return m_threads.size();
 }
 
-const cbThread& Debugger_GDB_MI::GetThread(int index) const
+cbThread::ConstPointer Debugger_GDB_MI::GetThread(int index) const
 {
     return m_threads[index];
 }
@@ -996,19 +1025,6 @@ bool Debugger_GDB_MI::SwitchToThread(int thread_number)
     else
         return false;
 }
-
-struct CompareWatchPtr
-{
-    CompareWatchPtr(cbWatch *watch_) : watch(watch_)
-    {
-    }
-    bool operator()(dbg_mi::WatchesContainer::reference r)
-    {
-        return watch == r.get();
-    }
-
-    cbWatch *watch;
-};
 
 cb::shared_ptr<cbWatch> Debugger_GDB_MI::AddWatch(const wxString& symbol)
 {
@@ -1029,12 +1045,10 @@ void Debugger_GDB_MI::AddTooltipWatch(const wxString &symbol, wxRect const &rect
         m_actions.Add(new dbg_mi::WatchCreateTooltipAction(w, m_watches, m_execution_logger, rect));
 }
 
-void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
+void Debugger_GDB_MI::DeleteWatch(cbWatch::Pointer watch)
 {
-    cbWatch *root_watch = cbGetRootWatch(watch);
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
-                                                         CompareWatchPtr(root_watch));
-
+    cbWatch::Pointer root_watch = cbGetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find(m_watches.begin(), m_watches.end(), root_watch);
     if(it == m_watches.end())
         return;
 
@@ -1052,30 +1066,29 @@ void Debugger_GDB_MI::DeleteWatch(cbWatch *watch)
     m_watches.erase(it);
 }
 
-bool Debugger_GDB_MI::HasWatch(cbWatch *watch)
+bool Debugger_GDB_MI::HasWatch(cb::shared_ptr<cbWatch> watch)
 {
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(), CompareWatchPtr(watch));
+    dbg_mi::WatchesContainer::iterator it = std::find(m_watches.begin(), m_watches.end(), watch);
     return it != m_watches.end();
 }
 
-void Debugger_GDB_MI::ShowWatchProperties(cbWatch * /*watch*/)
+void Debugger_GDB_MI::ShowWatchProperties(cb::shared_ptr<cbWatch> /*watch*/)
 {
     #warning "not implemented"
 }
 
-bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
+bool Debugger_GDB_MI::SetWatchValue(cb::shared_ptr<cbWatch> watch, const wxString &value)
 {
     if(!IsStopped() || !IsRunning())
         return false;
 
-    cbWatch *root_watch = cbGetRootWatch(watch);
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
-                                                         CompareWatchPtr(root_watch));
+    cbWatch::Pointer root_watch = cbGetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find(m_watches.begin(), m_watches.end(), root_watch);
 
     if(it == m_watches.end())
         return false;
 
-    dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+    dbg_mi::Watch::Pointer real_watch = cb::static_pointer_cast<dbg_mi::Watch>(watch);
 
     AddStringCommand(wxT("-var-assign ") + real_watch->GetID() + wxT(" ") + value);
 
@@ -1087,32 +1100,30 @@ bool Debugger_GDB_MI::SetWatchValue(cbWatch *watch, const wxString &value)
     return true;
 }
 
-void Debugger_GDB_MI::ExpandWatch(cbWatch *watch)
+void Debugger_GDB_MI::ExpandWatch(cb::shared_ptr<cbWatch> watch)
 {
     if(!IsStopped() || !IsRunning())
         return;
-    cbWatch *root_watch = cbGetRootWatch(watch);
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
-                                                         CompareWatchPtr(root_watch));
+    cbWatch::Pointer root_watch = cbGetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find(m_watches.begin(), m_watches.end(), root_watch);
     if(it != m_watches.end())
     {
-        dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+        dbg_mi::Watch::Pointer real_watch = cb::static_pointer_cast<dbg_mi::Watch>(watch);
         if(!real_watch->HasBeenExpanded())
             m_actions.Add(new dbg_mi::WatchExpandedAction(*it, real_watch, m_watches, m_execution_logger));
     }
 }
 
-void Debugger_GDB_MI::CollapseWatch(cbWatch *watch)
+void Debugger_GDB_MI::CollapseWatch(cb::shared_ptr<cbWatch> watch)
 {
     if(!IsStopped() || !IsRunning())
         return;
 
-    cbWatch *root_watch = cbGetRootWatch(watch);
-    dbg_mi::WatchesContainer::iterator it = std::find_if(m_watches.begin(), m_watches.end(),
-                                                         CompareWatchPtr(root_watch));
+    cbWatch::Pointer root_watch = cbGetRootWatch(watch);
+    dbg_mi::WatchesContainer::iterator it = std::find(m_watches.begin(), m_watches.end(), root_watch);
     if(it != m_watches.end())
     {
-        dbg_mi::Watch *real_watch = static_cast<dbg_mi::Watch*>(watch);
+        dbg_mi::Watch::Pointer real_watch = cb::static_pointer_cast<dbg_mi::Watch>(watch);
         if(real_watch->HasBeenExpanded())
             m_actions.Add(new dbg_mi::WatchCollapseAction(*it, real_watch, m_watches, m_execution_logger));
     }

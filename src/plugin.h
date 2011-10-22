@@ -63,40 +63,42 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void Stop();
         virtual bool IsRunning() const;
         virtual bool IsStopped() const;
+        virtual bool IsBusy() const;
         virtual int GetExitCode() const;
         void SetExitCode(int code) { m_exit_code = code; }
 
 		// stack frame calls;
 		virtual int GetStackFrameCount() const;
-		virtual const cbStackFrame& GetStackFrame(int index) const;
+		virtual cbStackFrame::ConstPointer GetStackFrame(int index) const;
 		virtual void SwitchToFrame(int number);
 		virtual int GetActiveStackFrame() const;
 
         // breakpoints calls
-        virtual cbBreakpoint* AddBreakpoint(const wxString& filename, int line);
-        virtual cbBreakpoint* AddDataBreakpoint(const wxString& dataExpression);
+        virtual cbBreakpoint::Pointer AddBreakpoint(const wxString& filename, int line);
+        virtual cbBreakpoint::Pointer AddDataBreakpoint(const wxString& dataExpression);
         virtual int GetBreakpointsCount() const;
-        virtual cbBreakpoint* GetBreakpoint(int index);
-        virtual const cbBreakpoint* GetBreakpoint(int index) const;
-        virtual void UpdateBreakpoint(cbBreakpoint *breakpoint);
-        virtual void DeleteBreakpoint(cbBreakpoint* breakpoint);
+        virtual cbBreakpoint::Pointer GetBreakpoint(int index);
+        virtual cbBreakpoint::ConstPointer GetBreakpoint(int index) const;
+        virtual void UpdateBreakpoint(cbBreakpoint::Pointer breakpoint);
+        virtual void DeleteBreakpoint(cbBreakpoint::Pointer breakpoint);
         virtual void DeleteAllBreakpoints();
         virtual void ShiftBreakpoint(int index, int lines_to_shift);
+        virtual void EnableBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint, bool enable);
 
         // threads
         virtual int GetThreadsCount() const;
-        virtual const cbThread& GetThread(int index) const;
+        virtual cbThread::ConstPointer GetThread(int index) const;
         virtual bool SwitchToThread(int thread_number);
 
         // watches
         virtual cb::shared_ptr<cbWatch> AddWatch(const wxString &symbol);
         void AddTooltipWatch(const wxString &symbol, wxRect const &rect);
-        virtual void DeleteWatch(cbWatch *watch);
-        virtual bool HasWatch(cbWatch *watch);
-        virtual void ShowWatchProperties(cbWatch *watch);
-        virtual bool SetWatchValue(cbWatch *watch, const wxString &value);
-        virtual void ExpandWatch(cbWatch *watch);
-        virtual void CollapseWatch(cbWatch *watch);
+        virtual void DeleteWatch(cb::shared_ptr<cbWatch> watch);
+        virtual bool HasWatch(cb::shared_ptr<cbWatch> watch);
+        virtual void ShowWatchProperties(cb::shared_ptr<cbWatch> watch);
+        virtual bool SetWatchValue(cb::shared_ptr<cbWatch> watch, const wxString &value);
+        virtual void ExpandWatch(cb::shared_ptr<cbWatch> watch);
+        virtual void CollapseWatch(cb::shared_ptr<cbWatch> watch);
 
         virtual void SendCommand(const wxString& cmd, bool debugLog);
 

@@ -12,34 +12,58 @@
 namespace dbg_mi
 {
 
-class Breakpoint
+class Breakpoint : public cbBreakpoint
 {
 public:
     typedef std::tr1::shared_ptr<Breakpoint> Pointer;
 public:
     Breakpoint() :
-        m_index(-1)
-    {
-    }
-    Breakpoint(cbBreakpoint breakpoint) :
-        m_breakpoint(breakpoint),
-        m_index(-1)
+        m_index(-1),
+        m_line(-1),
+        m_enabled(true),
+        m_temporary(false)
     {
     }
 
-    cbBreakpoint& Get() { return m_breakpoint; }
-    const cbBreakpoint& Get() const { return m_breakpoint; }
+    Breakpoint(const wxString &filename, int line) :
+        m_index(-1),
+        m_filename(filename),
+        m_line(line),
+        m_enabled(true),
+        m_temporary(false)
+    {
+    }
+
+    virtual void SetEnabled(bool flag);
+    virtual wxString GetLocation() const;
+    virtual int GetLine() const;
+    virtual wxString GetLineString() const;
+    virtual wxString GetType() const;
+    virtual wxString GetInfo() const;
+    virtual bool IsEnabled() const;
+    virtual bool IsVisibleInEditor() const;
+    virtual bool IsTemporary() const;
+
     int GetIndex() const { return m_index; }
+    const wxString& GetCondition() const { return m_condition; }
+    int GetIgnoreCount() const { return 0; }
+
+    bool HasCondition() const { return false; }
+    bool HasIgnoreCount() const { return false; }
 
     void SetIndex(int index) { m_index = index; }
 private:
-    cbBreakpoint m_breakpoint;
     int m_index;
+    wxString m_filename;
+    wxString m_condition;
+    int m_line;
+    bool m_enabled;
+    bool m_temporary;
 };
 
 
-typedef std::deque<cbStackFrame> BacktraceContainer;
-typedef std::deque<cbThread> ThreadsContainer;
+typedef std::deque<cbStackFrame::Pointer> BacktraceContainer;
+typedef std::deque<cbThread::Pointer> ThreadsContainer;
 
 class Watch : public cbWatch
 {
@@ -96,7 +120,7 @@ private:
 
 typedef std::vector<dbg_mi::Watch::Pointer> WatchesContainer;
 
-Watch* FindWatch(wxString const &expression, WatchesContainer &watches);
+Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches);
 
 // Custom window to display output of DebuggerInfoCmd
 class TextInfoWindow : public wxScrollingDialog

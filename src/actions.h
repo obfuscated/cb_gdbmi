@@ -216,11 +216,11 @@ public:
     virtual ~WatchBaseAction();
 
 protected:
-    void ExecuteListCommand(Watch &watch, Watch *parent, int start = -1, int end = -1);
-    void ExecuteListCommand(wxString const &watch_id, Watch *parent, int start = -1, int end = -1);
+    void ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent = Watch::Pointer(), int start = -1, int end = -1);
+    void ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent, int start = -1, int end = -1);
     bool ParseListCommand(CommandID const &id, ResultValue const &value);
 protected:
-    typedef std::tr1::unordered_map<CommandID, Watch*> ListCommandParentMap;
+    typedef std::tr1::unordered_map<CommandID, Watch::Pointer> ListCommandParentMap;
 protected:
     ListCommandParentMap m_parent_map;
     WatchesContainer &m_watches;
@@ -279,7 +279,7 @@ private:
 class WatchExpandedAction : public WatchBaseAction
 {
 public:
-    WatchExpandedAction(Watch::Pointer parent_watch, Watch *expanded_watch,
+    WatchExpandedAction(Watch::Pointer parent_watch, Watch::Pointer expanded_watch,
                         WatchesContainer &watches, Logger &logger) :
         WatchBaseAction(watches, logger),
         m_watch(parent_watch),
@@ -293,13 +293,13 @@ protected:
 
 private:
     Watch::Pointer m_watch;
-    Watch *m_expanded_watch;
+    Watch::Pointer m_expanded_watch;
 };
 
 class WatchCollapseAction : public WatchBaseAction
 {
 public:
-    WatchCollapseAction(Watch::Pointer parent_watch, Watch *collapsed_watch,
+    WatchCollapseAction(Watch::Pointer parent_watch, Watch::Pointer collapsed_watch,
                         WatchesContainer &watches, Logger &logger) :
         WatchBaseAction(watches, logger),
         m_watch(parent_watch),
@@ -313,7 +313,7 @@ protected:
 
 private:
     Watch::Pointer m_watch;
-    Watch *m_collapsed_watch;
+    Watch::Pointer m_collapsed_watch;
 };
 
 } // namespace dbg_mi
