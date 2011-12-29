@@ -58,6 +58,7 @@ END_EVENT_TABLE()
 
 // constructor
 Debugger_GDB_MI::Debugger_GDB_MI() :
+    cbDebuggerPlugin(wxT("GDB/MI"), wxT("gdbmi_debugger")),
     m_project(NULL),
     m_execution_logger(this),
     m_console_pid(-1),
@@ -72,7 +73,6 @@ Debugger_GDB_MI::Debugger_GDB_MI() :
     }
 
     m_executor.SetLogger(&m_execution_logger);
-    RegisterValueTooltip();
 }
 
 // destructor
@@ -85,7 +85,7 @@ void Debugger_GDB_MI::OnAttachReal()
     m_timer_poll_debugger.SetOwner(this, id_gdb_poll_timer);
 
     DebuggerManager &dbg_manager = *Manager::Get()->GetDebuggerManager();
-    dbg_manager.RegisterDebugger(this, wxT("GDB/MI"), wxT("gdbmi_debugger"));
+    dbg_manager.RegisterDebugger(this);
 }
 
 void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
@@ -105,6 +105,26 @@ void Debugger_GDB_MI::ShowToolMenu()
     wxMenu m;
     m.Append(id_menu_info_command_stream, _("Show command stream"));
     Manager::Get()->GetAppWindow()->PopupMenu(&m);
+}
+
+bool Debugger_GDB_MI::SupportsFeature(cbDebuggerFeature::Flags flag)
+{
+    switch (flag)
+    {
+        case cbDebuggerFeature::Breakpoints:
+        case cbDebuggerFeature::Callstack:
+        case cbDebuggerFeature::CPURegisters:
+        case cbDebuggerFeature::Disassembly:
+        case cbDebuggerFeature::ExamineMemory:
+        case cbDebuggerFeature::Threads:
+        case cbDebuggerFeature::Watches:
+        case cbDebuggerFeature::RunToCursor:
+        case cbDebuggerFeature::SetNextStatement:
+            return true;
+
+        default:
+            return false;
+    }
 }
 
 cbDebuggerConfiguration* Debugger_GDB_MI::LoadConfig(const ConfigManagerWrapper &config)

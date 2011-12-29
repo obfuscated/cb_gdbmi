@@ -46,6 +46,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual void ShowToolMenu();
         virtual bool ToolMenuEnabled() const { return true; }
 
+        virtual bool SupportsFeature(cbDebuggerFeature::Flags flag);
+
         virtual cbDebuggerConfiguration* LoadConfig(const ConfigManagerWrapper &config);
 
         dbg_mi::Configuration& GetActiveConfigEx();
