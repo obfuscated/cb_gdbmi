@@ -43,7 +43,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         virtual ~Debugger_GDB_MI();
 
     public:
-        virtual void ShowToolMenu();
+        virtual void SetupToolsMenu(wxMenu &menu);
         virtual bool ToolMenuEnabled() const { return true; }
 
         virtual bool SupportsFeature(cbDebuggerFeature::Flags flag);

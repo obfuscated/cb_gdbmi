@@ -100,11 +100,9 @@ void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
     m_executor.ForceStop();
 }
 
-void Debugger_GDB_MI::ShowToolMenu()
+void Debugger_GDB_MI::SetupToolsMenu(wxMenu &menu)
 {
-    wxMenu m;
-    m.Append(id_menu_info_command_stream, _("Show command stream"));
-    Manager::Get()->GetAppWindow()->PopupMenu(&m);
+    menu.Append(id_menu_info_command_stream, _("Show command stream"));
 }
 
 bool Debugger_GDB_MI::SupportsFeature(cbDebuggerFeature::Flags flag)
