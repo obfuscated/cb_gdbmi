@@ -738,16 +738,20 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 
 void WatchExpandedAction::OnStart()
 {
+    m_update_id = Execute(wxT("-var-update ") + m_expanded_watch->GetID());
     ExecuteListCommand(m_expanded_watch, Watch::Pointer(), 0, 100);
 }
 
 void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser const &result)
 {
+    if (id == m_update_id)
+        return;
+
     --m_sub_commands_left;
     m_logger.Debug(wxT("WatchExpandedAction::Output - ") + result.GetResultValue().MakeDebugString());
     if(!ParseListCommand(id, result.GetResultValue()))
     {
-        m_logger.Debug(wxT("WatchExpandedAction::Output - error in command") + id.ToString());
+        m_logger.Debug(wxT("WatchExpandedAction::Output - error in command ") + id.ToString());
         Finish();
     }
     else if(m_sub_commands_left == 0)

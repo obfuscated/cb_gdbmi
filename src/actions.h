@@ -292,6 +292,7 @@ protected:
     virtual void OnStart();
 
 private:
+    CommandID m_update_id;
     Watch::Pointer m_watch;
     Watch::Pointer m_expanded_watch;
 };
