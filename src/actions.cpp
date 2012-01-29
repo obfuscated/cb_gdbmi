@@ -281,16 +281,15 @@ void GenerateThreadsList::OnStart()
     Execute(wxT("-thread-info"));
 }
 
-void ParseWatchInfo(ResultValue const &value, int &children_count, bool &dynamic_has_more)
+void ParseWatchInfo(ResultValue const &value, int &children_count, bool &dynamic, bool &has_more)
 {
-    dynamic_has_more = false;
+    dynamic = has_more = false;
 
-    int dynamic, has_more;
-    if(Lookup(value, wxT("dynamic"), dynamic) && Lookup(value, wxT("has_more"), has_more))
-    {
-        if(dynamic == 1 && has_more == 1)
-            dynamic_has_more = true;
-    }
+    int temp;
+    if (Lookup(value, wxT("dynamic"), temp))
+        dynamic = (temp == 1);
+    if (Lookup(value, wxT("has_more"), temp))
+        has_more = (temp == 1);
 
     if(!Lookup(value, wxT("numchild"), children_count))
         children_count = -1;
@@ -372,7 +371,9 @@ void UpdateWatchesTooltipOrAll(const dbg_mi::Watch::Pointer &watch, dbg_mi::Logg
 WatchBaseAction::WatchBaseAction(WatchesContainer &watches, Logger &logger) :
     m_watches(watches),
     m_logger(logger),
-    m_sub_commands_left(0)
+    m_sub_commands_left(0),
+    m_start(-1),
+    m_end(-1)
 {
 }
 
@@ -415,12 +416,12 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                     symbol = wxT("--unknown--");
 
                 Watch::Pointer child;
-                bool dynamic_has_more;
+                bool dynamic, has_more;
 
                 int children_count;
-                ParseWatchInfo(*child_value, children_count, dynamic_has_more);
+                ParseWatchInfo(*child_value, children_count, dynamic, has_more);
 
-                if(dynamic_has_more)
+                if(dynamic && has_more)
                 {
                     child = Watch::Pointer(new Watch(symbol, parent_watch->ForTooltip()));
                     ParseWatchValueID(*child, *child_value);
@@ -440,6 +441,12 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             parent_watch->RemoveChildren();
                         }
                         child = AddChild(parent_watch, *child_value, symbol, m_watches);
+                        if (dynamic)
+                        {
+                            wxString id;
+                            if(Lookup(*child_value, wxT("name"), id))
+                                ExecuteListCommand(id, child);
+                        }
                         child = Watch::Pointer();
                         break;
                     default:
@@ -480,12 +487,15 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
     return !error;
 }
 
-void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent, int start, int end)
+void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent)
 {
     CommandID id;
 
-    if(start > -1 && end > -1)
-        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch->GetID().c_str(), start, end));
+    if(m_start > -1 && m_end > -1)
+    {
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "),
+                                      watch->GetID().c_str(), m_start, m_end));
+    }
     else
         id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch->GetID().c_str()));
 
@@ -493,7 +503,7 @@ void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer pa
     ++m_sub_commands_left;
 }
 
-void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent, int start, int end)
+void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent)
 {
     if (!parent)
     {
@@ -502,8 +512,8 @@ void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointe
     }
     CommandID id;
 
-    if(start > -1 && end > -1)
-        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch_id.c_str(), start, end));
+    if(m_start > -1 && m_end > -1)
+        id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\" %d %d "), watch_id.c_str(), m_start, m_end));
     else
         id = Execute(wxString::Format(wxT("-var-list-children 2 \"%s\""), watch_id.c_str()));
 
@@ -531,11 +541,11 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
         {
         case StepCreate:
             {
-                bool dynamic_has_more;
+                bool dynamic, has_more;
                 int children;
-                ParseWatchInfo(value, children, dynamic_has_more);
+                ParseWatchInfo(value, children, dynamic, has_more);
                 ParseWatchValueID(*m_watch, value);
-                if(dynamic_has_more)
+                if(dynamic && has_more)
                 {
                     m_step = StepSetRange;
                     Execute(wxT("-var-set-update-range \"") + m_watch->GetID() + wxT("\" 0 100"));
@@ -739,7 +749,7 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 void WatchExpandedAction::OnStart()
 {
     m_update_id = Execute(wxT("-var-update ") + m_expanded_watch->GetID());
-    ExecuteListCommand(m_expanded_watch, Watch::Pointer(), 0, 100);
+    ExecuteListCommand(m_expanded_watch, Watch::Pointer());
 }
 
 void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser const &result)

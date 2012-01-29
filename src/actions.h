@@ -216,9 +216,11 @@ public:
     virtual ~WatchBaseAction();
 
 protected:
-    void ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent = Watch::Pointer(), int start = -1, int end = -1);
-    void ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent, int start = -1, int end = -1);
+    void ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent = Watch::Pointer());
+    void ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent);
     bool ParseListCommand(CommandID const &id, ResultValue const &value);
+
+    void SetRange(int start, int end) { m_start = start; m_end = end; }
 protected:
     typedef std::tr1::unordered_map<CommandID, Watch::Pointer> ListCommandParentMap;
 protected:
@@ -226,6 +228,7 @@ protected:
     WatchesContainer &m_watches;
     Logger &m_logger;
     int m_sub_commands_left;
+    int m_start, m_end;
 };
 
 class WatchCreateAction : public WatchBaseAction
@@ -285,6 +288,7 @@ public:
         m_watch(parent_watch),
         m_expanded_watch(expanded_watch)
     {
+        SetRange(0, 100);
     }
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
