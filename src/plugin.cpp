@@ -43,6 +43,28 @@ namespace
     int const id_menu_info_command_stream = wxNewId();
 }
 
+
+namespace
+{
+wxString GetLibraryPath(const wxString &oldLibPath, Compiler *compiler, ProjectBuildTarget *target)
+{
+    if (compiler && target)
+    {
+        wxString newLibPath;
+        const wxString libPathSep = platform::windows ? _T(";") : _T(":");
+        newLibPath << _T(".") << libPathSep;
+        newLibPath << GetStringFromArray(compiler->GetLinkerSearchDirs(target), libPathSep);
+        if (newLibPath.Mid(newLibPath.Length() - 1, 1) != libPathSep)
+            newLibPath << libPathSep;
+        newLibPath << oldLibPath;
+        return newLibPath;
+    }
+    else
+        return oldLibPath;
+}
+
+} // anonymous namespace
+
 // events handling
 BEGIN_EVENT_TABLE(Debugger_GDB_MI, cbDebuggerPlugin)
 
@@ -526,6 +548,15 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 
     bool console = target->GetTargetType() == ttConsoleOnly;
 
+    wxString oldLibPath;
+    wxGetEnv(CB_LIBRARY_ENVVAR, &oldLibPath);
+    wxString newLibPath = GetLibraryPath(oldLibPath, compiler, target);
+    if (oldLibPath != newLibPath)
+    {
+        wxSetEnv(CB_LIBRARY_ENVVAR, newLibPath);
+        DebugLog(CB_LIBRARY_ENVVAR _T("=") + newLibPath);
+    }
+
     int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console, start_type);
     if (res != 0)
     {
@@ -536,6 +567,9 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 
     m_project = project;
     m_hasStartUpError = false;
+
+    if (oldLibPath != newLibPath)
+        wxSetEnv(CB_LIBRARY_ENVVAR, oldLibPath);
     return 0;
 }
 
