@@ -61,6 +61,9 @@ public:
     void SetAttachedPID(long pid) { m_attached_pid = pid; }
     long GetAttachedPID() const { return m_attached_pid; }
 
+    void SetChildPID(long pid) { m_child_pid = pid; }
+    bool HasChildPID() const { return m_child_pid >= 0; }
+
 protected:
     virtual bool DoExecute(dbg_mi::CommandID const &id, wxString const &cmd);
     virtual void DoClear();

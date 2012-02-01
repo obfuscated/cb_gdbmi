@@ -465,7 +465,7 @@ public:
 
 struct DispatchOnNotify
 {
-    DispatchOnNotify() : notification(false)
+    DispatchOnNotify() : notification(false), notify_async(false)
     {
     }
 
@@ -473,9 +473,12 @@ struct DispatchOnNotify
     {
         if(result.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
             notification = true;
+        if (result.GetResultType() == dbg_mi::ResultParser::NotifyAsyncOutput)
+            notify_async = true;
+
     }
 
-    bool notification;
+    bool notification, notify_async;
 };
 
 struct DispatcherFixture
@@ -488,6 +491,7 @@ struct DispatcherFixture
 
         actions_map.Run(exec);
         exec.ProcessOutput(wxT("00000000001*stopped"));
+        exec.ProcessOutput(wxT("=thread-group-started"));
     }
 
     dbg_mi::ActionsMap actions_map;
@@ -509,6 +513,14 @@ TEST_FIXTURE(DispatcherFixture, Notifications)
     CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
     CHECK_EQUAL(id, action->dispatched_id);
     CHECK(on_notify.notification);
+}
+
+
+TEST_FIXTURE(DispatcherFixture, AsyncNotifications)
+{
+    CHECK(dbg_mi::DispatchResults(exec, actions_map, on_notify));
+    CHECK_EQUAL(id, action->dispatched_id);
+    CHECK(on_notify.notify_async);
 }
 
 struct DelayedDependencyAction : public dbg_mi::Action

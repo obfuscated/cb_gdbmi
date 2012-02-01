@@ -362,45 +362,61 @@ bool ResultParser::Parse(wxString const &s)
 {
     m_type = ParseType(s);
     wxString str = s.substr(1, s.length() - 1);
+    if (str.length() == 0)
+        return false;
 
-    int after_class_index = 0;
+    wxString::size_type after_class_index = 0;
 
-    if(str.StartsWith(_T("done")))
+    if (m_type == NotifyAsyncOutput)
     {
-        m_class = ClassDone;
-        after_class_index = 4;
-    }
-    else if(str.StartsWith(_T("stopped")))
-    {
-        m_class = ClassStopped;
-        after_class_index = 7;
-    }
-    else if(str.StartsWith(_T("running")))
-    {
-        m_class = ClassRunning;
-        after_class_index = 7;
-    }
-    else if(str.StartsWith(_T("connected")))
-    {
-        m_class = ClassConnected;
-        after_class_index = 9;
-    }
-    else if(str.StartsWith(_T("error")))
-    {
-        m_class = ClassError;
-        after_class_index = 5;
-    }
-    else if(str.StartsWith(_T("exit")))
-    {
-        m_class = ClassExit;
-        after_class_index = 4;
+        after_class_index = str.find(wxT(','));
+        if (after_class_index == wxString::npos)
+        {
+            m_async_type = str;
+            return true;
+        }
+        else
+            m_async_type = str.substr(0, after_class_index);
     }
     else
-        return false;
+    {
+        if(str.StartsWith(_T("done")))
+        {
+            m_class = ClassDone;
+            after_class_index = 4;
+        }
+        else if(str.StartsWith(_T("stopped")))
+        {
+            m_class = ClassStopped;
+            after_class_index = 7;
+        }
+        else if(str.StartsWith(_T("running")))
+        {
+            m_class = ClassRunning;
+            after_class_index = 7;
+        }
+        else if(str.StartsWith(_T("connected")))
+        {
+            m_class = ClassConnected;
+            after_class_index = 9;
+        }
+        else if(str.StartsWith(_T("error")))
+        {
+            m_class = ClassError;
+            after_class_index = 5;
+        }
+        else if(str.StartsWith(_T("exit")))
+        {
+            m_class = ClassExit;
+            after_class_index = 4;
+        }
+        else
+            return false;
+    }
 
     if(str[after_class_index] == _T(','))
         return ParseValue(str, m_value, after_class_index + 1);
-    else if(after_class_index != static_cast<int>(str.length()))
+    else if(after_class_index != str.length())
         return false;
     else
         return true;

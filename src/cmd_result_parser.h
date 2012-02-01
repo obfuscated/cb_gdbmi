@@ -170,11 +170,14 @@ public:
     Type GetResultType() const { return m_type; }
     Class GetResultClass() const { return m_class; }
 
+    wxString GetAsyncNotifyType() const { return m_async_type; }
+
     ResultValue const & GetResultValue() const { return m_value; }
 private:
     Type m_type;
     Class m_class;
     ResultValue m_value;
+    wxString m_async_type;
 };
 
 inline bool ToInt(ResultValue const &value, int &result_value)

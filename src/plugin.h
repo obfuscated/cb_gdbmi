@@ -148,6 +148,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         void UpdateWhenStopped();
         void UpdateOnFrameChanged(bool wait);
         dbg_mi::CurrentFrame& GetCurrentFrame() { return m_current_frame; }
+
+        dbg_mi::GDBExecutor& GetGDBExecutor() { return m_executor; }
     private:
         DECLARE_EVENT_TABLE();
 

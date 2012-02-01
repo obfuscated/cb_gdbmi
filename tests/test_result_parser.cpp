@@ -777,6 +777,32 @@ TEST(TestResultParser_Running)
     dbg_mi::ResultParser parser;
 
     CHECK(parser.Parse(wxT("^running")));
+    CHECK_EQUAL(dbg_mi::ResultParser::ClassRunning, parser.GetResultClass());
+}
+
+TEST(TestResultParser_Stopped)
+{
+    dbg_mi::ResultParser parser;
+
+    CHECK(parser.Parse(wxT("^stopped,a=5")));
+    CHECK_EQUAL(dbg_mi::ResultParser::ClassStopped, parser.GetResultClass());
+    CHECK_EQUAL(wxT("{a=5}"), parser.GetResultValue().MakeDebugString());
+}
+
+TEST(TestResultParser_NotifyAsync)
+{
+    dbg_mi::ResultParser parser;
+    CHECK(parser.Parse(wxT("=thread-group-started")));
+    CHECK_EQUAL(wxT("thread-group-started"), parser.GetAsyncNotifyType());
+    CHECK_EQUAL(wxT(""), parser.GetResultValue().MakeDebugString());
+}
+
+TEST(TestResultParser_NotifyAsyncValue)
+{
+    dbg_mi::ResultParser parser;
+    CHECK(parser.Parse(wxT("=thread-group-started,a=5")));
+    CHECK_EQUAL(wxT("thread-group-started"), parser.GetAsyncNotifyType());
+    CHECK_EQUAL(wxT("{a=5}"), parser.GetResultValue().MakeDebugString());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

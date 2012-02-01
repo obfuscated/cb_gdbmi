@@ -287,7 +287,9 @@ struct Notifications
         }
         else
         {
-            if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
+            if (parser.GetResultType() == dbg_mi::ResultParser::NotifyAsyncOutput)
+                ParseNotifyAsyncOutput(parser);
+            else if(parser.GetResultClass() == dbg_mi::ResultParser::ClassStopped)
             {
                 dbg_mi::StoppedReason reason = dbg_mi::StoppedReason::Parse(result_value);
 
@@ -387,6 +389,21 @@ private:
             else
                 m_plugin->DebugLog(wxT("ParseStateInfo does not have valid source"), Logger::error);
         }
+    }
+
+    void ParseNotifyAsyncOutput(dbg_mi::ResultParser const &parser)
+    {
+        if (parser.GetAsyncNotifyType() == wxT("thread-group-started"))
+        {
+            int pid;
+            dbg_mi::Lookup(parser.GetResultValue(), wxT("pid"), pid);
+            m_plugin->Log(wxString::Format(wxT("Found child pid: %d\n"), pid));
+            dbg_mi::GDBExecutor &exec = m_plugin->GetGDBExecutor();
+            if (!exec.HasChildPID())
+                exec.SetChildPID(pid);
+        }
+//        else
+//            m_plugin->Log(wxString::Format(wxT("Notification: %s\n"), parser.GetAsyncNotifyType().c_str()));
     }
 
 private:
