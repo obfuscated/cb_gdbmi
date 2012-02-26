@@ -536,6 +536,7 @@ void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject * /*project*/)
 int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 {
 //    ShowLog(true);
+    m_execution_logger.ClearCommand();
 
     Compiler *compiler;
     ProjectBuildTarget *target;
