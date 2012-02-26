@@ -12,7 +12,7 @@
 				<Option working_dir="$(#cb_sdk.lib)/" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="-p debug -ns -nc --debug-log --multiple-instance " />
+				<Option parameters="-p debug -ns -ni --debug-log --multiple-instance " />
 				<Option host_application="$(#cb_sdk.lib)/codeblocks" />
 				<Option run_host_application_in_terminal="0" />
 				<Compiler>
