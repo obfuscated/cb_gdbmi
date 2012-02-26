@@ -224,6 +224,9 @@ void Debugger_GDB_MI::OnGDBTerminated(wxCommandEvent& /*event*/)
 
     KillConsole();
     MarkAsStopped();
+
+    for (Breakpoints::iterator it = m_breakpoints.begin(); it != m_breakpoints.end(); ++it)
+        (*it)->SetIndex(-1);
 }
 
 void Debugger_GDB_MI::OnIdle(wxIdleEvent& event)
@@ -264,7 +267,8 @@ void Debugger_GDB_MI::AddStringCommand(wxString const &command)
 //-    cmd->SetString(command);
 //-    m_command_queue.AddCommand(cmd, true);
 //    m_executor.Execute(command);
-    m_actions.Add(new dbg_mi::SimpleAction(command));
+    if (IsRunning())
+        m_actions.Add(new dbg_mi::SimpleAction(command));
 }
 
 struct Notifications
