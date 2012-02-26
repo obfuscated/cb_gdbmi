@@ -195,6 +195,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::ThreadsContainer m_threads;
         dbg_mi::WatchesContainer m_watches;
 
+        dbg_mi::TextInfoWindow *m_command_stream_dialog;
+
         dbg_mi::CurrentFrame m_current_frame;
         int m_exit_code;
         int m_console_pid;

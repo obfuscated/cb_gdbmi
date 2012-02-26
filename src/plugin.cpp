@@ -81,8 +81,9 @@ END_EVENT_TABLE()
 // constructor
 Debugger_GDB_MI::Debugger_GDB_MI() :
     cbDebuggerPlugin(wxT("GDB/MI"), wxT("gdbmi_debugger")),
-    m_project(NULL),
+    m_project(nullptr),
     m_execution_logger(this),
+    m_command_stream_dialog(nullptr),
     m_console_pid(-1),
     m_pid_attached(0)
 {
@@ -120,6 +121,11 @@ void Debugger_GDB_MI::OnReleaseReal(bool appShutDown)
 
     KillConsole();
     m_executor.ForceStop();
+    if (m_command_stream_dialog)
+    {
+        m_command_stream_dialog->Destroy();
+        m_command_stream_dialog = nullptr;
+    }
 }
 
 void Debugger_GDB_MI::SetupToolsMenu(wxMenu &menu)
@@ -250,14 +256,15 @@ void Debugger_GDB_MI::OnTimer(wxTimerEvent& /*event*/)
 void Debugger_GDB_MI::OnMenuInfoCommandStream(wxCommandEvent& /*event*/)
 {
     wxString full;
-    for(int ii = 0; ii < m_execution_logger.GetCommandCount(); ++ii)
-    {
+    for (int ii = 0; ii < m_execution_logger.GetCommandCount(); ++ii)
         full += m_execution_logger.GetCommand(ii) + wxT("\n");
+    if (m_command_stream_dialog)
+        m_command_stream_dialog->SetText(full);
+    else
+    {
+        m_command_stream_dialog = new dbg_mi::TextInfoWindow(Manager::Get()->GetAppWindow(), wxT("Command stream"), full);
+        m_command_stream_dialog->Show();
     }
-    dbg_mi::TextInfoWindow window(Manager::Get()->GetAppWindow(), wxT("Command stream"), full);
-
-
-    window.ShowModal();
 }
 
 void Debugger_GDB_MI::AddStringCommand(wxString const &command)

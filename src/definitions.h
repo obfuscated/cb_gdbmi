@@ -128,21 +128,27 @@ class TextInfoWindow : public wxScrollingDialog
     public:
         TextInfoWindow(wxWindow *parent, const wxChar *title, const wxString& content) :
             wxScrollingDialog(parent, -1, title, wxDefaultPosition, wxDefaultSize,
-                              wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxMAXIMIZE_BOX | wxMINIMIZE_BOX)
+                              wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxMAXIMIZE_BOX | wxMINIMIZE_BOX),
+            m_font(8, wxMODERN, wxNORMAL, wxNORMAL)
         {
             wxSizer* sizer = new wxBoxSizer(wxVERTICAL);
-            wxFont font(8, wxMODERN, wxNORMAL, wxNORMAL);
             m_text = new wxTextCtrl(this, -1, content, wxDefaultPosition, wxDefaultSize,
                                     wxTE_READONLY | wxTE_MULTILINE | wxTE_RICH2 | wxHSCROLL);
-            m_text->SetFont(font);
+            m_text->SetFont(m_font);
 
             sizer->Add(m_text, 1, wxGROW);
 
             SetSizer(sizer);
             sizer->Layout();
         }
+        void SetText(const wxString &text)
+        {
+            m_text->SetValue(text);
+            m_text->SetFont(m_font);
+        }
     private:
         wxTextCtrl* m_text;
+        wxFont m_font;
 };
 
 class CurrentFrame
