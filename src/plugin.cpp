@@ -146,6 +146,7 @@ bool Debugger_GDB_MI::SupportsFeature(cbDebuggerFeature::Flags flag)
         case cbDebuggerFeature::Watches:
         case cbDebuggerFeature::RunToCursor:
         case cbDebuggerFeature::SetNextStatement:
+        case cbDebuggerFeature::ValueTooltips:
             return true;
 
         default:
@@ -1328,7 +1329,7 @@ bool Debugger_GDB_MI::ShowValueTooltip(int style)
 {
     if (!IsRunning() || !IsStopped())
         return false;
-    if (style != wxSCI_C_DEFAULT && style != wxSCI_C_OPERATOR && style != wxSCI_C_IDENTIFIER)
+    if (style != wxSCI_C_DEFAULT && style != wxSCI_C_OPERATOR && style != wxSCI_C_IDENTIFIER && style != wxSCI_C_WORD2)
         return false;
     return true;
 }
