@@ -146,7 +146,7 @@ void ActionsMap::Run(CommandExecutor &executor)
     Logger *logger = executor.GetLogger();
 
     bool first = true;
-    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); ++it)
+    for(Actions::iterator it = m_actions.begin(); it != m_actions.end(); )
     {
         Action &action = **it;
 
@@ -172,7 +172,9 @@ void ActionsMap::Run(CommandExecutor &executor)
         }
 
         first = false;
-        if(action.Finished())
+        if(!action.Finished())
+            ++it;
+        else
         {
             if(logger && action.HasPendingCommands())
             {
@@ -181,22 +183,10 @@ void ActionsMap::Run(CommandExecutor &executor)
                                                &action, action.GetID()),
                               Logger::Line::Debug);
             }
-            if(it == m_actions.begin())
-            {
-                delete *it;
-                m_actions.erase(it);
-                it = m_actions.begin();
-                if(it == m_actions.end())
-                   break;
+            delete *it;
+            it = m_actions.erase(it);
+            if (it == m_actions.begin())
                 first = true;
-            }
-            else
-            {
-                Actions::iterator del_it = it;
-                --it;
-                delete *del_it;
-                m_actions.erase(del_it);
-            }
         }
     }
 }

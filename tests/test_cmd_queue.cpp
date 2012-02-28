@@ -394,6 +394,52 @@ TEST_FIXTURE(ActionsMapFixture, ActionDestroyed)
     CHECK(action_destroyed);
 }
 
+struct TestAction2 : dbg_mi::Action
+{
+    TestAction2(bool correct_start, int32_t &last_started, int &executed) :
+        correct_start(correct_start),
+        last_started(last_started),
+        executed(executed)
+    {}
+
+    virtual void OnStart()
+    {
+        Finish();
+        if (last_started > GetID())
+            correct_start = false;
+        last_started = GetID();
+        executed++;
+    }
+    virtual void OnCommandOutput(dbg_mi::CommandID const &/*id*/, dbg_mi::ResultParser const &/*result*/)
+    {
+    }
+    bool &correct_start;
+    int32_t &last_started;
+    int &executed;
+};
+
+TEST(ActionMapCorrectOrderAfterDelete)
+{
+    dbg_mi::ActionsMap actions;
+    bool correct_start = true;
+    int32_t last_started = 0;
+    int executed = 0;
+    TestAction2 *a1 = new TestAction2(correct_start, last_started, executed);
+    TestAction2 *a2 = new TestAction2(correct_start, last_started, executed);
+    TestAction2 *a3 = new TestAction2(correct_start, last_started, executed);
+
+    actions.Add(a1);
+    actions.Add(a2);
+    actions.Add(a3);
+
+    MockCommandExecutor exec;
+    actions.Run(exec);
+    CHECK(correct_start);
+    CHECK_EQUAL(3, last_started);
+    CHECK_EQUAL(3, executed);
+    CHECK(actions.Empty());
+}
+
 TEST_FIXTURE(ActionsMapFixture, ActionExecute)
 {
     action->Execute(wxT("-break-insert main.cpp:10"));
