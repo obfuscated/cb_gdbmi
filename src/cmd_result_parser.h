@@ -151,7 +151,8 @@ public:
         ClassConnected,
         ClassError,
         ClassExit,
-        ClassStopped
+        ClassStopped,
+        ClassUnknown
     };
 
 public:

@@ -361,6 +361,7 @@ wxString ResultValue::MakeDebugString() const
 bool ResultParser::Parse(wxString const &s)
 {
     m_type = ParseType(s);
+    m_class = ClassUnknown;
     wxString str = s.substr(1, s.length() - 1);
     if (str.length() == 0)
         return false;
