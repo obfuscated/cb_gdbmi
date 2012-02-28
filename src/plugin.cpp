@@ -843,20 +843,25 @@ cbStackFrame::ConstPointer Debugger_GDB_MI::GetStackFrame(int index) const
 
 struct SwitchToFrameNotification
 {
-    SwitchToFrameNotification(Debugger_GDB_MI *plugin, int frame_number) :
-        m_plugin(plugin),
-        m_frame_number(frame_number)
+    SwitchToFrameNotification(Debugger_GDB_MI *plugin) :
+        m_plugin(plugin)
     {
     }
 
-    void operator()(dbg_mi::ResultParser const &result)
+    void operator()(dbg_mi::ResultParser const &result, int frame_number, bool user_action)
     {
         if (m_frame_number < m_plugin->GetStackFrameCount())
         {
             dbg_mi::CurrentFrame &current_frame = m_plugin->GetCurrentFrame();
-            current_frame.SwitchToFrame(m_frame_number);
+            if (user_action)
+                current_frame.SwitchToFrame(frame_number);
+            else
+            {
+                current_frame.Reset();
+                current_frame.SetFrame(frame_number);
+            }
 
-            cbStackFrame::ConstPointer frame = m_plugin->GetStackFrame(m_frame_number);
+            cbStackFrame::ConstPointer frame = m_plugin->GetStackFrame(frame_number);
 
             wxString const &filename = frame->GetFilename();
             long line;
@@ -886,7 +891,7 @@ void Debugger_GDB_MI::SwitchToFrame(int number)
 
             int frame = m_backtrace[number]->GetNumber();
             typedef dbg_mi::SwitchToFrame<SwitchToFrameNotification> SwitchType;
-            m_actions.Add(new SwitchType(frame, SwitchToFrameNotification(this, frame)));
+            m_actions.Add(new SwitchType(frame, SwitchToFrameNotification(this), true));
         }
     }
 }
@@ -1291,7 +1296,7 @@ void Debugger_GDB_MI::RequestUpdate(DebugWindows window)
                 virtual void Invoke(int frame_number)
                 {
                     typedef dbg_mi::SwitchToFrame<SwitchToFrameNotification> SwitchType;
-                    m_actions.Add(new SwitchType(frame_number, SwitchToFrameNotification(m_plugin, frame_number)));
+                    m_actions.Add(new SwitchType(frame_number, SwitchToFrameNotification(m_plugin), false));
                 }
 
                 Debugger_GDB_MI *m_plugin;

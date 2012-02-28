@@ -188,15 +188,16 @@ template<typename Notification>
 class SwitchToFrame : public Action
 {
 public:
-    SwitchToFrame(int frame_id, Notification const &notification) :
+    SwitchToFrame(int frame_id, Notification const &notification, bool user_action) :
         m_frame_id(frame_id),
-        m_notification(notification)
+        m_notification(notification),
+        m_user_action(user_action)
     {
     }
 
     virtual void OnCommandOutput(CommandID const &/*id*/, ResultParser const &result)
     {
-        m_notification(result);
+        m_notification(result, m_frame_id, m_user_action);
         Finish();
     }
 protected:
@@ -207,6 +208,7 @@ protected:
 private:
     int m_frame_id;
     Notification m_notification;
+    bool m_user_action;
 };
 
 class WatchBaseAction : public Action
