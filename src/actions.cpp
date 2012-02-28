@@ -31,32 +31,46 @@ void BreakpointAddAction::OnCommandOutput(CommandID const &id, ResultParser cons
 
     if(m_initial_cmd == id)
     {
+        bool finish = true;
         const ResultValue &value = result.GetResultValue();
-        const ResultValue *number = value.GetTupleValue(wxT("bkpt.number"));
-        if(number)
+        if (result.GetResultClass() == ResultParser::ClassDone)
         {
-            const wxString &number_value = number->GetSimpleValue();
-            long n;
-            if(number_value.ToLong(&n, 10))
+            const ResultValue *number = value.GetTupleValue(wxT("bkpt.number"));
+            if(number)
             {
-                m_logger.Debug(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
-                m_breakpoint->SetIndex(n);
-
-                if(!m_breakpoint->IsEnabled())
-                    m_disable_cmd = Execute(wxString::Format(wxT("-break-disable %d"), n));
-                else
+                const wxString &number_value = number->GetSimpleValue();
+                long n;
+                if(number_value.ToLong(&n, 10))
                 {
-                    m_logger.Debug(wxT("BreakpointAddAction::Finishing1"));
-                    Finish();
+                    m_logger.Debug(wxString::Format(wxT("BreakpointAddAction::breakpoint index is %d"), n));
+                    m_breakpoint->SetIndex(n);
+
+                    if(!m_breakpoint->IsEnabled())
+                    {
+                        m_disable_cmd = Execute(wxString::Format(wxT("-break-disable %d"), n));
+                        finish = false;
+                    }
                 }
+                else
+                    m_logger.Debug(wxT("BreakpointAddAction::error getting the index :( "));
             }
             else
-                m_logger.Debug(wxT("BreakpointAddAction::error getting the index :( "));
+            {
+                m_logger.Debug(wxT("BreakpointAddAction::error getting number value:( "));
+                m_logger.Debug(value.MakeDebugString());
+            }
         }
-        else
+        else if (result.GetResultClass() == ResultParser::ClassError)
         {
-            m_logger.Debug(wxT("BreakpointAddAction::error getting number value:( "));
-            m_logger.Debug(value.MakeDebugString());
+            wxString message;
+            if (Lookup(value, wxT("msg"), message))
+                m_logger.Log(message, Logger::Log::Error);
+        }
+
+        if (finish)
+        {
+            m_logger.Debug(wxT("BreakpointAddAction::Finishing1"));
+            Finish();
         }
     }
     else if(m_disable_cmd == id)
