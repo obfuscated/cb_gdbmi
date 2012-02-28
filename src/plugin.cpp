@@ -260,7 +260,10 @@ void Debugger_GDB_MI::OnMenuInfoCommandStream(wxCommandEvent& /*event*/)
     for (int ii = 0; ii < m_execution_logger.GetCommandCount(); ++ii)
         full += m_execution_logger.GetCommand(ii) + wxT("\n");
     if (m_command_stream_dialog)
+    {
         m_command_stream_dialog->SetText(full);
+        m_command_stream_dialog->Show();
+    }
     else
     {
         m_command_stream_dialog = new dbg_mi::TextInfoWindow(Manager::Get()->GetAppWindow(), wxT("Command stream"), full);
@@ -428,7 +431,7 @@ private:
 void Debugger_GDB_MI::UpdateOnFrameChanged(bool wait)
 {
     if(wait)
-        m_actions.Add(new dbg_mi::BarrierAction());
+        m_actions.Add(new dbg_mi::BarrierAction);
     DebuggerManager *dbg_manager = Manager::Get()->GetDebuggerManager();
 
     if(IsWindowReallyShown(dbg_manager->GetWatchesDialog()->GetWindow()) && !m_watches.empty())
