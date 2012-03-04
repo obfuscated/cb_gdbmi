@@ -8,6 +8,20 @@ libdebugger_gdbmi_la_SOURCES = src/actions.cpp  src/cmd_queue.cpp  src/cmd_resul
 				src/cmd_result_tokens.cpp  src/config.cpp  src/definitions.cpp	\
 				src/escape.cpp  src/events.cpp  src/frame.cpp  src/gdb_executor.cpp	\
 				src/helpers.cpp src/plugin.cpp  src/updated_variable.cpp
+				
+noinst_HEADERS = src/config.h \
+							src/frame.h \
+							src/helpers.h \
+							src/gdb_executor.h \
+							src/cmd_queue.h \
+							src/updated_variable.h \
+							src/cmd_result_parser.h \
+							src/actions.h \
+							src/definitions.h \
+							src/events.h \
+							src/escape.h \
+							src/cmd_result_tokens.h \
+							src/plugin.h
 
 libdebugger_gdbmi_la_LDFLAGS = -avoid-version -shared -no-undefined
 
