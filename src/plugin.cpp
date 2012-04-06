@@ -1250,7 +1250,10 @@ void Debugger_GDB_MI::DoSendCommand(const wxString& cmd)
     if (escaped_cmd[0] == wxT('-'))
         AddStringCommand(escaped_cmd);
     else
+    {
+        escaped_cmd.Replace(wxT("\\"), wxT("\\\\"), true);
         AddStringCommand(wxT("-interpreter-exec console \"") + escaped_cmd + wxT("\""));
+    }
 }
 
 void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
