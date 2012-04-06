@@ -656,12 +656,13 @@ int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &de
 
     dbg_mi::Configuration &active_config = GetActiveConfigEx();
 
+    if (active_config.GetFlag(dbg_mi::Configuration::PrettyPrinters))
+        m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
+
     wxArrayString const &commands = active_config.GetInitialCommands();
     for (unsigned ii = 0; ii < commands.GetCount(); ++ii)
         DoSendCommand(commands[ii]);
 
-    if (active_config.GetFlag(dbg_mi::Configuration::PrettyPrinters))
-        m_actions.Add(new dbg_mi::SimpleAction(wxT("-enable-pretty-printing")));
     if (active_config.GetFlag(dbg_mi::Configuration::CatchCppExceptions))
     {
         DoSendCommand(wxT("catch throw"));
