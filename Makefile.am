@@ -32,7 +32,7 @@ cb_plugin_data_DATA = debugger_gdbmi.zip
 
 debugger_gdbmi_RESOURCES = resource/debugger_gdbmi_menu.xrc resource/manifest.xml
 
-EXTRA_DIST = $(debugger_gdbmi_RESOURCES)
+EXTRA_DIST = $(debugger_gdbmi_RESOURCES) bootstrap codeblocks-debugger-gdbmi.spec
 CLEANFILES = debugger_gdbmi.zip
 
 debugger_gdbmi.zip: $(debugger_gdbmi_RESOURCES)

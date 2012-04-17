@@ -1,0 +1,50 @@
+Name:           codeblocks-debugger-gdbmi
+Version:        0.1
+Release:        1%{?dist}
+Summary:        Debugger plugin for Code::Blocks using the GDB/MI interface
+
+Group:          Development/Tools/IDE
+License:        GPL3 
+URL:            www.none.com
+Source0:        www.none.com/codeblocks-debugger-gdbmi-%{version}.tar.gz
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+BuildRequires:  codeblocks-devel
+Requires:       codeblocks
+
+%description
+Allows you to debug using the GDB/MI interface, which is faster and more robust than the CLI interface.
+
+%define pkgdata		%{_datadir}/codeblocks/
+%define	pkglib		%{_libdir}/codeblocks/plugins/
+
+%prep
+%setup -q
+
+
+%build
+%configure
+make %{?_smp_mflags}
+
+
+%install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+
+%files
+%defattr(-,root,root,-)
+%{pkglib}/libdebugger_gdbmi.a
+%{pkglib}/libdebugger_gdbmi.la
+%{pkglib}/libdebugger_gdbmi.so
+%{pkgdata}/debugger_gdbmi.zip
+
+%doc
+
+
+
+%changelog

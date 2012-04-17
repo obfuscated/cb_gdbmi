@@ -3,12 +3,13 @@ AC_INIT(Codeblocks Debugger GDBMI, 0.1, fuscated@gmail.com)
 
 AM_INIT_AUTOMAKE([subdir-objects])
 
-LT_PREREQ([2.2])
-LT_INIT([dlopen])
+AC_PROG_LIBTOOL
+
+#LT_INIT([dlopen])
+#LT_PREREQ([2.2])
 
 #AM_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile])
-
+AC_CONFIG_FILES([Makefile codeblocks-debugger-gdbmi.spec])
 
 # Checks for programs.
 #AC_PROG_CC
