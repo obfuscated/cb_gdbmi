@@ -13,7 +13,7 @@ namespace dbg_mi
 
 void BreakpointAddAction::OnStart()
 {
-    wxString cmd(wxT("-break-insert "));
+    wxString cmd(wxT("-break-insert -f "));
 
     if(m_breakpoint->HasCondition())
         cmd += wxT("-c ") + m_breakpoint->GetCondition() + wxT(" ");
