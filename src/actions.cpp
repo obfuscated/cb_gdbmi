@@ -496,8 +496,6 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
         }
         parent_watch->RemoveMarkedChildren();
     }
-    else
-        error = true;
     return !error;
 }
 
@@ -776,6 +774,8 @@ void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser cons
     if(!ParseListCommand(id, result.GetResultValue()))
     {
         m_logger.Debug(wxT("WatchExpandedAction::Output - error in command ") + id.ToString());
+        // Update the watches even if there is an error, so some partial information can be displayed.
+        UpdateWatchesTooltipOrAll(m_expanded_watch, m_logger);
         Finish();
     }
     else if(m_sub_commands_left == 0)
