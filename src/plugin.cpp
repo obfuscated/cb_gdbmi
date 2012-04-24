@@ -592,6 +592,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 
     // is gdb accessible, i.e. can we find it?
     wxString debugger = GetActiveConfigEx().GetDebuggerExecutable();
+    wxString args = target->GetExecutionParameters();
     wxString debuggee, working_dir;
     if (!GetDebuggee(debuggee, working_dir, target))
     {
@@ -610,7 +611,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
         DebugLog(CB_LIBRARY_ENVVAR _T("=") + newLibPath);
     }
 
-    int res = LaunchDebugger(debugger, debuggee, working_dir, 0, console, start_type);
+    int res = LaunchDebugger(debugger, debuggee, args, working_dir, 0, console, start_type);
     if (res != 0)
     {
         m_hasStartUpError = true;
@@ -627,8 +628,8 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 }
 
 int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &debuggee,
-                                    wxString const &working_dir, int pid, bool console,
-                                    StartType start_type)
+                                    wxString const &args, wxString const &working_dir,
+                                    int pid, bool console, StartType start_type)
 {
     m_current_frame.Reset();
     if(debugger.IsEmpty())
@@ -665,6 +666,9 @@ int Debugger_GDB_MI::LaunchDebugger(wxString const &debugger, wxString const &de
 //    m_executor.Execute(_T("-enable-timings"));
     CommitBreakpoints(true);
     CommitWatches();
+
+    // Set program arguments
+    m_actions.Add(new dbg_mi::SimpleAction(wxT("-exec-arguments ") + args));
 
     if(console)
     {
@@ -1291,7 +1295,7 @@ void Debugger_GDB_MI::AttachToProcess(const wxString& pid)
         return;
 
     LaunchDebugger(GetActiveConfigEx().GetDebuggerExecutable(), wxEmptyString, wxEmptyString,
-                   number, false, StartTypeRun);
+                   wxEmptyString, number, false, StartTypeRun);
     m_executor.SetAttachedPID(number);
 }
 

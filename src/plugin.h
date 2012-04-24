@@ -161,8 +161,8 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
         void OnMenuInfoCommandStream(wxCommandEvent& event);
 
-        int LaunchDebugger(wxString const &debugger, wxString const &debuggee, wxString const &working_dir,
-                           int pid, bool console, StartType start_type);
+        int LaunchDebugger(wxString const &debugger, wxString const &debuggee, wxString const &args,
+                           wxString const &working_dir, int pid, bool console, StartType start_type);
 
     private:
         void AddStringCommand(wxString const &command);
