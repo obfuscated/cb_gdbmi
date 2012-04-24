@@ -544,8 +544,28 @@ void Debugger_GDB_MI::ConvertDirectory(wxString& str, wxString base, bool relati
     dbg_mi::ConvertDirectory(str, base, relative);
 }
 
-void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject * /*project*/)
+struct BreakpointMatchProject
 {
+    BreakpointMatchProject(cbProject *project) : project(project) {}
+    bool operator()(dbg_mi::Breakpoint::Pointer bp) const
+    {
+        return bp->GetProject() == project;
+    }
+    cbProject *project;
+};
+
+void Debugger_GDB_MI::CleanupWhenProjectClosed(cbProject *project)
+{
+    Breakpoints::iterator it = std::remove_if(m_breakpoints.begin(), m_breakpoints.end(),
+                                              BreakpointMatchProject(project));
+    if (it != m_breakpoints.end())
+    {
+        m_breakpoints.erase(it, m_breakpoints.end());
+        // FIXME (#obfuscated): Optimize this when multiple projects are closed
+        //                      (during workspace close operation for exmaple).
+        cbBreakpointsDlg *dlg = Manager::Get()->GetDebuggerManager()->GetBreakpointDialog();
+        dlg->Reload();
+    }
 }
 
 int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
@@ -742,7 +762,7 @@ bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
     }
     else
     {
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, nullptr));
         m_temporary_breakpoints.push_back(ptr);
         return Debug(false);
     }
@@ -912,21 +932,26 @@ cbBreakpoint::Pointer Debugger_GDB_MI::AddBreakpoint(const wxString& filename, i
                                       filename.c_str(), line));
             m_executor.Interupt();
 
-            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
+            cbProject *project;
+            project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, project));
             m_breakpoints.push_back(ptr);
             CommitBreakpoints(false);
             Continue();
         }
         else
         {
-            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
+            cbProject *project;
+            project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
+            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, project));
             m_breakpoints.push_back(ptr);
             CommitBreakpoints(false);
         }
     }
     else
     {
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line));
+        cbProject *project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
+        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, project));
         m_breakpoints.push_back(ptr);
     }
 

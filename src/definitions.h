@@ -18,6 +18,7 @@ public:
     typedef std::tr1::shared_ptr<Breakpoint> Pointer;
 public:
     Breakpoint() :
+        m_project(nullptr),
         m_index(-1),
         m_line(-1),
         m_enabled(true),
@@ -25,9 +26,10 @@ public:
     {
     }
 
-    Breakpoint(const wxString &filename, int line) :
-        m_index(-1),
+    Breakpoint(const wxString &filename, int line, cbProject *project) :
         m_filename(filename),
+        m_project(project),
+        m_index(-1),
         m_line(line),
         m_enabled(true),
         m_temporary(false)
@@ -52,10 +54,13 @@ public:
     bool HasIgnoreCount() const { return false; }
 
     void SetIndex(int index) { m_index = index; }
+
+    cbProject* GetProject() { return m_project; }
 private:
-    int m_index;
     wxString m_filename;
     wxString m_condition;
+    cbProject *m_project;
+    int m_index;
     int m_line;
     bool m_enabled;
     bool m_temporary;
