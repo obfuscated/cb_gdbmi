@@ -58,7 +58,7 @@ public:
     virtual wxPanel* MakePanel(wxWindow *parent);
     virtual bool SaveChanges(wxPanel *panel);
 public:
-    wxString GetDebuggerExecutable();
+    wxString GetDebuggerExecutable(bool expandMacros = true);
     wxArrayString GetInitialCommands();
     wxString GetInitialCommandsString();
 

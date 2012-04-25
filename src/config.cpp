@@ -10,6 +10,8 @@
 #include <wx/textctrl.h>
 //*)
 
+#include <macrosmanager.h>
+
 namespace dbg_mi
 {
 
@@ -87,7 +89,7 @@ cbDebuggerConfiguration* Configuration::Clone() const
 wxPanel* Configuration::MakePanel(wxWindow *parent)
 {
     ConfigurationPanel *panel = new ConfigurationPanel(parent);
-    panel->m_exec_path->ChangeValue(GetDebuggerExecutable());
+    panel->m_exec_path->ChangeValue(GetDebuggerExecutable(false));
     panel->m_initial_commands->SetValue(GetInitialCommandsString());
     panel->m_check_pretty_printers->SetValue(GetFlag(Configuration::PrettyPrinters));
     panel->m_check_cpp_excepetions->SetValue(GetFlag(Configuration::CatchCppExceptions));
@@ -105,10 +107,15 @@ bool Configuration::SaveChanges(wxPanel *p)
     return true;
 }
 
-wxString Configuration::GetDebuggerExecutable()
+wxString Configuration::GetDebuggerExecutable(bool expandMacros)
 {
-    const wxString &result = m_config.Read(wxT("executable_path"), wxEmptyString);
-    return !result.empty() ? result : cbDetectDebuggerExecutable(wxT("gdb"));
+    wxString result = m_config.Read(wxT("executable_path"), wxEmptyString);
+    if (result.empty())
+        return cbDetectDebuggerExecutable(wxT("gdb"));
+
+    if (expandMacros)
+        Manager::Get()->GetMacrosManager()->ReplaceEnvVars(result);
+    return result;
 }
 
 wxArrayString Configuration::GetInitialCommands()
