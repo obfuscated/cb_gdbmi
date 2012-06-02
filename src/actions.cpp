@@ -581,13 +581,14 @@ void WatchCreateAction::OnCommandOutput(CommandID const &id, ResultParser const 
     else
     {
         if(result.GetResultClass() == ResultParser::ClassError)
-            m_watch->SetValue(wxT("the expression can't be evaluated"));
+            m_watch->SetValue(wxT("The expression can't be evaluated"));
         error = true;
     }
 
     if(error)
     {
         m_logger.Debug(wxT("WatchCreateAction::OnCommandOutput - error in command: ") + id.ToString());
+        UpdateWatches(m_logger);
         Finish();
     }
     else if(m_sub_commands_left == 0)
@@ -602,7 +603,8 @@ void WatchCreateAction::OnStart()
 {
     wxString symbol;
     m_watch->GetSymbol(symbol);
-    Execute(wxString::Format(wxT("-var-create - @ %s"), symbol.c_str()));
+    symbol.Replace(wxT("\""), wxT("\\\""));
+    Execute(wxString::Format(wxT("-var-create - @ \"%s\""), symbol.c_str()));
     m_sub_commands_left = 1;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
