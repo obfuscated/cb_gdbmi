@@ -71,25 +71,25 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
 
 		// stack frame calls;
 		virtual int GetStackFrameCount() const;
-		virtual cbStackFrame::ConstPointer GetStackFrame(int index) const;
+		virtual cb::shared_ptr<const cbStackFrame> GetStackFrame(int index) const;
 		virtual void SwitchToFrame(int number);
 		virtual int GetActiveStackFrame() const;
 
         // breakpoints calls
-        virtual cbBreakpoint::Pointer AddBreakpoint(const wxString& filename, int line);
-        virtual cbBreakpoint::Pointer AddDataBreakpoint(const wxString& dataExpression);
+        virtual cb::shared_ptr<cbBreakpoint> AddBreakpoint(const wxString& filename, int line);
+        virtual cb::shared_ptr<cbBreakpoint> AddDataBreakpoint(const wxString& dataExpression);
         virtual int GetBreakpointsCount() const;
-        virtual cbBreakpoint::Pointer GetBreakpoint(int index);
-        virtual cbBreakpoint::ConstPointer GetBreakpoint(int index) const;
-        virtual void UpdateBreakpoint(cbBreakpoint::Pointer breakpoint);
-        virtual void DeleteBreakpoint(cbBreakpoint::Pointer breakpoint);
+        virtual cb::shared_ptr<cbBreakpoint> GetBreakpoint(int index);
+        virtual cb::shared_ptr<const cbBreakpoint> GetBreakpoint(int index) const;
+        virtual void UpdateBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint);
+        virtual void DeleteBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint);
         virtual void DeleteAllBreakpoints();
         virtual void ShiftBreakpoint(int index, int lines_to_shift);
         virtual void EnableBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint, bool enable);
 
         // threads
         virtual int GetThreadsCount() const;
-        virtual cbThread::ConstPointer GetThread(int index) const;
+        virtual cb::shared_ptr<const cbThread> GetThread(int index) const;
         virtual bool SwitchToThread(int thread_number);
 
         // watches

@@ -67,13 +67,11 @@ private:
 };
 
 
-typedef std::deque<cbStackFrame::Pointer> BacktraceContainer;
-typedef std::deque<cbThread::Pointer> ThreadsContainer;
+typedef std::deque<cb::shared_ptr<cbStackFrame> > BacktraceContainer;
+typedef std::deque<cb::shared_ptr<cbThread> > ThreadsContainer;
 
 class Watch : public cbWatch
 {
-public:
-    typedef std::tr1::shared_ptr<Watch> Pointer;
 public:
     Watch(wxString const &symbol, bool for_tooltip) :
         m_symbol(symbol),
@@ -123,9 +121,9 @@ private:
     bool m_for_tooltip;
 };
 
-typedef std::vector<dbg_mi::Watch::Pointer> WatchesContainer;
+typedef std::vector<cb::shared_ptr<Watch> > WatchesContainer;
 
-Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches);
+cb::shared_ptr<Watch> FindWatch(wxString const &expression, WatchesContainer &watches);
 
 // Custom window to display output of DebuggerInfoCmd
 class TextInfoWindow : public wxScrollingDialog

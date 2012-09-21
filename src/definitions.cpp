@@ -46,7 +46,7 @@ bool Breakpoint::IsTemporary() const
     return m_temporary;
 }
 
-Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches)
+cb::shared_ptr<Watch> FindWatch(wxString const &expression, WatchesContainer &watches)
 {
     for(WatchesContainer::iterator it = watches.begin(); it != watches.end(); ++it)
     {
@@ -56,15 +56,15 @@ Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches)
                 return *it;
             else
             {
-                Watch::Pointer curr = *it;
+                cb::shared_ptr<Watch> curr = *it;
                 while(curr)
                 {
-                    Watch::Pointer temp = curr;
-                    curr = Watch::Pointer();
+                    cb::shared_ptr<Watch> temp = curr;
+                    curr = cb::shared_ptr<Watch>();
 
                     for(int child = 0; child < temp->GetChildCount(); ++child)
                     {
-                        Watch::Pointer p = cb::static_pointer_cast<Watch>(temp->GetChild(child));
+                        cb::shared_ptr<Watch> p = cb::static_pointer_cast<Watch>(temp->GetChild(child));
                         if(expression.StartsWith(p->GetID()))
                         {
                             if(expression.length() == p->GetID().length())
@@ -82,7 +82,7 @@ Watch::Pointer FindWatch(wxString const &expression, WatchesContainer &watches)
             }
         }
     }
-    return Watch::Pointer();
+    return cb::shared_ptr<Watch>();
 }
 
 } // namespace dbg_mi

@@ -133,7 +133,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
                     if(s.IsValid() && m_first_valid == -1)
                         m_first_valid = ii;
 
-                    m_backtrace.push_back(cbStackFrame::Pointer(new cbStackFrame(s)));
+                    m_backtrace.push_back(cb::shared_ptr<cbStackFrame>(new cbStackFrame(s)));
                 }
                 else
                     m_logger.Debug(wxT("can't parse frame: ") + frame_value->MakeDebugString());
@@ -144,7 +144,7 @@ void GenerateBacktrace::OnCommandOutput(CommandID const &id, ResultParser const 
     else if(id == m_args_id)
     {
         m_logger.Debug(wxT("GenerateBacktrace::OnCommandOutput arguments"));
-        dbg_mi::FrameArguments arguments;
+        FrameArguments arguments;
 
         if(!arguments.Attach(result.GetResultValue()))
         {
@@ -284,7 +284,7 @@ void GenerateThreadsList::OnCommandOutput(CommandID const & /*id*/, ResultParser
                 info += wxT(" in ") + str;
         }
 
-        m_threads.push_back(cbThread::Pointer(new cbThread(thread_id == current_thread_id, thread_id, info)));
+        m_threads.push_back(cb::shared_ptr<cbThread>(new cbThread(thread_id == current_thread_id, thread_id, info)));
     }
 
     Manager::Get()->GetDebuggerManager()->GetThreadsDialog()->Reload();
@@ -328,19 +328,19 @@ bool WatchHasType(ResultValue const &value)
     return Lookup(value, wxT("type"), s);
 }
 
-void AppendNullChild(Watch::Pointer watch)
+void AppendNullChild(cb::shared_ptr<Watch> watch)
 {
-    cbWatch::AddChild(watch, cbWatch::Pointer(new Watch(wxT("updating..."), watch->ForTooltip())));
+    cbWatch::AddChild(watch, cb::shared_ptr<cbWatch>(new Watch(wxT("updating..."), watch->ForTooltip())));
 }
 
-Watch::Pointer AddChild(Watch::Pointer parent, ResultValue const &child_value, wxString const &symbol,
-                        WatchesContainer &watches)
+cb::shared_ptr<Watch> AddChild(cb::shared_ptr<Watch> parent, ResultValue const &child_value, wxString const &symbol,
+                               WatchesContainer &watches)
 {
     wxString id;
     if(!Lookup(child_value, wxT("name"), id))
-        return Watch::Pointer();
+        return cb::shared_ptr<Watch>();
 
-    Watch::Pointer child = FindWatch(id, watches);
+    cb::shared_ptr<Watch> child = FindWatch(id, watches);
     if(child)
     {
         wxString s;
@@ -352,7 +352,7 @@ Watch::Pointer AddChild(Watch::Pointer parent, ResultValue const &child_value, w
     }
     else
     {
-        child = Watch::Pointer(new Watch(symbol, parent->ForTooltip()));
+        child = cb::shared_ptr<Watch>(new Watch(symbol, parent->ForTooltip()));
         ParseWatchValueID(*child, child_value);
         cbWatch::AddChild(parent, child);
     }
@@ -361,7 +361,7 @@ Watch::Pointer AddChild(Watch::Pointer parent, ResultValue const &child_value, w
     return child;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void UpdateWatches(dbg_mi::Logger &logger)
+void UpdateWatches(Logger &logger)
 {
 #ifndef TEST_PROJECT
     logger.Debug(wxT("updating watches"));
@@ -369,7 +369,7 @@ void UpdateWatches(dbg_mi::Logger &logger)
 #endif
 }
 
-void UpdateWatchesTooltipOrAll(const dbg_mi::Watch::Pointer &watch, dbg_mi::Logger &logger)
+void UpdateWatchesTooltipOrAll(const cb::shared_ptr<Watch> &watch, Logger &logger)
 {
 #ifndef TEST_PROJECT
     if (watch->ForTooltip())
@@ -416,7 +416,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
         int count = children->GetTupleSize();
 
         m_logger.Debug(wxString::Format(wxT("WatchBaseAction::ParseListCommand - children %d"), count));
-        Watch::Pointer parent_watch = it->second;
+        cb::shared_ptr<Watch> parent_watch = it->second;
 
         for(int ii = 0; ii < count; ++ii)
         {
@@ -429,7 +429,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                 if(!Lookup(*child_value, wxT("exp"), symbol))
                     symbol = wxT("--unknown--");
 
-                Watch::Pointer child;
+                cb::shared_ptr<Watch> child;
                 bool dynamic, has_more;
 
                 int children_count;
@@ -437,7 +437,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
                 if(dynamic && has_more)
                 {
-                    child = Watch::Pointer(new Watch(symbol, parent_watch->ForTooltip()));
+                    child = cb::shared_ptr<Watch>(new Watch(symbol, parent_watch->ForTooltip()));
                     ParseWatchValueID(*child, *child_value);
                     ExecuteListCommand(child, parent_watch);
                 }
@@ -461,7 +461,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             if(Lookup(*child_value, wxT("name"), id))
                                 ExecuteListCommand(id, child);
                         }
-                        child = Watch::Pointer();
+                        child = cb::shared_ptr<Watch>();
                         break;
                     default:
                         if(WatchHasType(*child_value))
@@ -477,7 +477,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - adding child ")
                                            + child->GetDebugString()
                                            + wxT(" to ") + parent_watch->GetDebugString());
-                            child = Watch::Pointer();
+                            child = cb::shared_ptr<Watch>();
                         }
                         else
                         {
@@ -499,7 +499,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
     return !error;
 }
 
-void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent)
+void WatchBaseAction::ExecuteListCommand(cb::shared_ptr<Watch> watch, cb::shared_ptr<Watch> parent)
 {
     CommandID id;
 
@@ -515,7 +515,7 @@ void WatchBaseAction::ExecuteListCommand(Watch::Pointer watch, Watch::Pointer pa
     ++m_sub_commands_left;
 }
 
-void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent)
+void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, cb::shared_ptr<Watch> parent)
 {
     if (!parent)
     {
@@ -534,7 +534,7 @@ void WatchBaseAction::ExecuteListCommand(wxString const &watch_id, Watch::Pointe
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-WatchCreateAction::WatchCreateAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger) :
+WatchCreateAction::WatchCreateAction(cb::shared_ptr<Watch> const &watch, WatchesContainer &watches, Logger &logger) :
     WatchBaseAction(watches, logger),
     m_watch(watch),
     m_step(StepCreate)
@@ -648,7 +648,7 @@ bool WatchesUpdateAction::ParseUpdate(ResultParser const &result)
                 continue;
             }
 
-            Watch::Pointer watch = FindWatch(expression, m_watches);
+            cb::shared_ptr<Watch> watch = FindWatch(expression, m_watches);
             if(!watch)
             {
                 m_logger.Debug(wxT("WatchesUpdateAction::Output - can't find watch ") + expression);
@@ -763,7 +763,7 @@ void WatchesUpdateAction::OnCommandOutput(CommandID const &id, ResultParser cons
 void WatchExpandedAction::OnStart()
 {
     m_update_id = Execute(wxT("-var-update ") + m_expanded_watch->GetID());
-    ExecuteListCommand(m_expanded_watch, Watch::Pointer());
+    ExecuteListCommand(m_expanded_watch, cb::shared_ptr<Watch>());
 }
 
 void WatchExpandedAction::OnCommandOutput(CommandID const &id, ResultParser const &result)

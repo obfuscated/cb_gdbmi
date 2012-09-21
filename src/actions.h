@@ -218,13 +218,13 @@ public:
     virtual ~WatchBaseAction();
 
 protected:
-    void ExecuteListCommand(Watch::Pointer watch, Watch::Pointer parent = Watch::Pointer());
-    void ExecuteListCommand(wxString const &watch_id, Watch::Pointer parent);
+    void ExecuteListCommand(cb::shared_ptr<Watch> watch, cb::shared_ptr<Watch> parent = cb::shared_ptr<Watch>());
+    void ExecuteListCommand(wxString const &watch_id, cb::shared_ptr<Watch> parent);
     bool ParseListCommand(CommandID const &id, ResultValue const &value);
 
     void SetRange(int start, int end) { m_start = start; m_end = end; }
 protected:
-    typedef std::tr1::unordered_map<CommandID, Watch::Pointer> ListCommandParentMap;
+    typedef std::tr1::unordered_map<CommandID, cb::shared_ptr<Watch> > ListCommandParentMap;
 protected:
     ListCommandParentMap m_parent_map;
     WatchesContainer &m_watches;
@@ -242,21 +242,22 @@ class WatchCreateAction : public WatchBaseAction
         StepSetRange
     };
 public:
-    WatchCreateAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger);
+    WatchCreateAction(cb::shared_ptr<Watch> const &watch, WatchesContainer &watches, Logger &logger);
 
     virtual void OnCommandOutput(CommandID const &id, ResultParser const &result);
 protected:
     virtual void OnStart();
 
 protected:
-    Watch::Pointer m_watch;
+    cb::shared_ptr<Watch> m_watch;
     Step m_step;
 };
 
 class WatchCreateTooltipAction : public WatchCreateAction
 {
 public:
-    WatchCreateTooltipAction(Watch::Pointer const &watch, WatchesContainer &watches, Logger &logger, wxRect const &rect) :
+    WatchCreateTooltipAction(cb::shared_ptr<Watch> const &watch, WatchesContainer &watches,
+                             Logger &logger, wxRect const &rect) :
         WatchCreateAction(watch, watches, logger),
         m_rect(rect)
     {
@@ -284,7 +285,7 @@ private:
 class WatchExpandedAction : public WatchBaseAction
 {
 public:
-    WatchExpandedAction(Watch::Pointer parent_watch, Watch::Pointer expanded_watch,
+    WatchExpandedAction(cb::shared_ptr<Watch> parent_watch, cb::shared_ptr<Watch> expanded_watch,
                         WatchesContainer &watches, Logger &logger) :
         WatchBaseAction(watches, logger),
         m_watch(parent_watch),
@@ -299,14 +300,14 @@ protected:
 
 private:
     CommandID m_update_id;
-    Watch::Pointer m_watch;
-    Watch::Pointer m_expanded_watch;
+    cb::shared_ptr<Watch> m_watch;
+    cb::shared_ptr<Watch> m_expanded_watch;
 };
 
 class WatchCollapseAction : public WatchBaseAction
 {
 public:
-    WatchCollapseAction(Watch::Pointer parent_watch, Watch::Pointer collapsed_watch,
+    WatchCollapseAction(cb::shared_ptr<Watch> parent_watch, cb::shared_ptr<Watch> collapsed_watch,
                         WatchesContainer &watches, Logger &logger) :
         WatchBaseAction(watches, logger),
         m_watch(parent_watch),
@@ -319,8 +320,8 @@ protected:
     virtual void OnStart();
 
 private:
-    Watch::Pointer m_watch;
-    Watch::Pointer m_collapsed_watch;
+    cb::shared_ptr<Watch> m_watch;
+    cb::shared_ptr<Watch> m_collapsed_watch;
 };
 
 } // namespace dbg_mi
