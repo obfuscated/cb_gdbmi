@@ -159,12 +159,15 @@ wxString Configuration::GetDebuggerExecutable(bool expandMacros)
     return result;
 }
 
-wxArrayString Configuration::GetInitialCommands()
+Configuration::CommandList Configuration::GetInitialCommands()
 {
-    wxArrayString commands;
-    wxString const &init = m_config.Read(wxT("init_commands"), wxEmptyString);
+    CommandList commands;
+    wxString init = m_config.Read(wxT("init_commands"), wxEmptyString);
     if (!init.empty())
-        commands = GetArrayFromString(init, wxT('\n'));
+    {
+        Manager::Get()->GetMacrosManager()->ReplaceEnvVars(init);
+        commands = GetVectorFromString(init, wxT('\n'));
+    }
     return commands;
 }
 

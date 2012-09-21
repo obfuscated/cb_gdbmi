@@ -1,6 +1,7 @@
 #ifndef _DEBUGGER_GDB_MI_GDB_CONFIG_H_
 #define _DEBUGGER_GDB_MI_GDB_CONFIG_H_
 
+#include <vector>
 #include <debuggermanager.h>
 
 //(*Headers(ConfigurationPanel)
@@ -62,8 +63,10 @@ public:
     virtual wxPanel* MakePanel(wxWindow *parent);
     virtual bool SaveChanges(wxPanel *panel);
 public:
+    typedef std::vector<wxString> CommandList;
+
     wxString GetDebuggerExecutable(bool expandMacros = true);
-    wxArrayString GetInitialCommands();
+    CommandList GetInitialCommands();
     wxString GetInitialCommandsString();
 
     enum Flags
