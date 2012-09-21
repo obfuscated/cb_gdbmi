@@ -43,7 +43,11 @@ private:
     //*)
 
     //(*Handlers(ConfigurationPanel)
+    void OnButtonBrowse(wxCommandEvent &event);
+    void OnExecutablePathChange(wxCommandEvent& event);
     //*)
+private:
+    void ValidateExecutablePath();
 
     DECLARE_EVENT_TABLE()
 };

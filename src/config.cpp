@@ -10,6 +10,7 @@
 #include <wx/textctrl.h>
 //*)
 
+#include <wx/filedlg.h>
 #include <macrosmanager.h>
 
 namespace dbg_mi
@@ -67,6 +68,9 @@ ConfigurationPanel::ConfigurationPanel(wxWindow* parent)
 	SetSizer(main_sizer);
 	main_sizer->Fit(this);
 	main_sizer->SetSizeHints(this);
+
+	Connect(ID_TEXTCTRL_EXEC_PATH,wxEVT_COMMAND_TEXT_UPDATED,(wxObjectEventFunction)&ConfigurationPanel::OnExecutablePathChange);
+	Connect(ID_BUTTON_BROWSE,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&ConfigurationPanel::OnButtonBrowse);
 	//*)
 }
 
@@ -76,6 +80,43 @@ ConfigurationPanel::~ConfigurationPanel()
 	//*)
 }
 
+void ConfigurationPanel::OnButtonBrowse(wxCommandEvent & /*event*/)
+{
+    wxString oldPath = m_exec_path->GetValue();
+    Manager::Get()->GetMacrosManager()->ReplaceEnvVars(oldPath);
+    wxFileDialog dlg(this, _("Select executable file"), wxEmptyString, oldPath,
+                     wxFileSelectorDefaultWildcardStr, wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    PlaceWindow(&dlg);
+    if (dlg.ShowModal() == wxID_OK)
+    {
+        wxString newPath = dlg.GetPath();
+        m_exec_path->SetValue(newPath);
+    }
+}
+
+void ConfigurationPanel::ValidateExecutablePath()
+{
+    wxString path = m_exec_path->GetValue();
+    Manager::Get()->GetMacrosManager()->ReplaceEnvVars(path);
+    if (!wxFileExists(path))
+    {
+        m_exec_path->SetForegroundColour(*wxWHITE);
+        m_exec_path->SetBackgroundColour(*wxRED);
+        m_exec_path->SetToolTip(_("Full path to the debugger's executable. Executable can't be found on the filesystem!"));
+    }
+    else
+    {
+        m_exec_path->SetForegroundColour(wxNullColour);
+        m_exec_path->SetBackgroundColour(wxNullColour);
+        m_exec_path->SetToolTip(_("Full path to the debugger's executable."));
+    }
+    m_exec_path->Refresh();
+}
+
+void ConfigurationPanel::OnExecutablePathChange(wxCommandEvent & /*event*/)
+{
+    ValidateExecutablePath();
+}
 
 Configuration::Configuration(const ConfigManagerWrapper &config) : cbDebuggerConfiguration(config)
 {
@@ -89,7 +130,7 @@ cbDebuggerConfiguration* Configuration::Clone() const
 wxPanel* Configuration::MakePanel(wxWindow *parent)
 {
     ConfigurationPanel *panel = new ConfigurationPanel(parent);
-    panel->m_exec_path->ChangeValue(GetDebuggerExecutable(false));
+    panel->m_exec_path->SetValue(GetDebuggerExecutable(false));
     panel->m_initial_commands->SetValue(GetInitialCommandsString());
     panel->m_check_pretty_printers->SetValue(GetFlag(Configuration::PrettyPrinters));
     panel->m_check_cpp_excepetions->SetValue(GetFlag(Configuration::CatchCppExceptions));
