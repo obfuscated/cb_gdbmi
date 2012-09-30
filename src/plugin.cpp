@@ -547,7 +547,7 @@ void Debugger_GDB_MI::ConvertDirectory(wxString& str, wxString base, bool relati
 struct BreakpointMatchProject
 {
     BreakpointMatchProject(cbProject *project) : project(project) {}
-    bool operator()(dbg_mi::Breakpoint::Pointer bp) const
+    bool operator()(cb::shared_ptr<dbg_mi::Breakpoint> bp) const
     {
         return bp->GetProject() == project;
     }
@@ -766,7 +766,7 @@ bool Debugger_GDB_MI::RunToCursor(const wxString& filename, int line, const wxSt
     }
     else
     {
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, nullptr));
+        cb::shared_ptr<dbg_mi::Breakpoint> ptr(new dbg_mi::Breakpoint(filename, line, nullptr));
         m_temporary_breakpoints.push_back(ptr);
         return Debug(false);
     }
@@ -947,7 +947,7 @@ cb::shared_ptr<cbBreakpoint> Debugger_GDB_MI::AddBreakpoint(const wxString& file
         {
             cbProject *project;
             project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
-            dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, project));
+            cb::shared_ptr<dbg_mi::Breakpoint> ptr(new dbg_mi::Breakpoint(filename, line, project));
             m_breakpoints.push_back(ptr);
             CommitBreakpoints(false);
         }
@@ -955,7 +955,7 @@ cb::shared_ptr<cbBreakpoint> Debugger_GDB_MI::AddBreakpoint(const wxString& file
     else
     {
         cbProject *project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
-        dbg_mi::Breakpoint::Pointer ptr(new dbg_mi::Breakpoint(filename, line, project));
+        cb::shared_ptr<dbg_mi::Breakpoint> ptr(new dbg_mi::Breakpoint(filename, line, project));
         m_breakpoints.push_back(ptr);
     }
 

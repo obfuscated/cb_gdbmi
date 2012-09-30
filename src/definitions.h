@@ -15,8 +15,6 @@ namespace dbg_mi
 class Breakpoint : public cbBreakpoint
 {
 public:
-    typedef std::tr1::shared_ptr<Breakpoint> Pointer;
-public:
     Breakpoint() :
         m_project(nullptr),
         m_index(-1),

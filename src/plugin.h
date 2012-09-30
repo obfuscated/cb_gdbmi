@@ -187,7 +187,7 @@ class Debugger_GDB_MI : public cbDebuggerPlugin
         dbg_mi::ActionsMap  m_actions;
         dbg_mi::LogPaneLogger m_execution_logger;
 
-        typedef std::vector<dbg_mi::Breakpoint::Pointer> Breakpoints;
+        typedef std::vector<cb::shared_ptr<dbg_mi::Breakpoint> > Breakpoints;
 
         Breakpoints m_breakpoints;
         Breakpoints m_temporary_breakpoints;
