@@ -940,7 +940,7 @@ cb::shared_ptr<cbBreakpoint> Debugger_GDB_MI::AddBreakpoint(const wxString& file
             project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
             cb::shared_ptr<dbg_mi::Breakpoint> ptr(new dbg_mi::Breakpoint(filename, line, project));
             m_breakpoints.push_back(ptr);
-            CommitBreakpoints(false);
+            m_actions.Add(new dbg_mi::BreakpointAddAction(ptr, m_execution_logger));
             Continue();
         }
         else
@@ -949,7 +949,7 @@ cb::shared_ptr<cbBreakpoint> Debugger_GDB_MI::AddBreakpoint(const wxString& file
             project = Manager::Get()->GetProjectManager()->FindProjectForFile(filename, nullptr, false, false);
             cb::shared_ptr<dbg_mi::Breakpoint> ptr(new dbg_mi::Breakpoint(filename, line, project));
             m_breakpoints.push_back(ptr);
-            CommitBreakpoints(false);
+            m_actions.Add(new dbg_mi::BreakpointAddAction(ptr, m_execution_logger));
         }
     }
     else
@@ -1112,9 +1112,35 @@ void Debugger_GDB_MI::DeleteAllBreakpoints()
     m_breakpoints.clear();
 }
 
-void Debugger_GDB_MI::ShiftBreakpoint(int /*index*/, int /*lines_to_shift*/)
+void Debugger_GDB_MI::ShiftBreakpoint(int index, int lines_to_shift)
 {
-    #warning "not implemented"
+    if (index < 0 || index >= static_cast<int>(m_breakpoints.size()))
+        return;
+    cb::shared_ptr<dbg_mi::Breakpoint> bp = m_breakpoints[index];
+    bp->ShiftLine(lines_to_shift);
+
+    if(IsRunning())
+    {
+        // just remove the breakpoints as they will become invalid
+        if(!IsStopped())
+        {
+            m_executor.Interupt();
+            if (bp->GetIndex()>=0)
+            {
+                AddStringCommand(wxString::Format(wxT("-break-delete %d"), bp->GetIndex()));
+                bp->SetIndex(-1);
+            }
+            Continue();
+        }
+        else
+        {
+            if (bp->GetIndex()>=0)
+            {
+                AddStringCommand(wxString::Format(wxT("-break-delete %d"), bp->GetIndex()));
+                bp->SetIndex(-1);
+            }
+        }
+    }
 }
 
 void Debugger_GDB_MI::EnableBreakpoint(cb::shared_ptr<cbBreakpoint> breakpoint, bool enable)

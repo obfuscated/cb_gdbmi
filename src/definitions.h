@@ -52,6 +52,7 @@ public:
     bool HasIgnoreCount() const { return false; }
 
     void SetIndex(int index) { m_index = index; }
+    void ShiftLine(int linesToShift) { m_line += linesToShift; }
 
     cbProject* GetProject() { return m_project; }
 private:
