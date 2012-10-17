@@ -8,6 +8,7 @@
 
 #include <cbdebugger_interfaces.h>
 #include <cbproject.h>
+#include <compilercommandgenerator.h>
 #include <compilerfactory.h>
 #include <configurationpanel.h>
 #include <configmanager.h>
@@ -46,14 +47,18 @@ namespace
 
 namespace
 {
-wxString GetLibraryPath(const wxString &oldLibPath, Compiler *compiler, ProjectBuildTarget *target)
+wxString GetLibraryPath(const wxString &oldLibPath, Compiler *compiler, ProjectBuildTarget *target, cbProject *project)
 {
     if (compiler && target)
     {
         wxString newLibPath;
         const wxString libPathSep = platform::windows ? _T(";") : _T(":");
         newLibPath << _T(".") << libPathSep;
-        newLibPath << GetStringFromArray(compiler->GetLinkerSearchDirs(target), libPathSep);
+
+        CompilerCommandGenerator *generator = compiler->GetCommandGenerator(project);
+        newLibPath << GetStringFromArray(generator->GetLinkerSearchDirs(target), libPathSep);
+        delete generator;
+
         if (newLibPath.Mid(newLibPath.Length() - 1, 1) != libPathSep)
             newLibPath << libPathSep;
         newLibPath << oldLibPath;
@@ -604,7 +609,7 @@ int Debugger_GDB_MI::StartDebugger(cbProject *project, StartType start_type)
 
     wxString oldLibPath;
     wxGetEnv(CB_LIBRARY_ENVVAR, &oldLibPath);
-    wxString newLibPath = GetLibraryPath(oldLibPath, compiler, target);
+    wxString newLibPath = GetLibraryPath(oldLibPath, compiler, target, project);
     if (oldLibPath != newLibPath)
     {
         wxSetEnv(CB_LIBRARY_ENVVAR, newLibPath);
