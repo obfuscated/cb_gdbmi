@@ -409,6 +409,21 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
         return false;
     }
 
+    struct DisplayHint
+    {
+        enum Enum { None=0, Array, Map };
+    };
+
+    DisplayHint::Enum displayHint = DisplayHint::None;
+
+    wxString strDisplayHint;
+    if (Lookup(value, wxT("displayhint"), strDisplayHint))
+    {
+        if (strDisplayHint == wxT("map"))
+            displayHint = DisplayHint::Map;
+        else if (strDisplayHint == wxT("array"))
+            displayHint = DisplayHint::Array;
+    }
 
     ResultValue const *children = value.GetTupleValue(wxT("children"));
     if(children)
@@ -417,6 +432,8 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
         m_logger.Debug(wxString::Format(wxT("WatchBaseAction::ParseListCommand - children %d"), count));
         cb::shared_ptr<Watch> parent_watch = it->second;
+
+        wxString strMapKey;
 
         for(int ii = 0; ii < count; ++ii)
         {
@@ -434,6 +451,20 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
                 int children_count;
                 ParseWatchInfo(*child_value, children_count, dynamic, has_more);
+
+                bool mapValue = false;
+
+                if (displayHint == DisplayHint::Map)
+                {
+                    if ((ii & 1) == 0)
+                    {
+                        if (!Lookup(*child_value, wxT("value"), strMapKey))
+                            strMapKey = wxEmptyString;
+                        continue;
+                    }
+                    else
+                        mapValue = true;
+                }
 
                 if(dynamic && has_more)
                 {
@@ -454,7 +485,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                             parent_watch->SetHasBeenExpanded(true);
                             parent_watch->RemoveChildren();
                         }
-                        child = AddChild(parent_watch, *child_value, symbol, m_watches);
+                        child = AddChild(parent_watch, *child_value, (mapValue ? strMapKey : symbol), m_watches);
                         if (dynamic)
                         {
                             wxString id;
@@ -471,7 +502,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                                 parent_watch->SetHasBeenExpanded(true);
                                 parent_watch->RemoveChildren();
                             }
-                            child = AddChild(parent_watch, *child_value, symbol, m_watches);
+                            child = AddChild(parent_watch, *child_value, (mapValue ? strMapKey : symbol), m_watches);
                             AppendNullChild(child);
 
                             m_logger.Debug(wxT("WatchBaseAction::ParseListCommand - adding child ")
