@@ -468,7 +468,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
 
                 if(dynamic && has_more)
                 {
-                    child = cb::shared_ptr<Watch>(new Watch(symbol, parent_watch->ForTooltip()));
+                    child = cb::shared_ptr<Watch>(new Watch(symbol, parent_watch->ForTooltip(), false));
                     ParseWatchValueID(*child, *child_value);
                     ExecuteListCommand(child, parent_watch);
                 }
@@ -488,6 +488,7 @@ bool WatchBaseAction::ParseListCommand(CommandID const &id, ResultValue const &v
                         child = AddChild(parent_watch, *child_value, (mapValue ? strMapKey : symbol), m_watches);
                         if (dynamic)
                         {
+                            child->SetDeleteOnCollapse(false);
                             wxString id;
                             if(Lookup(*child_value, wxT("name"), id))
                                 ExecuteListCommand(id, child);

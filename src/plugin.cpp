@@ -1275,7 +1275,7 @@ void Debugger_GDB_MI::CollapseWatch(cb::shared_ptr<cbWatch> watch)
     if(it != m_watches.end())
     {
         cb::shared_ptr<dbg_mi::Watch> real_watch = cb::static_pointer_cast<dbg_mi::Watch>(watch);
-        if(real_watch->HasBeenExpanded())
+        if(real_watch->HasBeenExpanded() && real_watch->DeleteOnCollapse())
             m_actions.Add(new dbg_mi::WatchCollapseAction(*it, real_watch, m_watches, m_execution_logger));
     }
 }

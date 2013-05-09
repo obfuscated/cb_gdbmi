@@ -72,10 +72,11 @@ typedef std::deque<cb::shared_ptr<cbThread> > ThreadsContainer;
 class Watch : public cbWatch
 {
 public:
-    Watch(wxString const &symbol, bool for_tooltip) :
+    Watch(wxString const &symbol, bool for_tooltip, bool delete_on_collapse = true) :
         m_symbol(symbol),
         m_has_been_expanded(false),
-        m_for_tooltip(for_tooltip)
+        m_for_tooltip(for_tooltip),
+        m_delete_on_collapse(delete_on_collapse)
     {
     }
 
@@ -94,6 +95,8 @@ public:
     bool HasBeenExpanded() const { return m_has_been_expanded; }
     void SetHasBeenExpanded(bool expanded) { m_has_been_expanded = expanded; }
     bool ForTooltip() const { return m_for_tooltip; }
+    void SetDeleteOnCollapse(bool delete_on_collapse) { m_delete_on_collapse = delete_on_collapse; }
+    bool DeleteOnCollapse() const { return m_delete_on_collapse; }
 public:
     virtual void GetSymbol(wxString &symbol) const { symbol = m_symbol; }
     virtual void GetValue(wxString &value) const { value = m_value; }
@@ -118,6 +121,7 @@ private:
     mutable wxString m_debug_string;
     bool m_has_been_expanded;
     bool m_for_tooltip;
+    bool m_delete_on_collapse;
 };
 
 typedef std::vector<cb::shared_ptr<Watch> > WatchesContainer;
